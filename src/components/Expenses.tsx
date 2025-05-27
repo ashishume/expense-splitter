@@ -1,0 +1,321 @@
+import { useState } from "react";
+import { motion } from "framer-motion";
+import { addDoc, collection, deleteDoc, doc } from "firebase/firestore";
+import { db } from "../firebase";
+
+interface User {
+  id: string;
+  name: string;
+  groups?: string[];
+}
+
+interface Group {
+  id: string;
+  name: string;
+  members: string[];
+}
+
+interface Expense {
+  id: string;
+  paidBy: string;
+  paidByName: string;
+  amount: number;
+  description: string;
+  splitWith: string[];
+  date: string;
+  groupId?: string;
+}
+
+interface ExpensesProps {
+  users: User[];
+  groups: Group[];
+  expenses: Expense[];
+  onExpenseUpdate: () => void;
+}
+
+const Expenses = ({
+  users,
+  groups,
+  expenses,
+  onExpenseUpdate,
+}: ExpensesProps) => {
+  const [newExpense, setNewExpense] = useState({
+    paidBy: "",
+    amount: "",
+    description: "",
+    splitWith: [] as string[],
+    groupId: "",
+  });
+
+  const toggleUserForExpense = (userId: string) => {
+    const currentSelection = [...newExpense.splitWith];
+    const index = currentSelection.indexOf(userId);
+
+    if (index > -1) {
+      currentSelection.splice(index, 1);
+    } else {
+      currentSelection.push(userId);
+    }
+
+    setNewExpense({
+      ...newExpense,
+      splitWith: currentSelection,
+    });
+  };
+
+  const addExpense = async () => {
+    if (
+      !newExpense.paidBy ||
+      !newExpense.amount ||
+      !newExpense.description ||
+      newExpense.splitWith.length === 0
+    ) {
+      alert(
+        "Please fill in all fields and select at least one person to split with"
+      );
+      return;
+    }
+
+    const amount = parseFloat(newExpense.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const paidByUser = users.find((user) => user.id === newExpense.paidBy);
+      if (!paidByUser) {
+        throw new Error("Payer not found");
+      }
+
+      await addDoc(collection(db, "expenses"), {
+        paidBy: newExpense.paidBy,
+        paidByName: paidByUser.name,
+        amount: amount,
+        description: newExpense.description,
+        splitWith: newExpense.splitWith,
+        date: new Date().toISOString(),
+        groupId: newExpense.groupId || null,
+      });
+
+      setNewExpense({
+        paidBy: "",
+        amount: "",
+        description: "",
+        splitWith: [],
+        groupId: "",
+      });
+      onExpenseUpdate();
+    } catch (error) {
+      console.error("Error adding expense: ", error);
+      alert("Error adding expense. Please try again.");
+    }
+  };
+
+  const removeExpense = async (expenseId: string) => {
+    try {
+      await deleteDoc(doc(db, "expenses", expenseId));
+      onExpenseUpdate();
+    } catch (error) {
+      console.error("Error removing expense: ", error);
+      alert("Error removing expense. Please try again.");
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+    >
+      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
+        <svg
+          className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-green-600"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
+        </svg>
+        Add Expense
+      </h2>
+
+      <div className="space-y-3 sm:space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Paid By
+          </label>
+          <select
+            value={newExpense.paidBy}
+            onChange={(e) =>
+              setNewExpense({ ...newExpense, paidBy: e.target.value })
+            }
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">Select a user</option>
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Group (Optional)
+          </label>
+          <select
+            value={newExpense.groupId}
+            onChange={(e) =>
+              setNewExpense({ ...newExpense, groupId: e.target.value })
+            }
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">No Group</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Amount
+          </label>
+          <div className="relative">
+            <span className="absolute left-4 top-3 text-gray-500">₹</span>
+            <input
+              type="number"
+              value={newExpense.amount}
+              onChange={(e) =>
+                setNewExpense({ ...newExpense, amount: e.target.value })
+              }
+              className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              placeholder="Amount"
+              min="0"
+              step="0.01"
+            />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description
+          </label>
+          <input
+            type="text"
+            value={newExpense.description}
+            onChange={(e) =>
+              setNewExpense({
+                ...newExpense,
+                description: e.target.value,
+              })
+            }
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            placeholder="Description"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Split with
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+            {users.map((user) => (
+              <div
+                key={user.id}
+                className="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg"
+              >
+                <input
+                  type="checkbox"
+                  id={`split-${user.id}`}
+                  checked={newExpense.splitWith.includes(user.id)}
+                  onChange={() => toggleUserForExpense(user.id)}
+                  disabled={user.id === newExpense.paidBy}
+                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                />
+                <label
+                  htmlFor={`split-${user.id}`}
+                  className="ml-2 text-sm sm:text-base text-gray-700"
+                >
+                  {user.name}{" "}
+                  {user.id === newExpense.paidBy ? (
+                    <span className="text-green-600 text-xs sm:text-sm">
+                      (Payer)
+                    </span>
+                  ) : null}
+                </label>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <button
+          onClick={addExpense}
+          className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
+        >
+          Add Expense
+        </button>
+      </div>
+
+      {/* Expenses List */}
+      {expenses.length > 0 && (
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold mb-4">Recent Expenses</h3>
+          <div className="space-y-4">
+            {expenses.map((expense) => (
+              <div
+                key={expense.id}
+                className="bg-gray-50 p-4 rounded-md flex justify-between items-start"
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <h3 className="text-lg font-medium">
+                      {expense.description}
+                    </h3>
+                    {expense.groupId && (
+                      <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                        {groups.find((g) => g.id === expense.groupId)?.name}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-gray-600">
+                    Paid by {expense.paidByName} - ₹{expense.amount}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Split with:{" "}
+                    {expense.splitWith
+                      .map(
+                        (userId) =>
+                          users.find((u) => u.id === userId)?.name || "Unknown"
+                      )
+                      .join(", ")}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {new Date(expense.date).toLocaleDateString()}
+                  </p>
+                </div>
+                <button
+                  onClick={() => removeExpense(expense.id)}
+                  className="text-red-600 hover:text-red-800"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </motion.div>
+  );
+};
+
+export default Expenses;
