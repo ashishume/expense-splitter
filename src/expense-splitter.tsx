@@ -291,26 +291,26 @@ const ExpenseSplittingApp = () => {
   const individualBalances = calculateIndividualBalances(expenses);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-2 sm:p-4 max-w-6xl mx-auto">
       <motion.h1
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="text-4xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600"
+        className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600"
       >
         SplitEase
       </motion.h1>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        <div className="space-y-8">
+      <div className="grid lg:grid-cols-2 gap-4 sm:gap-8">
+        <div className="space-y-4 sm:space-y-8">
           {/* User Management Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
           >
-            <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
               <svg
-                className="w-6 h-6 mr-2 text-blue-600"
+                className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -325,17 +325,17 @@ const ExpenseSplittingApp = () => {
               Group Members
             </h2>
 
-            <div className="flex mb-6">
+            <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 gap-2">
               <input
                 type="text"
                 value={newUserName}
                 onChange={(e) => setNewUserName(e.target.value)}
-                className="flex-grow px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Enter name"
               />
               <button
                 onClick={addUser}
-                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-r-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-md"
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-md"
               >
                 Add User
               </button>
@@ -357,12 +357,12 @@ const ExpenseSplittingApp = () => {
                         exit={{ opacity: 0, x: 20 }}
                         className="py-3 flex justify-between items-center group"
                       >
-                        <div className="flex items-center space-x-4">
-                          <span className="text-gray-700 font-medium">
+                        <div className="flex items-center space-x-2 sm:space-x-4">
+                          <span className="text-gray-700 font-medium text-sm sm:text-base">
                             {user.name}
                           </span>
                           <span
-                            className={`text-sm px-2 py-1 rounded-full ${
+                            className={`text-xs sm:text-sm px-2 py-1 rounded-full ${
                               individualBalances[user.id] > 0
                                 ? "bg-green-100 text-green-800"
                                 : individualBalances[user.id] < 0
@@ -379,7 +379,7 @@ const ExpenseSplittingApp = () => {
                           className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
                         >
                           <svg
-                            className="w-5 h-5"
+                            className="w-4 h-4 sm:w-5 sm:h-5"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -405,11 +405,11 @@ const ExpenseSplittingApp = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
             >
-              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
                 <svg
-                  className="w-6 h-6 mr-2 text-green-600"
+                  className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-green-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -424,7 +424,7 @@ const ExpenseSplittingApp = () => {
                 Add Expense
               </h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 <input
                   type="text"
                   value={newExpense.description}
@@ -472,11 +472,11 @@ const ExpenseSplittingApp = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Split with
                   </label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                     {users.map((user) => (
                       <div
                         key={user.id}
-                        className="flex items-center p-3 bg-gray-50 rounded-lg"
+                        className="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg"
                       >
                         <input
                           type="checkbox"
@@ -488,11 +488,11 @@ const ExpenseSplittingApp = () => {
                         />
                         <label
                           htmlFor={`split-${user.id}`}
-                          className="ml-2 text-gray-700"
+                          className="ml-2 text-sm sm:text-base text-gray-700"
                         >
                           {user.name}{" "}
                           {user.id === newExpense.paidBy ? (
-                            <span className="text-green-600 text-sm">
+                            <span className="text-green-600 text-xs sm:text-sm">
                               (Payer)
                             </span>
                           ) : null}
@@ -513,17 +513,17 @@ const ExpenseSplittingApp = () => {
           )}
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-4 sm:space-y-8">
           {/* Enhanced Settlements Section */}
           {settlements.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
             >
-              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+              <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
                 <svg
-                  className="w-6 h-6 mr-2 text-red-600"
+                  className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -538,21 +538,21 @@ const ExpenseSplittingApp = () => {
                 Who Owes Whom
               </h2>
 
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {settlements.map((settlement, index) => (
                   <motion.div
                     key={settlement.id}
                     initial={{ opacity: 0, scale: 0.95 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex items-center space-x-2 sm:space-x-3">
                         <div className="flex-shrink-0">
-                          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                          <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center">
                             <svg
-                              className="w-5 h-5 text-red-600"
+                              className="w-4 h-4 sm:w-5 sm:h-5 text-red-600"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -567,31 +567,33 @@ const ExpenseSplittingApp = () => {
                           </div>
                         </div>
                         <div>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-lg font-bold text-red-700">
+                          <div className="flex items-center space-x-1 sm:space-x-2">
+                            <span className="text-base sm:text-lg font-bold text-red-700">
                               {settlement.fromName}
                             </span>
                             <span className="text-gray-600">owes</span>
-                            <span className="text-lg font-bold text-green-700">
+                            <span className="text-base sm:text-lg font-bold text-green-700">
                               {settlement.toName}
                             </span>
                           </div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-xs sm:text-sm text-gray-500">
                             Settlement required
                           </div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-3xl font-bold text-red-600">
+                        <div className="text-2xl sm:text-3xl font-bold text-red-600">
                           ₹{settlement.amount.toFixed(2)}
                         </div>
-                        <div className="text-sm text-gray-500">Amount owed</div>
+                        <div className="text-xs sm:text-sm text-gray-500">
+                          Amount owed
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-center">
-                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                    <div className="mt-2 sm:mt-3 flex items-center justify-center">
+                      <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
                         <svg
-                          className="w-4 h-4"
+                          className="w-3 h-3 sm:w-4 sm:h-4"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -611,11 +613,11 @@ const ExpenseSplittingApp = () => {
               </div>
 
               {/* Summary */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-semibold text-gray-800 mb-3">
+              <div className="mt-4 sm:mt-6 p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 sm:mb-3">
                   Settlement Summary
                 </h3>
-                <div className="text-sm text-gray-600 space-y-1">
+                <div className="text-xs sm:text-sm text-gray-600 space-y-1">
                   <div>
                     Total settlements needed:{" "}
                     <span className="font-medium">{settlements.length}</span>
@@ -639,7 +641,7 @@ const ExpenseSplittingApp = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
             >
               <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
                 <svg
@@ -724,7 +726,7 @@ const ExpenseSplittingApp = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+              className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
             >
               <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
                 <svg
