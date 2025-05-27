@@ -6,6 +6,7 @@ import Users from "./components/Users";
 import Groups from "./components/Groups";
 import Expenses from "./components/Expenses";
 import Settlements from "./components/Settlements";
+import logo from "./assets/logo.jpg";
 
 interface User {
   id: string;
@@ -186,13 +187,18 @@ const ExpenseSplittingApp = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-2 sm:p-4 max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-2 sm:p-4 mx-auto px-4">
       <motion.h1
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600"
+        className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center"
       >
-        SplitEase
+        <img
+          src={logo}
+          alt="Axpo splitter"
+          className="w-20 h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
+        />
+        {/* Axpo splitter */}
       </motion.h1>
 
       {/* Tabs */}

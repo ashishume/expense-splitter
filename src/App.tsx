@@ -1,11 +1,7 @@
 import ExpenseSplittingApp from "./expense-splitter";
 
 function App() {
-  return (
-    <>
-      <ExpenseSplittingApp />
-    </>
-  );
+  return <ExpenseSplittingApp />;
 }
 
 export default App;
