@@ -1,5 +1,31 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { initializeApp } from "firebase/app";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
+  query,
+  orderBy,
+} from "firebase/firestore";
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBTNI0AHWWh5Q6Vx-mkdSMb7K2Ua7VDNpA",
+  authDomain: "cycle-demo-client.firebaseapp.com",
+  projectId: "cycle-demo-client",
+  storageBucket: "cycle-demo-client.firebasestorage.app",
+  messagingSenderId: "641959779564",
+  appId: "1:641959779564:web:2546dba74b39eedf4099c9",
+  measurementId: "G-B50G4LYHSH",
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 // Mock data for demonstration (replace with your Firebase implementation)
 interface User {
@@ -27,43 +53,8 @@ interface Settlement {
 }
 
 const ExpenseSplittingApp = () => {
-  const [users, setUsers] = useState<User[]>([
-    { id: "1", name: "Alice" },
-    { id: "2", name: "Bob" },
-    { id: "3", name: "Charlie" },
-    { id: "4", name: "Diana" },
-  ]);
-
-  const [expenses, setExpenses] = useState<Expense[]>([
-    {
-      id: "1",
-      paidBy: "1",
-      paidByName: "Alice",
-      amount: 120,
-      description: "Dinner at Restaurant",
-      splitWith: ["2", "3"],
-      date: "2025-01-15",
-    },
-    {
-      id: "2",
-      paidBy: "2",
-      paidByName: "Bob",
-      amount: 80,
-      description: "Movie Tickets",
-      splitWith: ["1", "4"],
-      date: "2025-01-16",
-    },
-    {
-      id: "3",
-      paidBy: "3",
-      paidByName: "Charlie",
-      amount: 200,
-      description: "Groceries",
-      splitWith: ["1", "2", "4"],
-      date: "2025-01-17",
-    },
-  ]);
-
+  const [users, setUsers] = useState<User[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newUserName, setNewUserName] = useState("");
   const [newExpense, setNewExpense] = useState({
     paidBy: "",
@@ -72,6 +63,37 @@ const ExpenseSplittingApp = () => {
     splitWith: [] as string[],
   });
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+
+  // Set up real-time listeners for users and expenses
+  useEffect(() => {
+    // Listen for users collection changes
+    const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
+      const usersData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as User[];
+      setUsers(usersData);
+    });
+
+    // Listen for expenses collection changes
+    const expensesQuery = query(
+      collection(db, "expenses"),
+      orderBy("date", "desc")
+    );
+    const expensesUnsubscribe = onSnapshot(expensesQuery, (snapshot) => {
+      const expensesData = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[];
+      setExpenses(expensesData);
+    });
+
+    // Cleanup listeners on component unmount
+    return () => {
+      usersUnsubscribe();
+      expensesUnsubscribe();
+    };
+  }, []);
 
   // Calculate settlements
   const calculateSettlements = (currentExpenses: Expense[]) => {
@@ -154,7 +176,7 @@ const ExpenseSplittingApp = () => {
     return balances;
   };
 
-  const addUser = () => {
+  const addUser = async () => {
     if (newUserName.trim() === "") return;
 
     const userExists = users.some(
@@ -166,13 +188,15 @@ const ExpenseSplittingApp = () => {
       return;
     }
 
-    const newUser = {
-      id: Date.now().toString(),
-      name: newUserName,
-    };
-
-    setUsers([...users, newUser]);
-    setNewUserName("");
+    try {
+      await addDoc(collection(db, "users"), {
+        name: newUserName,
+      });
+      setNewUserName("");
+    } catch (error) {
+      console.error("Error adding user: ", error);
+      alert("Error adding user. Please try again.");
+    }
   };
 
   const toggleUserForExpense = (userId: string) => {
@@ -191,7 +215,7 @@ const ExpenseSplittingApp = () => {
     });
   };
 
-  const addExpense = () => {
+  const addExpense = async () => {
     if (
       !newExpense.paidBy ||
       !newExpense.amount ||
@@ -210,26 +234,29 @@ const ExpenseSplittingApp = () => {
       return;
     }
 
-    const expenseData = {
-      id: Date.now().toString(),
-      paidBy: newExpense.paidBy,
-      paidByName: paidByUser.name,
-      amount: parseFloat(newExpense.amount),
-      description: newExpense.description,
-      splitWith: newExpense.splitWith,
-      date: new Date().toLocaleDateString(),
-    };
+    try {
+      await addDoc(collection(db, "expenses"), {
+        paidBy: newExpense.paidBy,
+        paidByName: paidByUser.name,
+        amount: parseFloat(newExpense.amount),
+        description: newExpense.description,
+        splitWith: newExpense.splitWith,
+        date: new Date().toISOString(),
+      });
 
-    setExpenses([...expenses, expenseData]);
-    setNewExpense({
-      paidBy: "",
-      amount: "",
-      description: "",
-      splitWith: [],
-    });
+      setNewExpense({
+        paidBy: "",
+        amount: "",
+        description: "",
+        splitWith: [],
+      });
+    } catch (error) {
+      console.error("Error adding expense: ", error);
+      alert("Error adding expense. Please try again.");
+    }
   };
 
-  const removeUser = (userId: string) => {
+  const removeUser = async (userId: string) => {
     const userInExpenses = expenses.some(
       (expense) =>
         expense.paidBy === userId || expense.splitWith.includes(userId)
@@ -240,11 +267,21 @@ const ExpenseSplittingApp = () => {
       return;
     }
 
-    setUsers(users.filter((user) => user.id !== userId));
+    try {
+      await deleteDoc(doc(db, "users", userId));
+    } catch (error) {
+      console.error("Error removing user: ", error);
+      alert("Error removing user. Please try again.");
+    }
   };
 
-  const removeExpense = (expenseId: string) => {
-    setExpenses(expenses.filter((expense) => expense.id !== expenseId));
+  const removeExpense = async (expenseId: string) => {
+    try {
+      await deleteDoc(doc(db, "expenses", expenseId));
+    } catch (error) {
+      console.error("Error removing expense: ", error);
+      alert("Error removing expense. Please try again.");
+    }
   };
 
   useEffect(() => {
