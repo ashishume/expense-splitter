@@ -10,6 +10,8 @@ import {
   onSnapshot,
   query,
   orderBy,
+  updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 
 // Firebase configuration
@@ -31,6 +33,14 @@ const db = getFirestore(app);
 interface User {
   id: string;
   name: string;
+  groups?: string[]; // Array of group IDs the user belongs to
+}
+
+interface Group {
+  id: string;
+  name: string;
+  members: string[]; // Array of user IDs
+  createdAt: string;
 }
 
 interface Expense {
@@ -41,6 +51,7 @@ interface Expense {
   description: string;
   splitWith: string[];
   date: string;
+  groupId?: string; // Optional group ID if the expense belongs to a group
 }
 
 interface Settlement {
@@ -54,17 +65,21 @@ interface Settlement {
 
 const ExpenseSplittingApp = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newUserName, setNewUserName] = useState("");
+  const [newGroupName, setNewGroupName] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState<string>("");
   const [newExpense, setNewExpense] = useState({
     paidBy: "",
     amount: "",
     description: "",
     splitWith: [] as string[],
+    groupId: "",
   });
   const [settlements, setSettlements] = useState<Settlement[]>([]);
 
-  // Set up real-time listeners for users and expenses
+  // Set up real-time listeners for users, groups, and expenses
   useEffect(() => {
     // Listen for users collection changes
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
@@ -74,6 +89,18 @@ const ExpenseSplittingApp = () => {
       })) as User[];
       setUsers(usersData);
     });
+
+    // Listen for groups collection changes
+    const groupsUnsubscribe = onSnapshot(
+      collection(db, "groups"),
+      (snapshot) => {
+        const groupsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Group[];
+        setGroups(groupsData);
+      }
+    );
 
     // Listen for expenses collection changes
     const expensesQuery = query(
@@ -91,6 +118,7 @@ const ExpenseSplittingApp = () => {
     // Cleanup listeners on component unmount
     return () => {
       usersUnsubscribe();
+      groupsUnsubscribe();
       expensesUnsubscribe();
     };
   }, []);
@@ -191,11 +219,99 @@ const ExpenseSplittingApp = () => {
     try {
       await addDoc(collection(db, "users"), {
         name: newUserName,
+        groups: [],
       });
       setNewUserName("");
     } catch (error) {
       console.error("Error adding user: ", error);
       alert("Error adding user. Please try again.");
+    }
+  };
+
+  const addGroup = async () => {
+    if (newGroupName.trim() === "") return;
+
+    const groupExists = groups.some(
+      (group) => group.name.toLowerCase() === newGroupName.toLowerCase()
+    );
+
+    if (groupExists) {
+      alert("This group already exists!");
+      return;
+    }
+
+    try {
+      await addDoc(collection(db, "groups"), {
+        name: newGroupName,
+        members: [],
+        createdAt: new Date().toISOString(),
+      });
+      setNewGroupName("");
+    } catch (error) {
+      console.error("Error adding group: ", error);
+      alert("Error adding group. Please try again.");
+    }
+  };
+
+  const addUserToGroup = async (userId: string, groupId: string) => {
+    try {
+      const groupRef = doc(db, "groups", groupId);
+      const group = groups.find((g) => g.id === groupId);
+
+      if (!group) return;
+
+      const updatedMembers = [...group.members, userId];
+      await updateDoc(groupRef, { members: updatedMembers });
+
+      // Update user's groups array
+      const userRef = doc(db, "users", userId);
+      const user = users.find((u) => u.id === userId);
+      const updatedGroups = [...(user?.groups || []), groupId];
+      await updateDoc(userRef, { groups: updatedGroups });
+    } catch (error) {
+      console.error("Error adding user to group: ", error);
+      alert("Error adding user to group. Please try again.");
+    }
+  };
+
+  const removeUserFromGroup = async (userId: string, groupId: string) => {
+    try {
+      const groupRef = doc(db, "groups", groupId);
+      const group = groups.find((g) => g.id === groupId);
+
+      if (!group) return;
+
+      const updatedMembers = group.members.filter((id) => id !== userId);
+      await updateDoc(groupRef, { members: updatedMembers });
+
+      // Update user's groups array
+      const userRef = doc(db, "users", userId);
+      const user = users.find((u) => u.id === userId);
+      const updatedGroups = (user?.groups || []).filter((id) => id !== groupId);
+      await updateDoc(userRef, { groups: updatedGroups });
+    } catch (error) {
+      console.error("Error removing user from group: ", error);
+      alert("Error removing user from group. Please try again.");
+    }
+  };
+
+  const deleteGroup = async (groupId: string) => {
+    try {
+      await deleteDoc(doc(db, "groups", groupId));
+
+      // Remove group from all users' groups array
+      const batch = writeBatch(db);
+      users.forEach((user) => {
+        if (user.groups?.includes(groupId)) {
+          const userRef = doc(db, "users", user.id);
+          const updatedGroups = user.groups.filter((id) => id !== groupId);
+          batch.update(userRef, { groups: updatedGroups });
+        }
+      });
+      await batch.commit();
+    } catch (error) {
+      console.error("Error deleting group: ", error);
+      alert("Error deleting group. Please try again.");
     }
   };
 
@@ -223,25 +339,31 @@ const ExpenseSplittingApp = () => {
       newExpense.splitWith.length === 0
     ) {
       alert(
-        "Please fill in all expense details and select at least one person to split with!"
+        "Please fill in all fields and select at least one person to split with"
       );
       return;
     }
 
-    const paidByUser = users.find((user) => user.id === newExpense.paidBy);
-    if (!paidByUser) {
-      alert("Error: Payer not found!");
+    const amount = parseFloat(newExpense.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount");
       return;
     }
 
     try {
+      const paidByUser = users.find((user) => user.id === newExpense.paidBy);
+      if (!paidByUser) {
+        throw new Error("Payer not found");
+      }
+
       await addDoc(collection(db, "expenses"), {
         paidBy: newExpense.paidBy,
         paidByName: paidByUser.name,
-        amount: parseFloat(newExpense.amount),
+        amount: amount,
         description: newExpense.description,
         splitWith: newExpense.splitWith,
         date: new Date().toISOString(),
+        groupId: newExpense.groupId || null,
       });
 
       setNewExpense({
@@ -249,6 +371,7 @@ const ExpenseSplittingApp = () => {
         amount: "",
         description: "",
         splitWith: [],
+        groupId: "",
       });
     } catch (error) {
       console.error("Error adding expense: ", error);
@@ -290,6 +413,12 @@ const ExpenseSplittingApp = () => {
 
   const individualBalances = calculateIndividualBalances(expenses);
 
+  // Filter expenses based on selected group
+  const filteredExpenses = expenses.filter((expense) => {
+    if (!selectedGroup) return true;
+    return expense.groupId === selectedGroup;
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-2 sm:p-4 max-w-6xl mx-auto">
       <motion.h1
@@ -302,6 +431,100 @@ const ExpenseSplittingApp = () => {
 
       <div className="grid lg:grid-cols-2 gap-4 sm:gap-8">
         <div className="space-y-4 sm:space-y-8">
+          {/* Groups Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+          >
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
+              <svg
+                className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              Groups
+            </h2>
+
+            <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 gap-2">
+              <input
+                type="text"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                placeholder="Enter group name"
+              />
+              <button
+                onClick={addGroup}
+                className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md"
+              >
+                Create Group
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {groups.length === 0 ? (
+                <p className="text-gray-500 italic text-center py-4">
+                  No groups created yet
+                </p>
+              ) : (
+                groups.map((group) => (
+                  <div
+                    key={group.id}
+                    className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+                  >
+                    <div className="flex justify-between items-center mb-3">
+                      <h3 className="text-lg font-medium text-gray-800">
+                        {group.name}
+                      </h3>
+                      <button
+                        onClick={() => deleteGroup(group.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Delete Group
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-sm font-medium text-gray-700">
+                        Members
+                      </h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {users.map((user) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center gap-2 bg-white p-2 rounded border border-gray-200"
+                          >
+                            <input
+                              type="checkbox"
+                              checked={group.members.includes(user.id)}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  addUserToGroup(user.id, group.id);
+                                } else {
+                                  removeUserFromGroup(user.id, group.id);
+                                }
+                              }}
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <span className="text-sm">{user.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </motion.div>
+
           {/* User Management Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -425,48 +648,85 @@ const ExpenseSplittingApp = () => {
               </h2>
 
               <div className="space-y-3 sm:space-y-4">
-                <input
-                  type="text"
-                  value={newExpense.description}
-                  onChange={(e) =>
-                    setNewExpense({
-                      ...newExpense,
-                      description: e.target.value,
-                    })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  placeholder="Description"
-                />
-
-                <div className="relative">
-                  <span className="absolute left-4 top-3 text-gray-500">₹</span>
-                  <input
-                    type="number"
-                    value={newExpense.amount}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Paid By
+                  </label>
+                  <select
+                    value={newExpense.paidBy}
                     onChange={(e) =>
-                      setNewExpense({ ...newExpense, amount: e.target.value })
+                      setNewExpense({ ...newExpense, paidBy: e.target.value })
                     }
-                    className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    placeholder="Amount"
-                    min="0"
-                    step="0.01"
-                  />
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Select a user</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <select
-                  value={newExpense.paidBy}
-                  onChange={(e) =>
-                    setNewExpense({ ...newExpense, paidBy: e.target.value })
-                  }
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select who paid</option>
-                  {users.map((user) => (
-                    <option key={user.id} value={user.id}>
-                      {user.name}
-                    </option>
-                  ))}
-                </select>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Group (Optional)
+                  </label>
+                  <select
+                    value={newExpense.groupId}
+                    onChange={(e) =>
+                      setNewExpense({ ...newExpense, groupId: e.target.value })
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">No Group</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Amount
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-4 top-3 text-gray-500">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      value={newExpense.amount}
+                      onChange={(e) =>
+                        setNewExpense({ ...newExpense, amount: e.target.value })
+                      }
+                      className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                      placeholder="Amount"
+                      min="0"
+                      step="0.01"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <input
+                    type="text"
+                    value={newExpense.description}
+                    onChange={(e) =>
+                      setNewExpense({
+                        ...newExpense,
+                        description: e.target.value,
+                      })
+                    }
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Description"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -746,61 +1006,70 @@ const ExpenseSplittingApp = () => {
               </h2>
 
               <div className="space-y-3">
-                <AnimatePresence>
-                  {expenses.slice(0, 5).map((expense, index) => (
-                    <motion.div
-                      key={expense.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 group"
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-xl font-semibold">Expenses</h3>
+                  <div className="flex items-center gap-4">
+                    <select
+                      value={selectedGroup}
+                      onChange={(e) => setSelectedGroup(e.target.value)}
+                      className="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
                     >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-gray-800">
+                      <option value="">All Groups</option>
+                      {groups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  {filteredExpenses.map((expense) => (
+                    <div
+                      key={expense.id}
+                      className="bg-gray-50 p-4 rounded-md flex justify-between items-start"
+                    >
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <h3 className="text-lg font-medium">
                             {expense.description}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            Paid by{" "}
-                            <span className="font-medium">
-                              {expense.paidByName}
-                            </span>{" "}
-                            • {expense.date}
-                          </div>
+                          </h3>
+                          {expense.groupId && (
+                            <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                              {
+                                groups.find((g) => g.id === expense.groupId)
+                                  ?.name
+                              }
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center space-x-3">
-                          <div className="text-right">
-                            <div className="text-lg font-bold text-blue-600">
-                              ₹{expense.amount.toFixed(2)}
-                            </div>
-                            <div className="text-xs text-gray-500">
-                              Split {expense.splitWith.length + 1} ways
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeExpense(expense.id)}
-                            className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                          >
-                            <svg
-                              className="w-5 h-5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                          </button>
-                        </div>
+                        <p className="text-gray-600">
+                          Paid by {expense.paidByName} - ₹{expense.amount}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Split with:{" "}
+                          {expense.splitWith
+                            .map(
+                              (userId) =>
+                                users.find((u) => u.id === userId)?.name ||
+                                "Unknown"
+                            )
+                            .join(", ")}
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(expense.date).toLocaleDateString()}
+                        </p>
                       </div>
-                    </motion.div>
+                      <button
+                        onClick={() => removeExpense(expense.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        Remove
+                      </button>
+                    </div>
                   ))}
-                </AnimatePresence>
+                </div>
               </div>
             </motion.div>
           )}
