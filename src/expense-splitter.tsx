@@ -1,34 +1,7 @@
 import { useState, useEffect } from "react";
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  query,
-  orderBy,
-  QuerySnapshot,
-} from "firebase/firestore";
-import type { DocumentData } from "firebase/firestore";
+import { motion, AnimatePresence } from "framer-motion";
 
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBTNI0AHWWh5Q6Vx-mkdSMb7K2Ua7VDNpA",
-  authDomain: "cycle-demo-client.firebaseapp.com",
-  projectId: "cycle-demo-client",
-  storageBucket: "cycle-demo-client.firebasestorage.app",
-  messagingSenderId: "641959779564",
-  appId: "1:641959779564:web:2546dba74b39eedf4099c9",
-  measurementId: "G-B50G4LYHSH",
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
-// Add TypeScript interfaces at the top of the file
+// Mock data for demonstration (replace with your Firebase implementation)
 interface User {
   id: string;
   name: string;
@@ -53,73 +26,45 @@ interface Settlement {
   amount: number;
 }
 
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
-
-// PWA installation prompt component
-const InstallPWA = () => {
-  const [supportsPWA, setSupportsPWA] = useState(false);
-  const [promptInstall, setPromptInstall] =
-    useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
-
-  useEffect(() => {
-    const handler = (e: BeforeInstallPromptEvent) => {
-      e.preventDefault();
-      setSupportsPWA(true);
-      setPromptInstall(e);
-    };
-
-    window.addEventListener("beforeinstallprompt", handler as EventListener);
-
-    // Check if app is already installed
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true);
-    }
-
-    return () =>
-      window.removeEventListener(
-        "beforeinstallprompt",
-        handler as EventListener
-      );
-  }, []);
-
-  const onClick = (evt: React.MouseEvent) => {
-    evt.preventDefault();
-    if (!promptInstall) {
-      return;
-    }
-    promptInstall.prompt();
-    promptInstall.userChoice.then((choiceResult) => {
-      if (choiceResult.outcome === "accepted") {
-        setIsInstalled(true);
-      }
-    });
-  };
-
-  if (!supportsPWA || isInstalled) {
-    return null;
-  }
-
-  return (
-    <div className="fixed bottom-4 left-4 right-4 bg-blue-600 text-white p-4 rounded-lg shadow-lg z-50 flex justify-between items-center">
-      <p>Install this app on your device for offline use</p>
-      <button
-        className="bg-white text-blue-600 px-4 py-2 rounded font-medium"
-        onClick={onClick}
-      >
-        Install
-      </button>
-    </div>
-  );
-};
-
 const ExpenseSplittingApp = () => {
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<User[]>([
+    { id: "1", name: "Alice" },
+    { id: "2", name: "Bob" },
+    { id: "3", name: "Charlie" },
+    { id: "4", name: "Diana" },
+  ]);
+
+  const [expenses, setExpenses] = useState<Expense[]>([
+    {
+      id: "1",
+      paidBy: "1",
+      paidByName: "Alice",
+      amount: 120,
+      description: "Dinner at Restaurant",
+      splitWith: ["2", "3"],
+      date: "2025-01-15",
+    },
+    {
+      id: "2",
+      paidBy: "2",
+      paidByName: "Bob",
+      amount: 80,
+      description: "Movie Tickets",
+      splitWith: ["1", "4"],
+      date: "2025-01-16",
+    },
+    {
+      id: "3",
+      paidBy: "3",
+      paidByName: "Charlie",
+      amount: 200,
+      description: "Groceries",
+      splitWith: ["1", "2", "4"],
+      date: "2025-01-17",
+    },
+  ]);
+
   const [newUserName, setNewUserName] = useState("");
-  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [newExpense, setNewExpense] = useState({
     paidBy: "",
     amount: "",
@@ -128,8 +73,88 @@ const ExpenseSplittingApp = () => {
   });
   const [settlements, setSettlements] = useState<Settlement[]>([]);
 
-  // Add a new user
-  const addUser = async () => {
+  // Calculate settlements
+  const calculateSettlements = (currentExpenses: Expense[]) => {
+    const balances: Record<string, number> = {};
+    users.forEach((user) => {
+      balances[user.id] = 0;
+    });
+
+    currentExpenses.forEach((expense) => {
+      const paidBy = expense.paidBy;
+      const totalAmount = expense.amount;
+      const splitWith = expense.splitWith;
+      const amountPerPerson = totalAmount / (splitWith.length + 1);
+
+      balances[paidBy] += totalAmount;
+
+      splitWith.forEach((userId) => {
+        balances[userId] -= amountPerPerson;
+      });
+
+      balances[paidBy] -= amountPerPerson;
+    });
+
+    const newSettlements: Settlement[] = [];
+    const roundTo2Decimals = (num: number) => Math.round(num * 100) / 100;
+
+    users.forEach((debtor) => {
+      if (balances[debtor.id] < -0.01) {
+        users.forEach((creditor) => {
+          if (balances[creditor.id] > 0.01 && balances[debtor.id] < -0.01) {
+            const amountToSettle = Math.min(
+              Math.abs(balances[debtor.id]),
+              balances[creditor.id]
+            );
+
+            if (amountToSettle > 0.01) {
+              newSettlements.push({
+                id: `${debtor.id}-${creditor.id}-${Date.now()}`,
+                from: debtor.id,
+                fromName: debtor.name,
+                to: creditor.id,
+                toName: creditor.name,
+                amount: roundTo2Decimals(amountToSettle),
+              });
+
+              balances[debtor.id] += amountToSettle;
+              balances[creditor.id] -= amountToSettle;
+            }
+          }
+        });
+      }
+    });
+
+    setSettlements(newSettlements);
+    return balances;
+  };
+
+  // Calculate individual balances for display
+  const calculateIndividualBalances = (currentExpenses: Expense[]) => {
+    const balances: Record<string, number> = {};
+    users.forEach((user) => {
+      balances[user.id] = 0;
+    });
+
+    currentExpenses.forEach((expense) => {
+      const paidBy = expense.paidBy;
+      const totalAmount = expense.amount;
+      const splitWith = expense.splitWith;
+      const amountPerPerson = totalAmount / (splitWith.length + 1);
+
+      balances[paidBy] += totalAmount;
+
+      splitWith.forEach((userId) => {
+        balances[userId] -= amountPerPerson;
+      });
+
+      balances[paidBy] -= amountPerPerson;
+    });
+
+    return balances;
+  };
+
+  const addUser = () => {
     if (newUserName.trim() === "") return;
 
     const userExists = users.some(
@@ -141,19 +166,15 @@ const ExpenseSplittingApp = () => {
       return;
     }
 
-    try {
-      await addDoc(collection(db, "users"), {
-        name: newUserName,
-        createdAt: new Date().toISOString(),
-      });
-      setNewUserName("");
-    } catch (error) {
-      console.error("Error adding user: ", error);
-      alert("Error adding user. Please try again.");
-    }
+    const newUser = {
+      id: Date.now().toString(),
+      name: newUserName,
+    };
+
+    setUsers([...users, newUser]);
+    setNewUserName("");
   };
 
-  // Toggle user selection for expense splitting
   const toggleUserForExpense = (userId: string) => {
     const currentSelection = [...newExpense.splitWith];
     const index = currentSelection.indexOf(userId);
@@ -170,8 +191,7 @@ const ExpenseSplittingApp = () => {
     });
   };
 
-  // Add a new expense
-  const addExpense = async () => {
+  const addExpense = () => {
     if (
       !newExpense.paidBy ||
       !newExpense.amount ||
@@ -185,112 +205,31 @@ const ExpenseSplittingApp = () => {
     }
 
     const paidByUser = users.find((user) => user.id === newExpense.paidBy);
-
     if (!paidByUser) {
       alert("Error: Payer not found!");
       return;
     }
 
-    try {
-      const expenseData = {
-        paidBy: newExpense.paidBy,
-        paidByName: paidByUser.name,
-        amount: parseFloat(newExpense.amount),
-        description: newExpense.description,
-        splitWith: newExpense.splitWith,
-        date: new Date().toLocaleDateString(),
-        createdAt: new Date().toISOString(),
-      };
-
-      await addDoc(collection(db, "expenses"), expenseData);
-
-      setNewExpense({
-        paidBy: "",
-        amount: "",
-        description: "",
-        splitWith: [],
-      });
-    } catch (error) {
-      console.error("Error adding expense: ", error);
-      alert("Error adding expense. Please try again.");
-    }
-  };
-
-  // Calculate settlements
-  const calculateSettlements = (currentExpenses: Expense[]) => {
-    // Create a balance object for each user
-    const balances: Record<string, number> = {};
-    users.forEach((user) => {
-      balances[user.id] = 0;
-    });
-
-    // Calculate initial balances based on who paid and how much
-    currentExpenses.forEach((expense) => {
-      const paidBy = expense.paidBy;
-      const totalAmount = expense.amount;
-      const splitWith = expense.splitWith;
-      const amountPerPerson = totalAmount / (splitWith.length + 1); // +1 for the payer
-
-      // Add the full amount to the payer's balance
-      balances[paidBy] += totalAmount;
-
-      // Subtract the individual share from each person's balance
-      splitWith.forEach((userId) => {
-        balances[userId] -= amountPerPerson;
-      });
-
-      // Subtract payer's own share
-      balances[paidBy] -= amountPerPerson;
-    });
-
-    // Generate settlements
-    const newSettlements: Settlement[] = [];
-
-    // Helper function to round to 2 decimal places
-    const roundTo2Decimals = (num: number) => {
-      return Math.round(num * 100) / 100;
+    const expenseData = {
+      id: Date.now().toString(),
+      paidBy: newExpense.paidBy,
+      paidByName: paidByUser.name,
+      amount: parseFloat(newExpense.amount),
+      description: newExpense.description,
+      splitWith: newExpense.splitWith,
+      date: new Date().toLocaleDateString(),
     };
 
-    // For each user with negative balance (owes money)
-    users.forEach((debtor) => {
-      if (balances[debtor.id] < -0.01) {
-        // Small threshold to handle floating point errors
-        // Find users with positive balances (owed money)
-        users.forEach((creditor) => {
-          if (balances[creditor.id] > 0.01 && balances[debtor.id] < -0.01) {
-            // Determine the amount to settle
-            const amountToSettle = Math.min(
-              Math.abs(balances[debtor.id]),
-              balances[creditor.id]
-            );
-
-            if (amountToSettle > 0.01) {
-              // Another small threshold
-              // Create a settlement record
-              newSettlements.push({
-                id: `${debtor.id}-${creditor.id}-${Date.now()}`,
-                from: debtor.id,
-                fromName: debtor.name,
-                to: creditor.id,
-                toName: creditor.name,
-                amount: roundTo2Decimals(amountToSettle),
-              });
-
-              // Update balances
-              balances[debtor.id] += amountToSettle;
-              balances[creditor.id] -= amountToSettle;
-            }
-          }
-        });
-      }
+    setExpenses([...expenses, expenseData]);
+    setNewExpense({
+      paidBy: "",
+      amount: "",
+      description: "",
+      splitWith: [],
     });
-
-    setSettlements(newSettlements);
   };
 
-  // Remove user
-  const removeUser = async (userId: string) => {
-    // Check if user is involved in any expenses
+  const removeUser = (userId: string) => {
     const userInExpenses = expenses.some(
       (expense) =>
         expense.paidBy === userId || expense.splitWith.includes(userId)
@@ -301,264 +240,533 @@ const ExpenseSplittingApp = () => {
       return;
     }
 
-    try {
-      await deleteDoc(doc(db, "users", userId));
-    } catch (error) {
-      console.error("Error removing user: ", error);
-      alert("Error removing user. Please try again.");
-    }
+    setUsers(users.filter((user) => user.id !== userId));
   };
 
-  // Remove expense
-  const removeExpense = async (expenseId: string) => {
-    try {
-      await deleteDoc(doc(db, "expenses", expenseId));
-    } catch (error) {
-      console.error("Error removing expense: ", error);
-      alert("Error removing expense. Please try again.");
-    }
+  const removeExpense = (expenseId: string) => {
+    setExpenses(expenses.filter((expense) => expense.id !== expenseId));
   };
 
-  // Set up real-time listeners for Firestore data
   useEffect(() => {
-    // Users listener
-    const usersQuery = query(
-      collection(db, "users"),
-      orderBy("createdAt", "asc")
-    );
-    const usersUnsubscribe = onSnapshot(
-      usersQuery,
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        const usersData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as User[];
-        setUsers(usersData);
-      }
-    );
+    calculateSettlements(expenses);
+  }, [expenses, users]);
 
-    // Expenses listener
-    const expensesQuery = query(
-      collection(db, "expenses"),
-      orderBy("createdAt", "desc")
-    );
-    const expensesUnsubscribe = onSnapshot(
-      expensesQuery,
-      (snapshot: QuerySnapshot<DocumentData>) => {
-        const expensesData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Expense[];
-        setExpenses(expensesData);
-        calculateSettlements(expensesData);
-      }
-    );
-
-    // Cleanup listeners on component unmount
-    return () => {
-      usersUnsubscribe();
-      expensesUnsubscribe();
-    };
-  }, []);
+  const individualBalances = calculateIndividualBalances(expenses);
 
   return (
-    <div className="p-4 max-w-4xl mx-auto">
-      <InstallPWA />
-      <h1 className="text-2xl font-bold mb-6 text-center">SplitEase</h1>
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 max-w-6xl mx-auto">
+      <motion.h1
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="text-4xl font-bold mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600"
+      >
+        SplitEase
+      </motion.h1>
 
-      {/* User Management Section */}
-      <div className="mb-8 p-4 bg-gray-50 rounded-lg shadow">
-        <h2 className="text-xl font-semibold mb-4">Group Members</h2>
-
-        {/* Add User Form */}
-        <div className="flex mb-4">
-          <input
-            type="text"
-            value={newUserName}
-            onChange={(e) => setNewUserName(e.target.value)}
-            className="flex-grow px-3 py-2 border rounded-l"
-            placeholder="Enter name"
-          />
-          <button
-            onClick={addUser}
-            className="bg-blue-500 text-white px-4 py-2 rounded-r hover:bg-blue-600"
+      <div className="grid lg:grid-cols-2 gap-8">
+        <div className="space-y-8">
+          {/* User Management Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
           >
-            Add User
-          </button>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+              <svg
+                className="w-6 h-6 mr-2 text-blue-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                />
+              </svg>
+              Group Members
+            </h2>
+
+            <div className="flex mb-6">
+              <input
+                type="text"
+                value={newUserName}
+                onChange={(e) => setNewUserName(e.target.value)}
+                className="flex-grow px-4 py-3 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Enter name"
+              />
+              <button
+                onClick={addUser}
+                className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-r-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-md"
+              >
+                Add User
+              </button>
+            </div>
+
+            <div>
+              {users.length === 0 ? (
+                <p className="text-gray-500 italic text-center py-4">
+                  No users added yet
+                </p>
+              ) : (
+                <ul className="divide-y divide-gray-200">
+                  <AnimatePresence>
+                    {users.map((user) => (
+                      <motion.li
+                        key={user.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        className="py-3 flex justify-between items-center group"
+                      >
+                        <div className="flex items-center space-x-4">
+                          <span className="text-gray-700 font-medium">
+                            {user.name}
+                          </span>
+                          <span
+                            className={`text-sm px-2 py-1 rounded-full ${
+                              individualBalances[user.id] > 0
+                                ? "bg-green-100 text-green-800"
+                                : individualBalances[user.id] < 0
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {individualBalances[user.id] > 0 ? "+" : ""}₹
+                            {Math.abs(individualBalances[user.id]).toFixed(2)}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeUser(user.id)}
+                          className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        >
+                          <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                            />
+                          </svg>
+                        </button>
+                      </motion.li>
+                    ))}
+                  </AnimatePresence>
+                </ul>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Add Expense Section */}
+          {users.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            >
+              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+                <svg
+                  className="w-6 h-6 mr-2 text-green-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                Add Expense
+              </h2>
+
+              <div className="space-y-4">
+                <input
+                  type="text"
+                  value={newExpense.description}
+                  onChange={(e) =>
+                    setNewExpense({
+                      ...newExpense,
+                      description: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  placeholder="Description"
+                />
+
+                <div className="relative">
+                  <span className="absolute left-4 top-3 text-gray-500">₹</span>
+                  <input
+                    type="number"
+                    value={newExpense.amount}
+                    onChange={(e) =>
+                      setNewExpense({ ...newExpense, amount: e.target.value })
+                    }
+                    className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                    placeholder="Amount"
+                    min="0"
+                    step="0.01"
+                  />
+                </div>
+
+                <select
+                  value={newExpense.paidBy}
+                  onChange={(e) =>
+                    setNewExpense({ ...newExpense, paidBy: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                >
+                  <option value="">Select who paid</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>
+                      {user.name}
+                    </option>
+                  ))}
+                </select>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Split with
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    {users.map((user) => (
+                      <div
+                        key={user.id}
+                        className="flex items-center p-3 bg-gray-50 rounded-lg"
+                      >
+                        <input
+                          type="checkbox"
+                          id={`split-${user.id}`}
+                          checked={newExpense.splitWith.includes(user.id)}
+                          onChange={() => toggleUserForExpense(user.id)}
+                          disabled={user.id === newExpense.paidBy}
+                          className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        />
+                        <label
+                          htmlFor={`split-${user.id}`}
+                          className="ml-2 text-gray-700"
+                        >
+                          {user.name}{" "}
+                          {user.id === newExpense.paidBy ? (
+                            <span className="text-green-600 text-sm">
+                              (Payer)
+                            </span>
+                          ) : null}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  onClick={addExpense}
+                  className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
+                >
+                  Add Expense
+                </button>
+              </div>
+            </motion.div>
+          )}
         </div>
 
-        {/* User List */}
-        <div>
-          {users.length === 0 ? (
-            <p className="text-gray-500 italic">No users added yet</p>
-          ) : (
-            <ul className="divide-y">
-              {users.map((user) => (
-                <li
-                  key={user.id}
-                  className="py-2 flex justify-between items-center"
+        <div className="space-y-8">
+          {/* Enhanced Settlements Section */}
+          {settlements.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            >
+              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+                <svg
+                  className="w-6 h-6 mr-2 text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
                 >
-                  <span>{user.name}</span>
-                  <button
-                    onClick={() => removeUser(user.id)}
-                    className="text-red-500 hover:text-red-700"
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
+                  />
+                </svg>
+                Who Owes Whom
+              </h2>
+
+              <div className="space-y-4">
+                {settlements.map((settlement, index) => (
+                  <motion.div
+                    key={settlement.id}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
                   >
-                    Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                            <svg
+                              className="w-5 h-5 text-red-600"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                              />
+                            </svg>
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-lg font-bold text-red-700">
+                              {settlement.fromName}
+                            </span>
+                            <span className="text-gray-600">owes</span>
+                            <span className="text-lg font-bold text-green-700">
+                              {settlement.toName}
+                            </span>
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            Settlement required
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-red-600">
+                          ₹{settlement.amount.toFixed(2)}
+                        </div>
+                        <div className="text-sm text-gray-500">Amount owed</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-center">
+                      <div className="flex items-center space-x-2 text-sm text-gray-600">
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M13 7l5 5m0 0l-5 5m5-5H6"
+                          />
+                        </svg>
+                        <span>Pay directly to settle</span>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              {/* Summary */}
+              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                <h3 className="text-lg font-semibold text-gray-800 mb-3">
+                  Settlement Summary
+                </h3>
+                <div className="text-sm text-gray-600 space-y-1">
+                  <div>
+                    Total settlements needed:{" "}
+                    <span className="font-medium">{settlements.length}</span>
+                  </div>
+                  <div>
+                    Total amount to be settled:{" "}
+                    <span className="font-medium">
+                      ₹
+                      {settlements
+                        .reduce((sum, s) => sum + s.amount, 0)
+                        .toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Individual Balances */}
+          {users.length > 0 && expenses.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            >
+              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+                <svg
+                  className="w-6 h-6 mr-2 text-purple-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+                  />
+                </svg>
+                Individual Balances
+              </h2>
+
+              <div className="space-y-3">
+                {users.map((user) => {
+                  const balance = individualBalances[user.id];
+                  const isPositive = balance > 0;
+                  const isNegative = balance < 0;
+
+                  return (
+                    <div
+                      key={user.id}
+                      className={`p-4 rounded-lg border-2 ${
+                        isPositive
+                          ? "bg-green-50 border-green-200"
+                          : isNegative
+                          ? "bg-red-50 border-red-200"
+                          : "bg-gray-50 border-gray-200"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <div
+                            className={`w-3 h-3 rounded-full ${
+                              isPositive
+                                ? "bg-green-500"
+                                : isNegative
+                                ? "bg-red-500"
+                                : "bg-gray-400"
+                            }`}
+                          ></div>
+                          <span className="font-medium text-gray-800">
+                            {user.name}
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <div
+                            className={`text-xl font-bold ${
+                              isPositive
+                                ? "text-green-600"
+                                : isNegative
+                                ? "text-red-600"
+                                : "text-gray-600"
+                            }`}
+                          >
+                            {isPositive ? "+" : ""}₹
+                            {Math.abs(balance).toFixed(2)}
+                          </div>
+                          <div className="text-sm text-gray-500">
+                            {isPositive
+                              ? "Gets back"
+                              : isNegative
+                              ? "Owes"
+                              : "Even"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Expenses List */}
+          {expenses.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+            >
+              <h2 className="text-2xl font-semibold mb-6 text-gray-800 flex items-center">
+                <svg
+                  className="w-6 h-6 mr-2 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+                  />
+                </svg>
+                Recent Expenses
+              </h2>
+
+              <div className="space-y-3">
+                <AnimatePresence>
+                  {expenses.slice(0, 5).map((expense, index) => (
+                    <motion.div
+                      key={expense.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200 group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="font-medium text-gray-800">
+                            {expense.description}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            Paid by{" "}
+                            <span className="font-medium">
+                              {expense.paidByName}
+                            </span>{" "}
+                            • {expense.date}
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-blue-600">
+                              ₹{expense.amount.toFixed(2)}
+                            </div>
+                            <div className="text-xs text-gray-500">
+                              Split {expense.splitWith.length + 1} ways
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeExpense(expense.id)}
+                            className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          >
+                            <svg
+                              className="w-5 h-5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </motion.div>
           )}
         </div>
       </div>
-
-      {/* Expense Management Section */}
-      {users.length > 0 && (
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Add Expense</h2>
-
-          {/* Add Expense Form */}
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Description
-              </label>
-              <input
-                type="text"
-                value={newExpense.description}
-                onChange={(e) =>
-                  setNewExpense({ ...newExpense, description: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded"
-                placeholder="What was this expense for?"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Amount</label>
-              <input
-                type="number"
-                value={newExpense.amount}
-                onChange={(e) =>
-                  setNewExpense({ ...newExpense, amount: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded"
-                placeholder="How much was spent?"
-                min="0"
-                step="0.01"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Paid by</label>
-              <select
-                value={newExpense.paidBy}
-                onChange={(e) =>
-                  setNewExpense({ ...newExpense, paidBy: e.target.value })
-                }
-                className="w-full px-3 py-2 border rounded"
-              >
-                <option value="">Select who paid</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Split with
-              </label>
-              <div className="space-y-2">
-                {users.map((user) => (
-                  <div key={user.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`split-${user.id}`}
-                      checked={newExpense.splitWith.includes(user.id)}
-                      onChange={() => toggleUserForExpense(user.id)}
-                      disabled={user.id === newExpense.paidBy}
-                      className="mr-2"
-                    />
-                    <label htmlFor={`split-${user.id}`}>
-                      {user.name}{" "}
-                      {user.id === newExpense.paidBy ? "(Payer)" : ""}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={addExpense}
-              className="w-full bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-            >
-              Add Expense
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Expenses List */}
-      {expenses.length > 0 && (
-        <div className="mb-8 p-4 bg-gray-50 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Expenses</h2>
-
-          <div className="overflow-x-auto">
-            <table className="w-full table-auto">
-              <thead>
-                <tr className="bg-gray-100">
-                  <th className="px-4 py-2 text-left">Description</th>
-                  <th className="px-4 py-2 text-left">Paid By</th>
-                  <th className="px-4 py-2 text-left">Amount</th>
-                  <th className="px-4 py-2 text-left">Date</th>
-                  <th className="px-4 py-2 text-left">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((expense) => (
-                  <tr key={expense.id} className="border-t">
-                    <td className="px-4 py-2">{expense.description}</td>
-                    <td className="px-4 py-2">{expense.paidByName}</td>
-                    <td className="px-4 py-2">₹{expense.amount.toFixed(2)}</td>
-                    <td className="px-4 py-2">{expense.date}</td>
-                    <td className="px-4 py-2">
-                      <button
-                        onClick={() => removeExpense(expense.id)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        Remove
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Settlements */}
-      {settlements.length > 0 && (
-        <div className="p-4 bg-gray-50 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Settlements Needed</h2>
-
-          <div className="space-y-2">
-            {settlements.map((settlement) => (
-              <div key={settlement.id} className="p-3 bg-white rounded border">
-                <p className="font-medium">
-                  <span className="text-red-500">{settlement.fromName}</span>{" "}
-                  owes{" "}
-                  <span className="text-green-500">{settlement.toName}</span>{" "}
-                  <span className="font-bold">₹{settlement.amount}</span>
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };
