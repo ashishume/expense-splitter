@@ -40,7 +40,6 @@ const Expenses = ({
   groups,
   expenses,
   onExpenseUpdate,
-  currentUser,
 }: ExpensesProps) => {
   const [newExpense, setNewExpense] = useState({
     paidBy: "",
