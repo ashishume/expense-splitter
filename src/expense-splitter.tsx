@@ -7,6 +7,7 @@ import Users from "./components/Users";
 import Groups from "./components/Groups";
 import Expenses from "./components/Expenses";
 import Settlements from "./components/Settlements";
+import Logs from "./components/Logs";
 import logo from "./assets/logo.jpg";
 
 interface User {
@@ -186,6 +187,7 @@ const ExpenseSplittingApp = () => {
     { id: "settlements", label: "Settlements", icon: "💸" },
     { id: "groups", label: "Groups", icon: "👥" },
     { id: "users", label: "Users", icon: "👤" },
+    { id: "logs", label: "Activity Logs", icon: "📋" },
   ];
 
   return (
@@ -260,6 +262,8 @@ const ExpenseSplittingApp = () => {
             onUserUpdate={() => {}}
           />
         )}
+
+        {activeTab === "logs" && <Logs currentUser={user} />}
       </div>
     </div>
   );
