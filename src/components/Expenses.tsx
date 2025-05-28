@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { addDoc, collection, deleteDoc, doc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
 import { db } from "../firebase";
+import type { User as FirebaseUser } from "firebase/auth";
+import { logExpenseAction } from "../utils/logger";
 
 interface User {
   id: string;
@@ -31,6 +39,7 @@ interface ExpensesProps {
   groups: Group[];
   expenses: Expense[];
   onExpenseUpdate: () => void;
+  currentUser: FirebaseUser | null;
 }
 
 const Expenses = ({
@@ -38,6 +47,7 @@ const Expenses = ({
   groups,
   expenses,
   onExpenseUpdate,
+  currentUser,
 }: ExpensesProps) => {
   const [newExpense, setNewExpense] = useState({
     paidBy: "",
@@ -46,6 +56,8 @@ const Expenses = ({
     splitWith: [] as string[],
     groupId: "",
   });
+
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const toggleUserForExpense = (userId: string) => {
     const currentSelection = [...newExpense.splitWith];
@@ -88,7 +100,7 @@ const Expenses = ({
         throw new Error("Payer not found");
       }
 
-      await addDoc(collection(db, "expenses"), {
+      const expenseRef = await addDoc(collection(db, "expenses"), {
         paidBy: newExpense.paidBy,
         paidByName: paidByUser.name,
         amount: amount,
@@ -97,6 +109,14 @@ const Expenses = ({
         date: new Date().toISOString(),
         groupId: newExpense.groupId || null,
       });
+
+      await logExpenseAction(
+        "create",
+        expenseRef.id,
+        `Created expense: ${newExpense.description} - ₹${amount}`,
+        currentUser?.uid,
+        currentUser?.displayName || undefined
+      );
 
       setNewExpense({
         paidBy: "",
@@ -114,11 +134,103 @@ const Expenses = ({
 
   const removeExpense = async (expenseId: string) => {
     try {
+      const expense = expenses.find((e) => e.id === expenseId);
+      if (!expense) return;
+
       await deleteDoc(doc(db, "expenses", expenseId));
+      await logExpenseAction(
+        "delete",
+        expenseId,
+        `Deleted expense: ${expense.description} - ₹${expense.amount}`,
+        currentUser?.uid,
+        currentUser?.displayName || undefined
+      );
       onExpenseUpdate();
     } catch (error) {
       console.error("Error removing expense: ", error);
       alert("Error removing expense. Please try again.");
+    }
+  };
+
+  const startEditing = (expense: Expense) => {
+    setEditingExpense(expense);
+    setNewExpense({
+      paidBy: expense.paidBy,
+      amount: expense.amount.toString(),
+      description: expense.description,
+      splitWith: expense.splitWith,
+      groupId: expense.groupId || "",
+    });
+  };
+
+  const cancelEditing = () => {
+    setEditingExpense(null);
+    setNewExpense({
+      paidBy: "",
+      amount: "",
+      description: "",
+      splitWith: [],
+      groupId: "",
+    });
+  };
+
+  const updateExpense = async () => {
+    if (!editingExpense) return;
+
+    if (
+      !newExpense.paidBy ||
+      !newExpense.amount ||
+      !newExpense.description ||
+      newExpense.splitWith.length === 0
+    ) {
+      alert(
+        "Please fill in all fields and select at least one person to split with"
+      );
+      return;
+    }
+
+    const amount = parseFloat(newExpense.amount);
+    if (isNaN(amount) || amount <= 0) {
+      alert("Please enter a valid amount");
+      return;
+    }
+
+    try {
+      const paidByUser = users.find((user) => user.id === newExpense.paidBy);
+      if (!paidByUser) {
+        throw new Error("Payer not found");
+      }
+
+      const expenseRef = doc(db, "expenses", editingExpense.id);
+      await updateDoc(expenseRef, {
+        paidBy: newExpense.paidBy,
+        paidByName: paidByUser.name,
+        amount: amount,
+        description: newExpense.description,
+        splitWith: newExpense.splitWith,
+        groupId: newExpense.groupId || null,
+      });
+
+      await logExpenseAction(
+        "update",
+        editingExpense.id,
+        `Updated expense: ${newExpense.description} - ₹${amount}`,
+        currentUser?.uid,
+        currentUser?.displayName || undefined
+      );
+
+      setEditingExpense(null);
+      setNewExpense({
+        paidBy: "",
+        amount: "",
+        description: "",
+        splitWith: [],
+        groupId: "",
+      });
+      onExpenseUpdate();
+    } catch (error) {
+      console.error("Error updating expense: ", error);
+      alert("Error updating expense. Please try again.");
     }
   };
 
@@ -142,7 +254,7 @@ const Expenses = ({
             d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
           />
         </svg>
-        Add Expense
+        {editingExpense ? "Edit Expense" : "Add Expense"}
       </h2>
 
       <div className="space-y-3 sm:space-y-4">
@@ -258,12 +370,31 @@ const Expenses = ({
           </div>
         </div>
 
-        <button
-          onClick={addExpense}
-          className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
-        >
-          Add Expense
-        </button>
+        <div className="flex gap-2 mt-4">
+          {editingExpense ? (
+            <>
+              <button
+                onClick={updateExpense}
+                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
+              >
+                Update Expense
+              </button>
+              <button
+                onClick={cancelEditing}
+                className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-medium"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={addExpense}
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
+            >
+              Add Expense
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Expenses List */}
@@ -303,12 +434,20 @@ const Expenses = ({
                     {new Date(expense.date).toLocaleDateString()}
                   </p>
                 </div>
-                <button
-                  onClick={() => removeExpense(expense.id)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Remove
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startEditing(expense)}
+                    className="text-blue-600 hover:text-blue-800"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => removeExpense(expense.id)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             ))}
           </div>
