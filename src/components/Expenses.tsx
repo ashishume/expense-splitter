@@ -2,6 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { addDoc, collection, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase";
+import type { User as FirebaseUser } from "firebase/auth";
 
 interface User {
   id: string;
@@ -31,6 +32,7 @@ interface ExpensesProps {
   groups: Group[];
   expenses: Expense[];
   onExpenseUpdate: () => void;
+  currentUser: FirebaseUser | null;
 }
 
 const Expenses = ({
@@ -38,6 +40,7 @@ const Expenses = ({
   groups,
   expenses,
   onExpenseUpdate,
+  currentUser,
 }: ExpensesProps) => {
   const [newExpense, setNewExpense] = useState({
     paidBy: "",

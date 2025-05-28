@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { db } from "./firebase";
+import { useAuth } from "./components/AuthContext";
 import Users from "./components/Users";
 import Groups from "./components/Groups";
 import Expenses from "./components/Expenses";
@@ -42,6 +43,7 @@ interface Settlement {
 }
 
 const ExpenseSplittingApp = () => {
+  const { user, logout } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -188,18 +190,30 @@ const ExpenseSplittingApp = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-2 sm:p-4 mx-auto px-4">
-      <motion.h1
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="text-3xl sm:text-4xl font-bold mb-4 sm:mb-8 text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center justify-center"
-      >
-        <img
-          src={logo}
-          alt="Axpo splitter"
-          className="w-20 h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
-        />
-        {/* Axpo splitter */}
-      </motion.h1>
+      <div className="flex justify-between items-center mb-4">
+        <motion.h1
+          initial={{ y: -20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          className="text-3xl sm:text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center"
+        >
+          <img
+            src={logo}
+            alt="Axpo splitter"
+            className="w-20 h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
+          />
+        </motion.h1>
+        <div className="flex items-center gap-4">
+          <span className="text-gray-700">
+            {user?.displayName || user?.email}
+          </span>
+          <button
+            onClick={logout}
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
 
       {/* Tabs */}
       <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
@@ -227,6 +241,7 @@ const ExpenseSplittingApp = () => {
             groups={groups}
             expenses={expenses}
             onExpenseUpdate={() => {}}
+            currentUser={user}
           />
         )}
 
