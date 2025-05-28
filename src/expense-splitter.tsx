@@ -187,7 +187,7 @@ const ExpenseSplittingApp = () => {
     { id: "settlements", label: "Settlements", icon: "💸" },
     { id: "groups", label: "Groups", icon: "👥" },
     { id: "users", label: "Users", icon: "👤" },
-    { id: "logs", label: "Activity Logs", icon: "📋" },
+    { id: "logs", label: "Activity", icon: "📋" },
   ];
 
   return (
