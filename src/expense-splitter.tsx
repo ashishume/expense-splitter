@@ -41,6 +41,8 @@ interface Settlement {
   to: string;
   toName: string;
   amount: number;
+  groupId?: string;
+  date: string;
 }
 
 const ExpenseSplittingApp = () => {
@@ -137,6 +139,8 @@ const ExpenseSplittingApp = () => {
                 to: creditor.id,
                 toName: creditor.name,
                 amount: roundTo2Decimals(amountToSettle),
+                groupId: currentExpenses[0].groupId,
+                date: new Date().toISOString(),
               });
 
               balances[debtor.id] += amountToSettle;
@@ -248,7 +252,12 @@ const ExpenseSplittingApp = () => {
         )}
 
         {activeTab === "settlements" && (
-          <Settlements settlements={settlements} />
+          <Settlements
+            settlements={settlements}
+            groups={groups}
+            expenses={expenses}
+            users={users}
+          />
         )}
 
         {activeTab === "groups" && (
