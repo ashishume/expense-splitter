@@ -80,6 +80,7 @@ const Expenses = ({
       !newExpense.paidBy ||
       !newExpense.amount ||
       !newExpense.description ||
+      !newExpense.groupId ||
       newExpense.splitWith.length === 0
     ) {
       alert(
@@ -280,7 +281,7 @@ const Expenses = ({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Group (Optional)
+            Group
           </label>
           <select
             value={newExpense.groupId}

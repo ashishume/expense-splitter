@@ -1,6 +1,12 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { addDoc, collection, deleteDoc, doc } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  deleteDoc,
+  doc,
+  updateDoc,
+} from "firebase/firestore";
 import { db } from "../firebase";
 
 interface User {
@@ -17,6 +23,8 @@ interface UsersProps {
 
 const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
   const [newUserName, setNewUserName] = useState("");
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
 
   const addUser = async () => {
     if (newUserName.trim() === "") return;
@@ -50,6 +58,46 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
     } catch (error) {
       console.error("Error removing user: ", error);
       alert("Error removing user. Please try again.");
+    }
+  };
+
+  const startEditing = (user: User) => {
+    setEditingUserId(user.id);
+    setEditingName(user.name);
+  };
+
+  const cancelEditing = () => {
+    setEditingUserId(null);
+    setEditingName("");
+  };
+
+  const saveEdit = async (userId: string) => {
+    if (editingName.trim() === "") {
+      alert("Name cannot be empty!");
+      return;
+    }
+
+    const userExists = users.some(
+      (user) =>
+        user.id !== userId &&
+        user.name.toLowerCase() === editingName.toLowerCase()
+    );
+
+    if (userExists) {
+      alert("This name is already taken!");
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, "users", userId), {
+        name: editingName,
+      });
+      setEditingUserId(null);
+      setEditingName("");
+      onUserUpdate();
+    } catch (error) {
+      console.error("Error updating user: ", error);
+      alert("Error updating user. Please try again.");
     }
   };
 
@@ -109,40 +157,112 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
                   className="py-3 flex justify-between items-center group"
                 >
                   <div className="flex items-center space-x-2 sm:space-x-4">
-                    <span className="text-gray-700 font-medium text-sm sm:text-base">
-                      {user.name}
-                    </span>
-                    <span
-                      className={`text-xs sm:text-sm px-2 py-1 rounded-full ${
-                        individualBalances[user.id] > 0
-                          ? "bg-green-100 text-green-800"
-                          : individualBalances[user.id] < 0
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {individualBalances[user.id] > 0 ? "+" : ""}₹
-                      {Math.abs(individualBalances[user.id]).toFixed(2)}
-                    </span>
+                    {editingUserId === user.id ? (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={editingName}
+                          onChange={(e) => setEditingName(e.target.value)}
+                          className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => saveEdit(user.id)}
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M5 13l4 4L19 7"
+                            />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={cancelEditing}
+                          className="text-gray-600 hover:text-gray-800"
+                        >
+                          <svg
+                            className="w-4 h-4"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M6 18L18 6M6 6l12 12"
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <span className="text-gray-700 font-medium text-sm sm:text-base">
+                          {user.name}
+                        </span>
+                        <span
+                          className={`text-xs sm:text-sm px-2 py-1 rounded-full ${
+                            individualBalances[user.id] > 0
+                              ? "bg-green-100 text-green-800"
+                              : individualBalances[user.id] < 0
+                              ? "bg-red-100 text-red-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {individualBalances[user.id] > 0 ? "+" : ""}₹
+                          {Math.abs(individualBalances[user.id]).toFixed(2)}
+                        </span>
+                      </>
+                    )}
                   </div>
-                  <button
-                    onClick={() => removeUser(user.id)}
-                    className="text-red-500 hover:text-red-700 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                  >
-                    <svg
-                      className="w-4 h-4 sm:w-5 sm:h-5"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
+                  <div className="flex items-center space-x-2">
+                    {editingUserId !== user.id && (
+                      <button
+                        onClick={() => startEditing(user)}
+                        className="text-blue-500 hover:text-blue-700"
+                      >
+                        <svg
+                          className="w-4 h-4 sm:w-5 sm:h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => removeUser(user.id)}
+                      className="text-red-500"
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                      />
-                    </svg>
-                  </button>
+                      <svg
+                        className="w-4 h-4 sm:w-5 sm:h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                        />
+                      </svg>
+                    </button>
+                  </div>
                 </motion.li>
               ))}
             </AnimatePresence>
