@@ -197,7 +197,6 @@ const Settlements = ({
                 const group = groups.find((g) => g.id === groupId);
                 const groupTotal = calculateGroupTotal(groupId);
 
-                console.log(group);
                 return (
                   <div key={groupId} className="space-y-3">
                     {group && (

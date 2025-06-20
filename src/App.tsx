@@ -1,6 +1,7 @@
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import { SignIn } from "./components/SignIn";
 import ExpenseSplittingApp from "./expense-splitter";
+import Toast from "./components/ui/toast";
 
 function AppContent() {
   const { user } = useAuth();
@@ -16,6 +17,7 @@ function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <Toast />
     </AuthProvider>
   );
 }

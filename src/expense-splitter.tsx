@@ -18,6 +18,7 @@ import Settlements from "./components/Settlements";
 import Logs from "./components/Logs";
 import logo from "./assets/logo.jpg";
 import { logExpenseAction } from "./utils/logger";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -311,14 +312,14 @@ const ExpenseSplittingApp = () => {
         user?.displayName || undefined
       );
 
-      alert(
+      toast.success(
         `Settlement completed! ${settlement.fromName} has paid ₹${settlement.amount} to ${settlement.toName}`
       );
 
       // The UI will automatically update when the new expense triggers the real-time listener
     } catch (error) {
       console.error("Error settling payment: ", error);
-      alert("Error settling payment. Please try again.");
+      toast.error("Error settling payment. Please try again.");
     }
   };
 
@@ -336,7 +337,7 @@ const ExpenseSplittingApp = () => {
       );
 
       if (!settlementExpense) {
-        alert(
+        toast.error(
           "Settlement transaction not found. It may have already been deleted."
         );
         return;
@@ -361,10 +362,10 @@ const ExpenseSplittingApp = () => {
         user?.displayName || undefined
       );
 
-      alert("Settlement deleted successfully!");
+      toast.success("Settlement deleted successfully!");
     } catch (error) {
       console.error("Error deleting settlement: ", error);
-      alert("Error deleting settlement. Please try again.");
+      toast.error("Error deleting settlement. Please try again.");
     }
   };
 
@@ -377,7 +378,7 @@ const ExpenseSplittingApp = () => {
       );
 
       if (settlementExpenses.length === 0) {
-        alert("No settlements to reset.");
+        toast.error("No settlements to reset.");
         return;
       }
 
@@ -405,10 +406,12 @@ const ExpenseSplittingApp = () => {
         user?.displayName || undefined
       );
 
-      alert(`Successfully reset all ${settlementExpenses.length} settlements!`);
+      toast.success(
+        `Successfully reset all ${settlementExpenses.length} settlements!`
+      );
     } catch (error) {
       console.error("Error resetting settlements: ", error);
-      alert("Error resetting settlements. Please try again.");
+      toast.error("Error resetting settlements. Please try again.");
     }
   };
 
@@ -434,10 +437,10 @@ const ExpenseSplittingApp = () => {
         user?.displayName || undefined
       );
 
-      alert("Settled transaction deleted successfully!");
+      toast.success("Settled transaction deleted successfully!");
     } catch (error) {
       console.error("Error deleting settled transaction: ", error);
-      alert("Error deleting settled transaction. Please try again.");
+      toast.error("Error deleting settled transaction. Please try again.");
     }
   };
 
@@ -450,7 +453,7 @@ const ExpenseSplittingApp = () => {
       );
 
       if (settlementExpenses.length === 0) {
-        alert("No settled transactions to delete.");
+        toast.error("No settled transactions to delete.");
         return;
       }
 
@@ -478,12 +481,12 @@ const ExpenseSplittingApp = () => {
         user?.displayName || undefined
       );
 
-      alert(
+      toast.success(
         `Successfully deleted all ${settlementExpenses.length} settled transactions!`
       );
     } catch (error) {
       console.error("Error deleting settled transactions: ", error);
-      alert("Error deleting settled transactions. Please try again.");
+      toast.error("Error deleting settled transactions. Please try again.");
     }
   };
 

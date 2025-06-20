@@ -10,6 +10,7 @@ import {
 import { db } from "../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
 import { logExpenseAction } from "../utils/logger";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -85,7 +86,7 @@ const Expenses = ({
       !newExpense.groupId ||
       newExpense.splitWith.length === 0
     ) {
-      alert(
+      toast.error(
         "Please fill in all fields and select at least one person to split with"
       );
       return;
@@ -93,7 +94,7 @@ const Expenses = ({
 
     const amount = parseFloat(newExpense.amount);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -129,9 +130,10 @@ const Expenses = ({
         groupId: "",
       });
       onExpenseUpdate();
+      toast.success("Expense added successfully!");
     } catch (error) {
       console.error("Error adding expense: ", error);
-      alert("Error adding expense. Please try again.");
+      toast.error("Error adding expense. Please try again.");
     }
   };
 
@@ -149,9 +151,10 @@ const Expenses = ({
         currentUser?.displayName || undefined
       );
       onExpenseUpdate();
+      toast.success("Expense removed successfully!");
     } catch (error) {
       console.error("Error removing expense: ", error);
-      alert("Error removing expense. Please try again.");
+      toast.error("Error removing expense. Please try again.");
     }
   };
 
@@ -186,7 +189,7 @@ const Expenses = ({
       !newExpense.description ||
       newExpense.splitWith.length === 0
     ) {
-      alert(
+      toast.error(
         "Please fill in all fields and select at least one person to split with"
       );
       return;
@@ -194,7 +197,7 @@ const Expenses = ({
 
     const amount = parseFloat(newExpense.amount);
     if (isNaN(amount) || amount <= 0) {
-      alert("Please enter a valid amount");
+      toast.error("Please enter a valid amount");
       return;
     }
 
@@ -231,9 +234,10 @@ const Expenses = ({
         groupId: "",
       });
       onExpenseUpdate();
+      toast.success("Expense updated successfully!");
     } catch (error) {
       console.error("Error updating expense: ", error);
-      alert("Error updating expense. Please try again.");
+      toast.error("Error updating expense. Please try again.");
     }
   };
 

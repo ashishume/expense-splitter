@@ -8,6 +8,7 @@ import {
   updateDoc,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -34,7 +35,7 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
     );
 
     if (userExists) {
-      alert("This user already exists!");
+      toast.error("This user already exists!");
       return;
     }
 
@@ -45,9 +46,10 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
       });
       setNewUserName("");
       onUserUpdate();
+      toast.success("User added successfully!");
     } catch (error) {
       console.error("Error adding user: ", error);
-      alert("Error adding user. Please try again.");
+      toast.error("Error adding user. Please try again.");
     }
   };
 
@@ -55,9 +57,10 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
     try {
       await deleteDoc(doc(db, "users", userId));
       onUserUpdate();
+      toast.success("User removed successfully!");
     } catch (error) {
       console.error("Error removing user: ", error);
-      alert("Error removing user. Please try again.");
+      toast.error("Error removing user. Please try again.");
     }
   };
 
@@ -73,7 +76,7 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
 
   const saveEdit = async (userId: string) => {
     if (editingName.trim() === "") {
-      alert("Name cannot be empty!");
+      toast.error("Name cannot be empty!");
       return;
     }
 
@@ -84,7 +87,7 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
     );
 
     if (userExists) {
-      alert("This name is already taken!");
+      toast.error("This name is already taken!");
       return;
     }
 
@@ -95,9 +98,10 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
       setEditingUserId(null);
       setEditingName("");
       onUserUpdate();
+      toast.success("User updated successfully!");
     } catch (error) {
       console.error("Error updating user: ", error);
-      alert("Error updating user. Please try again.");
+      toast.error("Error updating user. Please try again.");
     }
   };
 

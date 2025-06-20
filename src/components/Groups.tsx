@@ -9,6 +9,7 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
+import toast from "react-hot-toast";
 
 interface User {
   id: string;
@@ -40,7 +41,7 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
     );
 
     if (groupExists) {
-      alert("This group already exists!");
+      toast.error("This group already exists!");
       return;
     }
 
@@ -52,9 +53,10 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
       });
       setNewGroupName("");
       onGroupUpdate();
+      toast.success("Group created successfully!");
     } catch (error) {
       console.error("Error adding group: ", error);
-      alert("Error adding group. Please try again.");
+      toast.error("Error adding group. Please try again.");
     }
   };
 
@@ -74,9 +76,10 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
       const updatedGroups = [...(user?.groups || []), groupId];
       await updateDoc(userRef, { groups: updatedGroups });
       onGroupUpdate();
+      toast.success("User added to group successfully!");
     } catch (error) {
       console.error("Error adding user to group: ", error);
-      alert("Error adding user to group. Please try again.");
+      toast.error("Error adding user to group. Please try again.");
     }
   };
 
@@ -96,9 +99,10 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
       const updatedGroups = (user?.groups || []).filter((id) => id !== groupId);
       await updateDoc(userRef, { groups: updatedGroups });
       onGroupUpdate();
+      toast.success("User removed from group successfully!");
     } catch (error) {
       console.error("Error removing user from group: ", error);
-      alert("Error removing user from group. Please try again.");
+      toast.error("Error removing user from group. Please try again.");
     }
   };
 
@@ -117,9 +121,10 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
       });
       await batch.commit();
       onGroupUpdate();
+      toast.success("Group deleted successfully!");
     } catch (error) {
       console.error("Error deleting group: ", error);
-      alert("Error deleting group. Please try again.");
+      toast.error("Error deleting group. Please try again.");
     }
   };
 
