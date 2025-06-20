@@ -39,6 +39,7 @@ interface Expense {
   splitWith: string[];
   date: string;
   groupId?: string;
+  isSettlement?: boolean;
 }
 
 interface Settlement {
@@ -104,7 +105,7 @@ const ExpenseSplittingApp = () => {
     };
   }, []);
 
-  // Calculate settlements
+  // Fixed calculateSettlements function for ExpenseSplittingApp.tsx
   const calculateSettlements = (currentExpenses: Expense[]) => {
     const newSettlements: Settlement[] = [];
     const roundTo2Decimals = (num: number) => Math.round(num * 100) / 100;
@@ -138,59 +139,87 @@ const ExpenseSplittingApp = () => {
 
       // Calculate balances for this group only
       groupExpenses.forEach((expense) => {
-        const paidBy = expense.paidBy;
-        const totalAmount = expense.amount;
-        const splitWith = expense.splitWith;
-        const amountPerPerson = totalAmount / (splitWith.length + 1);
+        if (expense.isSettlement) {
+          // This is a settlement transaction - it represents money actually transferred
+          // The person who "paid" (from) is reducing their debt
+          // The person in splitWith (to) is reducing what they're owed
+          if (groupBalances[expense.paidBy] !== undefined) {
+            groupBalances[expense.paidBy] += expense.amount;
+          }
+          if (
+            expense.splitWith.length === 1 &&
+            groupBalances[expense.splitWith[0]] !== undefined
+          ) {
+            groupBalances[expense.splitWith[0]] -= expense.amount;
+          }
+        } else {
+          // This is a regular shared expense
+          const paidBy = expense.paidBy;
+          const totalAmount = expense.amount;
+          const splitWith = expense.splitWith;
+          const amountPerPerson = totalAmount / (splitWith.length + 1);
 
-        // The person who paid gets credited the full amount
-        groupBalances[paidBy] += totalAmount;
+          // The person who paid gets credited the full amount
+          if (groupBalances[paidBy] !== undefined) {
+            groupBalances[paidBy] += totalAmount;
+          }
 
-        // Everyone (including the payer) owes their share
-        splitWith.forEach((userId) => {
-          groupBalances[userId] -= amountPerPerson;
-        });
-        groupBalances[paidBy] -= amountPerPerson;
-      });
-
-      // Create settlements only between involved users in this group
-      const involvedUsersArray = Array.from(involvedUsers);
-
-      involvedUsersArray.forEach((debtorId) => {
-        if (groupBalances[debtorId] < -0.01) {
-          involvedUsersArray.forEach((creditorId) => {
-            if (
-              groupBalances[creditorId] > 0.01 &&
-              groupBalances[debtorId] < -0.01
-            ) {
-              const amountToSettle = Math.min(
-                Math.abs(groupBalances[debtorId]),
-                groupBalances[creditorId]
-              );
-
-              if (amountToSettle > 0.01) {
-                const debtor = users.find((u) => u.id === debtorId);
-                const creditor = users.find((u) => u.id === creditorId);
-
-                if (debtor && creditor) {
-                  newSettlements.push({
-                    id: `${debtorId}-${creditorId}-${groupId}-${Date.now()}`,
-                    from: debtorId,
-                    fromName: debtor.name,
-                    to: creditorId,
-                    toName: creditor.name,
-                    amount: roundTo2Decimals(amountToSettle),
-                    groupId: groupId === "ungrouped" ? undefined : groupId,
-                    date: new Date().toISOString(),
-                  });
-
-                  groupBalances[debtorId] += amountToSettle;
-                  groupBalances[creditorId] -= amountToSettle;
-                }
-              }
+          // Everyone (including the payer) owes their share
+          splitWith.forEach((userId) => {
+            if (groupBalances[userId] !== undefined) {
+              groupBalances[userId] -= amountPerPerson;
             }
           });
+          if (groupBalances[paidBy] !== undefined) {
+            groupBalances[paidBy] -= amountPerPerson;
+          }
         }
+      });
+
+      // Create settlements only for balances that are significant (> 0.01)
+      // and only between users who actually have outstanding balances
+      const creditors = Array.from(involvedUsers).filter(
+        (userId) => groupBalances[userId] > 0.01
+      );
+      const debtors = Array.from(involvedUsers).filter(
+        (userId) => groupBalances[userId] < -0.01
+      );
+
+      // Match debtors with creditors to minimize number of transactions
+      debtors.forEach((debtorId) => {
+        creditors.forEach((creditorId) => {
+          if (
+            groupBalances[creditorId] > 0.01 &&
+            groupBalances[debtorId] < -0.01
+          ) {
+            const amountToSettle = Math.min(
+              Math.abs(groupBalances[debtorId]),
+              groupBalances[creditorId]
+            );
+
+            if (amountToSettle > 0.01) {
+              const debtor = users.find((u) => u.id === debtorId);
+              const creditor = users.find((u) => u.id === creditorId);
+
+              if (debtor && creditor) {
+                newSettlements.push({
+                  id: `${debtorId}-${creditorId}-${groupId}-${Date.now()}`,
+                  from: debtorId,
+                  fromName: debtor.name,
+                  to: creditorId,
+                  toName: creditor.name,
+                  amount: roundTo2Decimals(amountToSettle),
+                  groupId: groupId === "ungrouped" ? undefined : groupId,
+                  date: new Date().toISOString(),
+                });
+
+                // Update balances to reflect this settlement
+                groupBalances[debtorId] += amountToSettle;
+                groupBalances[creditorId] -= amountToSettle;
+              }
+            }
+          }
+        });
       });
     });
 
@@ -205,19 +234,41 @@ const ExpenseSplittingApp = () => {
     });
 
     currentExpenses.forEach((expense) => {
-      const paidBy = expense.paidBy;
-      const totalAmount = expense.amount;
-      const splitWith = expense.splitWith;
-      const amountPerPerson = totalAmount / (splitWith.length + 1);
+      if (expense.isSettlement) {
+        // This is a direct transfer.
+        // The payer's balance increases (debt is reduced).
+        if (balances[expense.paidBy] !== undefined) {
+          balances[expense.paidBy] += expense.amount;
+        }
+        // The recipient's balance decreases (credit is reduced).
+        if (
+          expense.splitWith.length === 1 &&
+          balances[expense.splitWith[0]] !== undefined
+        ) {
+          balances[expense.splitWith[0]] -= expense.amount;
+        }
+      } else {
+        // This is a regular shared expense.
+        const paidBy = expense.paidBy;
+        const totalAmount = expense.amount;
+        const splitWith = expense.splitWith;
+        const amountPerPerson = totalAmount / (splitWith.length + 1);
 
-      // The person who paid gets credited the full amount
-      balances[paidBy] += totalAmount;
+        // The person who paid gets credited the full amount
+        if (balances[paidBy] !== undefined) {
+          balances[paidBy] += totalAmount;
+        }
 
-      // Everyone (including the payer) owes their share
-      splitWith.forEach((userId) => {
-        balances[userId] -= amountPerPerson;
-      });
-      balances[paidBy] -= amountPerPerson;
+        // Everyone (including the payer) owes their share
+        splitWith.forEach((userId) => {
+          if (balances[userId] !== undefined) {
+            balances[userId] -= amountPerPerson;
+          }
+        });
+        if (balances[paidBy] !== undefined) {
+          balances[paidBy] -= amountPerPerson;
+        }
+      }
     });
 
     return balances;
@@ -228,22 +279,22 @@ const ExpenseSplittingApp = () => {
   }, [expenses, users]);
 
   const individualBalances = calculateIndividualBalances(expenses);
-
-  // Handle settlement by creating a fake transaction
+  // Also update the handleSettle function to be more explicit
   const handleSettle = async (settlement: Settlement) => {
     try {
-      // Create a fake transaction to settle the payment
+      // Create a settlement transaction that represents actual money transfer
       const settlementExpense = {
-        paidBy: settlement.to, // The person receiving the money
-        paidByName: settlement.toName,
+        paidBy: settlement.from, // The debtor is "paying"
+        paidByName: settlement.fromName,
         amount: settlement.amount,
-        description: `Settlement: ${settlement.fromName} → ${settlement.toName}`,
-        splitWith: [settlement.from], // The person paying
+        description: `Settlement: ${settlement.fromName} paid ${settlement.toName}`,
+        splitWith: [settlement.to], // The creditor receives the payment
         date: new Date().toISOString(),
         groupId: settlement.groupId || null,
+        isSettlement: true, // Mark as settlement transaction
       };
 
-      // Add the settlement as an expense
+      // Add the settlement transaction to Firestore
       const expenseRef = await addDoc(
         collection(db, "expenses"),
         settlementExpense
@@ -258,14 +309,11 @@ const ExpenseSplittingApp = () => {
         user?.displayName || undefined
       );
 
-      // Remove the settlement from the list
-      setSettlements((prevSettlements) =>
-        prevSettlements.filter((s) => s.id !== settlement.id)
-      );
-
       alert(
         `Settlement completed! ${settlement.fromName} has paid ₹${settlement.amount} to ${settlement.toName}`
       );
+
+      // The UI will automatically update when the new expense triggers the real-time listener
     } catch (error) {
       console.error("Error settling payment: ", error);
       alert("Error settling payment. Please try again.");
@@ -344,6 +392,7 @@ const ExpenseSplittingApp = () => {
             expenses={expenses}
             users={users}
             onSettle={handleSettle}
+            individualBalances={individualBalances}
           />
         )}
 

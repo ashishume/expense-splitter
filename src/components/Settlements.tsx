@@ -32,6 +32,7 @@ interface Expense {
   splitWith: string[];
   date: string;
   groupId?: string;
+  isSettlement?: boolean;
 }
 
 interface SettlementsProps {
@@ -40,6 +41,7 @@ interface SettlementsProps {
   expenses: Expense[];
   users: User[];
   onSettle?: (settlement: Settlement) => void;
+  individualBalances: Record<string, number>;
 }
 
 const Settlements = ({
@@ -48,6 +50,7 @@ const Settlements = ({
   expenses,
   users,
   onSettle,
+  individualBalances,
 }: SettlementsProps) => {
   if (settlements.length === 0) return null;
 
@@ -61,30 +64,11 @@ const Settlements = ({
     return acc;
   }, {} as Record<string, Settlement[]>);
 
-  // Calculate total expenses for a group
+  // Calculate total expenses for a group, excluding settlements
   const calculateGroupTotal = (groupId: string) => {
     return expenses
-      .filter((expense) => expense.groupId === groupId)
+      .filter((expense) => expense.groupId === groupId && !expense.isSettlement)
       .reduce((total, expense) => total + expense.amount, 0);
-  };
-
-  // Calculate individual spending in a group
-  const calculateIndividualSpending = (groupId: string, userId: string) => {
-    const groupExpenses = expenses.filter(
-      (expense) => expense.groupId === groupId
-    );
-    let total = 0;
-
-    groupExpenses.forEach((expense) => {
-      if (expense.paidBy === userId) {
-        total += expense.amount;
-      }
-      if (expense.splitWith.includes(userId)) {
-        total -= expense.amount / (expense.splitWith.length + 1);
-      }
-    });
-
-    return total;
   };
 
   return (
@@ -136,10 +120,7 @@ const Settlements = ({
                         <div className="grid grid-cols-2 gap-2">
                           {group.members.map((memberId) => {
                             const member = users.find((u) => u.id === memberId);
-                            const spending = calculateIndividualSpending(
-                              groupId,
-                              memberId
-                            );
+                            const spending = individualBalances[memberId] || 0;
                             return (
                               <div
                                 key={memberId}
