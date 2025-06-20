@@ -59,6 +59,7 @@ const Expenses = ({
   });
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("all");
 
   const toggleUserForExpense = (userId: string) => {
     const currentSelection = [...newExpense.splitWith];
@@ -403,87 +404,233 @@ const Expenses = ({
       {expenses.length > 0 && (
         <div className="mt-8">
           <h3 className="text-xl font-semibold mb-4">Recent Expenses</h3>
-          <div className="space-y-4">
-            {expenses.map((expense) => (
-              <div
-                key={expense.id}
-                className={`p-4 rounded-md flex justify-between items-start ${
-                  expense.isSettlement
-                    ? "bg-green-50 border-l-4 border-green-400"
-                    : "bg-gray-50"
-                }`}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-lg font-medium">
-                      {expense.description}
-                    </h3>
-                    {expense.isSettlement && (
-                      <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                        Settlement
+
+          {/* Tabs */}
+          {(() => {
+            const groupedExpenses = expenses.reduce((acc, expense) => {
+              const groupId = expense.groupId || "no-group";
+              if (!acc[groupId]) {
+                acc[groupId] = [];
+              }
+              acc[groupId].push(expense);
+              return acc;
+            }, {} as Record<string, Expense[]>);
+
+            const tabs = [
+              { id: "all", name: "All Expenses", count: expenses.length },
+              ...Object.entries(groupedExpenses).map(
+                ([groupId, groupExpenses]) => {
+                  const group = groups.find((g) => g.id === groupId);
+                  return {
+                    id: groupId,
+                    name: group ? group.name : "No Group",
+                    count: groupExpenses.length,
+                  };
+                }
+              ),
+            ];
+
+            return (
+              <div>
+                {/* Tab Navigation */}
+                <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`px-4 py-2 rounded-t-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                        activeTab === tab.id
+                          ? "bg-green-600 text-white shadow-md"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      }`}
+                    >
+                      <span>{tab.name}</span>
+                      <span
+                        className={`px-2 py-1 text-xs rounded-full ${
+                          activeTab === tab.id
+                            ? "bg-white text-green-600"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {tab.count}
                       </span>
-                    )}
-                    {expense.groupId && !expense.isSettlement && (
-                      <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
-                        {groups.find((g) => g.id === expense.groupId)?.name}
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-600">
-                    Paid by {expense.paidByName} - ₹{expense.amount}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    Split with:{" "}
-                    {expense.splitWith
-                      .map(
-                        (userId) =>
-                          users.find((u) => u.id === userId)?.name || "Unknown"
-                      )
-                      .join(", ")}
-                  </p>
-                  <p className="text-xs text-gray-400">
-                    {new Date(expense.date).toLocaleDateString()}
-                  </p>
+                    </button>
+                  ))}
                 </div>
-                {!expense.isSettlement && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => startEditing(expense)}
-                      className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
-                      title="Edit expense"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => removeExpense(expense.id)}
-                      className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200"
-                      title="Remove expense"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-5 w-5"
-                        viewBox="0 0 20 20"
-                        fill="currentColor"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    </button>
-                  </div>
-                )}
+
+                {/* Tab Content */}
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="space-y-4"
+                >
+                  {activeTab === "all"
+                    ? // Show all expenses
+                      expenses.map((expense) => (
+                        <div
+                          key={expense.id}
+                          className={`p-4 rounded-md flex justify-between items-start ${
+                            expense.isSettlement
+                              ? "bg-green-50 border-l-4 border-green-400"
+                              : "bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="text-lg font-medium">
+                                {expense.description}
+                              </h3>
+                              {expense.isSettlement && (
+                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                  Settlement
+                                </span>
+                              )}
+                              {expense.groupId && !expense.isSettlement && (
+                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                                  {
+                                    groups.find((g) => g.id === expense.groupId)
+                                      ?.name
+                                  }
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-600">
+                              Paid by {expense.paidByName} - ₹{expense.amount}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Split with:{" "}
+                              {expense.splitWith
+                                .map(
+                                  (userId) =>
+                                    users.find((u) => u.id === userId)?.name ||
+                                    "Unknown"
+                                )
+                                .join(", ")}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(expense.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {!expense.isSettlement && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => startEditing(expense)}
+                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
+                                title="Edit expense"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => removeExpense(expense.id)}
+                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200"
+                                title="Remove expense"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    : // Show expenses for specific group
+                      groupedExpenses[activeTab]?.map((expense) => (
+                        <div
+                          key={expense.id}
+                          className={`p-4 rounded-md flex justify-between items-start ${
+                            expense.isSettlement
+                              ? "bg-green-50 border-l-4 border-green-400"
+                              : "bg-gray-50"
+                          }`}
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="text-lg font-medium">
+                                {expense.description}
+                              </h3>
+                              {expense.isSettlement && (
+                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                  Settlement
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-gray-600">
+                              Paid by {expense.paidByName} - ₹{expense.amount}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              Split with:{" "}
+                              {expense.splitWith
+                                .map(
+                                  (userId) =>
+                                    users.find((u) => u.id === userId)?.name ||
+                                    "Unknown"
+                                )
+                                .join(", ")}
+                            </p>
+                            <p className="text-xs text-gray-400">
+                              {new Date(expense.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          {!expense.isSettlement && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => startEditing(expense)}
+                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
+                                title="Edit expense"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                                </svg>
+                              </button>
+                              <button
+                                onClick={() => removeExpense(expense.id)}
+                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200"
+                                title="Remove expense"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-5 w-5"
+                                  viewBox="0 0 20 20"
+                                  fill="currentColor"
+                                >
+                                  <path
+                                    fillRule="evenodd"
+                                    d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                    clipRule="evenodd"
+                                  />
+                                </svg>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                </motion.div>
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
       )}
     </motion.div>
