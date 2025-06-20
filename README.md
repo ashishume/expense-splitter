@@ -1,54 +1,73 @@
-# React + TypeScript + Vite
+# Axpo Expense Splitter
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern expense splitting application built with React, TypeScript, and Firebase. This app helps groups of people track shared expenses and settle debts efficiently.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **User Management**: Add and manage users for expense tracking
+- **Group Management**: Create groups to organize expenses by activity or trip
+- **Expense Tracking**: Add expenses with detailed descriptions and split them among group members
+- **Smart Settlement System**: Automatically calculate who owes whom within each group
+- **Real-time Updates**: All changes are synchronized in real-time using Firebase
+- **Activity Logs**: Track all actions and changes in the application
+- **Responsive Design**: Works seamlessly on desktop and mobile devices
 
-## Expanding the ESLint configuration
+## Settlement System
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+The settlement system is designed to be accurate and group-specific:
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+- **Group-Specific Calculations**: Settlements are calculated separately for each group/activity
+- **Involved Users Only**: Only users who participated in the same expenses can have settlements between them
+- **Settle Button**: Each settlement has a "Settle" button to mark payments as completed
+- **Automatic Transaction Creation**: When settled, the system creates a balancing transaction
+- **Real-time Updates**: Settlement status updates immediately across all connected devices
+
+## How Settlements Work
+
+1. **Expense Creation**: When expenses are added to a group, the system tracks who paid and who owes money
+2. **Balance Calculation**: For each group, the system calculates individual balances based on payments and splits
+3. **Settlement Generation**: Settlements are created only between people who were involved in the same expenses
+4. **Settlement Display**: Settlements are shown in the "Settlements" tab, grouped by activity/trip
+5. **Settlement Action**: Users can click "Settle" to mark a payment as complete
+6. **Transaction Creation**: The system creates a balancing transaction and removes the settlement
+7. **Real-time Sync**: All balances update immediately across all devices
+
+## Technology Stack
+
+- **Frontend**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with Framer Motion animations
+- **Backend**: Firebase Firestore for real-time data
+- **Authentication**: Firebase Auth with Google Sign-in
+- **Build Tool**: Vite for fast development and building
+
+## Getting Started
+
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Set up Firebase configuration in `src/firebase.ts`
+4. Run the development server: `npm run dev`
+5. Open your browser and navigate to the local development URL
+
+## Development
+
+- **Type Checking**: `npx tsc --noEmit`
+- **Build**: `npm run build`
+- **Preview**: `npm run preview`
+
+## Project Structure
+
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+src/
+├── components/          # React components
+│   ├── AuthContext.tsx  # Authentication context
+│   ├── Expenses.tsx     # Expense management
+│   ├── Groups.tsx       # Group management
+│   ├── Settlements.tsx  # Settlement display and actions
+│   ├── Users.tsx        # User management
+│   └── Logs.tsx         # Activity logs
+├── utils/
+│   └── logger.ts        # Logging utilities
+├── firebase.ts          # Firebase configuration
+├── expense-splitter.tsx # Main application component
+└── App.tsx             # Root component
 ```
