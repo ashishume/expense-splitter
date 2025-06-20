@@ -1,7 +1,7 @@
 import { AuthProvider, useAuth } from "./components/AuthContext";
 import { SignIn } from "./components/SignIn";
 import ExpenseSplittingApp from "./expense-splitter";
-import Toast from "./components/ui/toast";
+import Toast from "./components/ui/Toast";
 
 function AppContent() {
   const { user } = useAuth();
