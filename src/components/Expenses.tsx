@@ -263,6 +263,32 @@ const Expenses = ({
       <div className="space-y-3 sm:space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
+            Group
+          </label>
+          <select
+            value={newExpense.groupId}
+            onChange={(e) => {
+              const selectedGroupId = e.target.value;
+              setNewExpense({
+                ...newExpense,
+                groupId: selectedGroupId,
+                paidBy: "", // Reset paid by when group changes
+                splitWith: [], // Reset split with when group changes
+              });
+            }}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+          >
+            <option value="">Select a group</option>
+            {groups.map((group) => (
+              <option key={group.id} value={group.id}>
+                {group.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
             Paid By
           </label>
           <select
@@ -271,33 +297,28 @@ const Expenses = ({
               setNewExpense({ ...newExpense, paidBy: e.target.value })
             }
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            disabled={!newExpense.groupId}
           >
-            <option value="">Select a user</option>
-            {users.map((user) => (
-              <option key={user.id} value={user.id}>
-                {user.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Group
-          </label>
-          <select
-            value={newExpense.groupId}
-            onChange={(e) =>
-              setNewExpense({ ...newExpense, groupId: e.target.value })
-            }
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-          >
-            <option value="">No Group</option>
-            {groups.map((group) => (
-              <option key={group.id} value={group.id}>
-                {group.name}
-              </option>
-            ))}
+            <option value="">
+              {newExpense.groupId ? "Select a member" : "Select a group first"}
+            </option>
+            {newExpense.groupId
+              ? (() => {
+                  const selectedGroup = groups.find(
+                    (g) => g.id === newExpense.groupId
+                  );
+                  if (selectedGroup) {
+                    return users.filter((user) =>
+                      selectedGroup.members.includes(user.id)
+                    );
+                  }
+                  return [];
+                })().map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))
+              : null}
           </select>
         </div>
 
@@ -343,34 +364,50 @@ const Expenses = ({
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Split with
           </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            {users.map((user) => (
-              <div
-                key={user.id}
-                className="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg"
-              >
-                <input
-                  type="checkbox"
-                  id={`split-${user.id}`}
-                  checked={newExpense.splitWith.includes(user.id)}
-                  onChange={() => toggleUserForExpense(user.id)}
-                  disabled={user.id === newExpense.paidBy}
-                  className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                />
-                <label
-                  htmlFor={`split-${user.id}`}
-                  className="ml-2 text-sm sm:text-base text-gray-700"
+          {newExpense.groupId ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
+              {(() => {
+                const selectedGroup = groups.find(
+                  (g) => g.id === newExpense.groupId
+                );
+                if (selectedGroup) {
+                  return users.filter((user) =>
+                    selectedGroup.members.includes(user.id)
+                  );
+                }
+                return [];
+              })().map((user) => (
+                <div
+                  key={user.id}
+                  className="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg"
                 >
-                  {user.name}{" "}
-                  {user.id === newExpense.paidBy ? (
-                    <span className="text-green-600 text-xs sm:text-sm">
-                      (Payer)
-                    </span>
-                  ) : null}
-                </label>
-              </div>
-            ))}
-          </div>
+                  <input
+                    type="checkbox"
+                    id={`split-${user.id}`}
+                    checked={newExpense.splitWith.includes(user.id)}
+                    onChange={() => toggleUserForExpense(user.id)}
+                    disabled={user.id === newExpense.paidBy}
+                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                  />
+                  <label
+                    htmlFor={`split-${user.id}`}
+                    className="ml-2 text-sm sm:text-base text-gray-700"
+                  >
+                    {user.name}{" "}
+                    {user.id === newExpense.paidBy ? (
+                      <span className="text-green-600 text-xs sm:text-sm">
+                        (Payer)
+                      </span>
+                    ) : null}
+                  </label>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
+              Select a group first to see members
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 mt-4">
