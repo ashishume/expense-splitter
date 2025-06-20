@@ -4,6 +4,7 @@ import { useState } from "react";
 interface User {
   id: string;
   name: string;
+  email?: string;
   groups?: string[];
 }
 
@@ -305,22 +306,7 @@ const Settlements = ({
                             </div>
                           </div>
                           <div className="mt-2 sm:mt-3 flex items-center justify-between">
-                            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600">
-                              <svg
-                                className="w-3 h-3 sm:w-4 sm:h-4"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                              >
-                                <path
-                                  strokeLinecap="round"
-                                  strokeLinejoin="round"
-                                  strokeWidth={2}
-                                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                                />
-                              </svg>
-                              <span>Pay directly to settle</span>
-                            </div>
+                            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
                             <div className="flex items-center space-x-2">
                               {onDeleteSettlement && (
                                 <button

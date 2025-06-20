@@ -13,6 +13,7 @@ import toast from "react-hot-toast";
 interface User {
   id: string;
   name: string;
+  email?: string;
   groups?: string[];
 }
 
@@ -24,8 +25,10 @@ interface UsersProps {
 
 const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
   const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingEmail, setEditingEmail] = useState("");
 
   const addUser = async () => {
     if (newUserName.trim() === "") return;
@@ -42,9 +45,11 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
     try {
       await addDoc(collection(db, "users"), {
         name: newUserName,
+        email: newUserEmail.trim() || null,
         groups: [],
       });
       setNewUserName("");
+      setNewUserEmail("");
       onUserUpdate();
       toast.success("User added successfully!");
     } catch (error) {
@@ -67,11 +72,13 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
   const startEditing = (user: User) => {
     setEditingUserId(user.id);
     setEditingName(user.name);
+    setEditingEmail(user.email || "");
   };
 
   const cancelEditing = () => {
     setEditingUserId(null);
     setEditingName("");
+    setEditingEmail("");
   };
 
   const saveEdit = async (userId: string) => {
@@ -94,9 +101,11 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
     try {
       await updateDoc(doc(db, "users", userId), {
         name: editingName,
+        email: editingEmail.trim() || null,
       });
       setEditingUserId(null);
       setEditingName("");
+      setEditingEmail("");
       onUserUpdate();
       toast.success("User updated successfully!");
     } catch (error) {
@@ -136,6 +145,13 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
           className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Enter name"
         />
+        <input
+          type="email"
+          value={newUserEmail}
+          onChange={(e) => setNewUserEmail(e.target.value)}
+          className="flex-grow px-4 py-3 border border-gray-300 rounded-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          placeholder="Enter email (optional)"
+        />
         <button
           onClick={addUser}
           className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-md"
@@ -162,56 +178,80 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
                 >
                   <div className="flex items-center space-x-2 sm:space-x-4">
                     {editingUserId === user.id ? (
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          autoFocus
-                        />
-                        <button
-                          onClick={() => saveEdit(user.id)}
-                          className="text-green-600 hover:text-green-800"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                        <div className="flex flex-col space-y-1">
+                          <label className="text-xs text-gray-500">Name:</label>
+                          <input
+                            type="text"
+                            value={editingName}
+                            onChange={(e) => setEditingName(e.target.value)}
+                            className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <label className="text-xs text-gray-500">
+                            Email:
+                          </label>
+                          <input
+                            type="email"
+                            value={editingEmail}
+                            onChange={(e) => setEditingEmail(e.target.value)}
+                            className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                            placeholder="Optional"
+                          />
+                        </div>
+                        <div className="flex space-x-1">
+                          <button
+                            onClick={() => saveEdit(user.id)}
+                            className="text-green-600 hover:text-green-800"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={cancelEditing}
-                          className="text-gray-600 hover:text-gray-800"
-                        >
-                          <svg
-                            className="w-4 h-4"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="text-gray-600 hover:text-gray-800"
                           >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M6 18L18 6M6 6l12 12"
-                            />
-                          </svg>
-                        </button>
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
                       </div>
                     ) : (
-                      <>
-                        <span className="text-gray-700 font-medium text-sm sm:text-base">
-                          {user.name}
-                        </span>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
+                        <div className="flex flex-col">
+                          <span className="text-gray-700 font-medium text-sm sm:text-base">
+                            {user.name}
+                          </span>
+                          {user.email && (
+                            <span className="text-gray-500 text-xs sm:text-sm">
+                              {user.email}
+                            </span>
+                          )}
+                        </div>
                         <span
                           className={`text-xs sm:text-sm px-2 py-1 rounded-full ${
                             individualBalances[user.id] > 0
@@ -224,7 +264,7 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
                           {individualBalances[user.id] > 0 ? "+" : ""}₹
                           {Math.abs(individualBalances[user.id]).toFixed(2)}
                         </span>
-                      </>
+                      </div>
                     )}
                   </div>
                   <div className="flex items-center space-x-2">

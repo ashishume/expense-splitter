@@ -39,13 +39,13 @@ const Logs = ({ currentUser }: LogsProps) => {
   const getActionColor = (action: string) => {
     switch (action) {
       case "EXPENSE_CREATE":
-        return "bg-green-100 text-green-800";
+        return "bg-green-100 text-green-800 border-green-200";
       case "EXPENSE_UPDATE":
-        return "bg-blue-100 text-blue-800";
+        return "bg-blue-100 text-blue-800 border-blue-200";
       case "EXPENSE_DELETE":
-        return "bg-red-100 text-red-800";
+        return "bg-red-100 text-red-800 border-red-200";
       default:
-        return "bg-gray-100 text-gray-800";
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
 
@@ -62,6 +62,27 @@ const Logs = ({ currentUser }: LogsProps) => {
     }
   };
 
+  const formatTimestamp = (timestamp: any) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
+
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(diffInHours * 60);
+      return `${diffInMinutes} minute${diffInMinutes !== 1 ? "s" : ""} ago`;
+    } else if (diffInHours < 24) {
+      const hours = Math.floor(diffInHours);
+      return `${hours} hour${hours !== 1 ? "s" : ""} ago`;
+    } else {
+      return date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+  };
+
   const filteredLogs = logs.filter((log) => {
     if (filter === "all") return true;
     if (filter === "my-actions" && log.userId === currentUser?.uid) return true;
@@ -74,16 +95,16 @@ const Logs = ({ currentUser }: LogsProps) => {
       animate={{ opacity: 1, y: 0 }}
       className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
     >
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center">
-          <span className="mr-2">📋</span>
+          <span className="mr-3 text-2xl">📋</span>
           Activity Logs
         </h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 w-full sm:w-auto">
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-sm font-medium"
           >
             <option value="all">All Actions</option>
             <option value="my-actions">My Actions</option>
@@ -94,36 +115,47 @@ const Logs = ({ currentUser }: LogsProps) => {
         </div>
       </div>
 
-      <div className="space-y-4">
-        {filteredLogs.map((log) => (
+      <div className="space-y-3">
+        {filteredLogs.map((log, index) => (
           <motion.div
             key={log.id}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="bg-gray-50 p-4 rounded-lg hover:bg-gray-100 transition-colors duration-200"
+            transition={{ delay: index * 0.05 }}
+            className="bg-gray-50 border border-gray-100 p-5 rounded-xl hover:bg-gray-100 hover:border-gray-200 transition-all duration-200"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-3">
-                <span className="text-2xl">{getActionIcon(log.action)}</span>
-                <div>
-                  <div className="flex items-center space-x-2">
+            <div className="flex items-start space-x-4">
+              <div className="flex-shrink-0">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200">
+                  <span className="text-xl">{getActionIcon(log.action)}</span>
+                </div>
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-3">
                     <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full ${getActionColor(
+                      className={`px-3 py-1 text-xs font-semibold rounded-full border ${getActionColor(
                         log.action
                       )}`}
                     >
-                      {log.action.replace("EXPENSE_", "")}
+                      {log.action.replace("EXPENSE_", "").replace("_", " ")}
                     </span>
-                    <span className="text-sm text-gray-500">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </span>
+                    {log.userName && (
+                      <span className="text-sm font-medium text-gray-700">
+                        by {log.userName}
+                      </span>
+                    )}
                   </div>
-                  <p className="mt-1 text-gray-700">{log.details}</p>
-                  {log.userName && (
-                    <p className="mt-1 text-sm text-gray-500">
-                      By {log.userName}
-                    </p>
-                  )}
+                  <span className="text-sm text-gray-500 font-medium">
+                    {formatTimestamp(log.timestamp)}
+                  </span>
+                </div>
+
+                <div className="bg-white p-4 rounded-lg border border-gray-100">
+                  <p className="text-gray-800 leading-relaxed font-medium">
+                    {log.details}
+                  </p>
                 </div>
               </div>
             </div>
@@ -131,9 +163,15 @@ const Logs = ({ currentUser }: LogsProps) => {
         ))}
 
         {filteredLogs.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No logs found for the selected filter.
-          </div>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-12 text-gray-500"
+          >
+            <div className="text-4xl mb-3">📭</div>
+            <p className="text-lg font-medium">No logs found</p>
+            <p className="text-sm">Try adjusting your filter settings</p>
+          </motion.div>
         )}
       </div>
     </motion.div>

@@ -15,6 +15,7 @@ import toast from "react-hot-toast";
 interface User {
   id: string;
   name: string;
+  email?: string;
   groups?: string[];
 }
 
@@ -320,6 +321,7 @@ const Expenses = ({
                 })().map((user) => (
                   <option key={user.id} value={user.id}>
                     {user.name}
+                    {user.email ? ` (${user.email})` : ""}
                   </option>
                 ))
               : null}
@@ -397,7 +399,14 @@ const Expenses = ({
                     htmlFor={`split-${user.id}`}
                     className="ml-2 text-sm sm:text-base text-gray-700"
                   >
-                    {user.name}{" "}
+                    <div className="flex flex-col">
+                      <span>{user.name}</span>
+                      {user.email && (
+                        <span className="text-xs text-gray-500">
+                          {user.email}
+                        </span>
+                      )}
+                    </div>
                     {user.id === newExpense.paidBy ? (
                       <span className="text-green-600 text-xs sm:text-sm">
                         (Payer)

@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 interface User {
   id: string;
   name: string;
+  email?: string;
   groups?: string[];
 }
 
@@ -209,7 +210,14 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
                         }}
                         className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                       />
-                      <span className="text-sm">{user.name}</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{user.name}</span>
+                        {user.email && (
+                          <span className="text-xs text-gray-500">
+                            {user.email}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
