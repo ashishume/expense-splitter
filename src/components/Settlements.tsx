@@ -1,5 +1,11 @@
-import { motion } from "framer-motion";
 import { useState } from "react";
+import { motion } from "framer-motion";
+import {
+  ArrowsIcon,
+  UserProfileIcon,
+  DeleteIcon,
+  CheckCircleIcon,
+} from "./icons";
 
 interface User {
   id: string;
@@ -95,19 +101,7 @@ const Settlements = ({
       className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
     >
       <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
-        <svg
-          className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-          />
-        </svg>
+        <ArrowsIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600" />
         Who Owes Whom
       </h2>
 
@@ -146,19 +140,7 @@ const Settlements = ({
               onClick={onResetAllSettlements}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
+              <DeleteIcon className="w-4 h-4" />
               <span>Reset All Pending Settlements</span>
             </button>
           </div>
@@ -172,19 +154,7 @@ const Settlements = ({
               onClick={onResetAllSettledTransactions}
               className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
             >
-              <svg
-                className="w-4 h-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                />
-              </svg>
+              <DeleteIcon className="w-4 h-4" />
               <span>Delete All Settled Transactions</span>
             </button>
           </div>
@@ -266,19 +236,7 @@ const Settlements = ({
                             <div className="flex items-center space-x-2 sm:space-x-3">
                               <div className="flex-shrink-0">
                                 <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                  <svg
-                                    className="w-4 h-4 sm:w-5 sm:h-5 text-red-600"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-                                    />
-                                  </svg>
+                                  <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                                 </div>
                               </div>
                               <div>
@@ -313,19 +271,7 @@ const Settlements = ({
                                   onClick={() => onDeleteSettlement(settlement)}
                                   className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium"
                                 >
-                                  <svg
-                                    className="w-3 h-3"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                    />
-                                  </svg>
+                                  <DeleteIcon className="w-3 h-3" />
                                   <span>Delete</span>
                                 </button>
                               )}
@@ -334,19 +280,7 @@ const Settlements = ({
                                   onClick={() => onSettle(settlement)}
                                   className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
                                 >
-                                  <svg
-                                    className="w-4 h-4"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M5 13l4 4L19 7"
-                                    />
-                                  </svg>
+                                  <ArrowsIcon className="w-4 h-4" />
                                   <span>Settle</span>
                                 </button>
                               )}
@@ -366,19 +300,7 @@ const Settlements = ({
           <div className="space-y-4">
             {settledTransactions.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                <svg
-                  className="w-12 h-12 mx-auto mb-4 text-gray-300"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>No settled transactions found.</p>
               </div>
             ) : (
@@ -394,19 +316,7 @@ const Settlements = ({
                     <div className="flex items-center space-x-2 sm:space-x-3">
                       <div className="flex-shrink-0">
                         <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <svg
-                            className="w-4 h-4 sm:w-5 sm:h-5 text-green-600"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
+                          <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                         </div>
                       </div>
                       <div>
@@ -444,19 +354,7 @@ const Settlements = ({
                         onClick={() => onDeleteSettledTransaction(transaction)}
                         className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium"
                       >
-                        <svg
-                          className="w-3 h-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
+                        <DeleteIcon className="w-3 h-3" />
                         <span>Delete Transaction</span>
                       </button>
                     )}

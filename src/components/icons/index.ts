@@ -1,0 +1,10 @@
+export { CheckIcon } from "./CheckIcon";
+export { EditIcon } from "./EditIcon";
+export { DeleteIcon } from "./DeleteIcon";
+export { UsersIcon } from "./UsersIcon";
+export { ArrowsIcon } from "./ArrowsIcon";
+export { UserProfileIcon } from "./UserProfileIcon";
+export { SaveIcon } from "./SaveIcon";
+export { CloseIcon } from "./CloseIcon";
+export { CheckCircleIcon } from "./CheckCircleIcon";
+export { CurrencyIcon } from "./CurrencyIcon";
