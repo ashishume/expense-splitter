@@ -19,12 +19,25 @@ import Logs from "./components/Logs";
 import logo from "./assets/logo.jpg";
 import { logExpenseAction } from "./utils/logger";
 import toast from "react-hot-toast";
+import {
+  Receipt,
+  CreditCard,
+  Users as UsersIcon,
+  User,
+  Activity,
+  LogOut,
+} from "lucide-react";
 
 interface User {
   id: string;
   name: string;
   email?: string;
   groups?: string[];
+  addedBy?: string | null;
+  createdAt?: string;
+  mergedFrom?: string;
+  lastLogin?: string;
+  connections?: string[]; // Track all connected user IDs
 }
 
 interface Group {
@@ -90,11 +103,88 @@ const ExpenseSplittingApp = () => {
           ...doc.data(),
         })) as Group[];
 
-        // Filter groups to only show those where current user is a member
-        const currentUser = currentUsers.find((u) => u.email === user.email);
-        const filteredGroups = currentUser
-          ? groupsData.filter((group) => group.members.includes(currentUser.id))
-          : [];
+        // Get connected users using both old and new logic
+        const getConnectedUsers = () => {
+          const currentUser = currentUsers.find((u) => u.email === user.email);
+          if (!currentUser) return [];
+
+          const connectedUserIds = new Set<string>();
+
+          // Add current user
+          connectedUserIds.add(currentUser.id);
+
+          // Add users that current user added (old logic)
+          currentUsers.forEach((user) => {
+            if (user.addedBy === currentUser.id) {
+              connectedUserIds.add(user.id);
+            }
+          });
+
+          // Add user who added current user (old logic)
+          if (currentUser.addedBy) {
+            connectedUserIds.add(currentUser.addedBy);
+          }
+
+          // Add siblings (users added by the same person who added current user - old logic)
+          if (currentUser.addedBy) {
+            currentUsers.forEach((user) => {
+              if (
+                user.addedBy === currentUser.addedBy &&
+                user.id !== currentUser.id
+              ) {
+                connectedUserIds.add(user.id);
+              }
+            });
+          }
+
+          // Add users connected through the new connections field
+          if (currentUser.connections) {
+            currentUser.connections.forEach((userId) => {
+              connectedUserIds.add(userId);
+            });
+          }
+
+          // Add users who have the current user in their connections
+          currentUsers.forEach((user) => {
+            if (user.connections?.includes(currentUser.id)) {
+              connectedUserIds.add(user.id);
+            }
+          });
+
+          const result = Array.from(connectedUserIds);
+          console.log("getConnectedUsers result:", {
+            currentUser: currentUser?.id,
+            currentUserAddedBy: currentUser?.addedBy,
+            currentUserConnections: currentUser?.connections,
+            result,
+          });
+          return result;
+        };
+
+        const connectedUserIds = getConnectedUsers();
+        console.log("Connected user IDs:", connectedUserIds);
+        console.log(
+          "All groups:",
+          groupsData.map((g) => ({
+            id: g.id,
+            name: g.name,
+            members: g.members,
+          }))
+        );
+
+        // Filter groups to show those where any connected user is a member
+        const filteredGroups = groupsData.filter((group) =>
+          group.members.some((memberId) => connectedUserIds.includes(memberId))
+        );
+
+        console.log(
+          "Filtered groups:",
+          filteredGroups.map((g) => ({
+            id: g.id,
+            name: g.name,
+            members: g.members,
+          }))
+        );
 
         setGroups(filteredGroups);
       }
@@ -111,15 +201,65 @@ const ExpenseSplittingApp = () => {
         ...doc.data(),
       })) as Expense[];
 
-      // Filter expenses to only show those where current user is involved
-      const currentUser = currentUsers.find((u) => u.email === user.email);
-      const filteredExpenses = currentUser
-        ? expensesData.filter(
-            (expense) =>
-              expense.paidBy === currentUser.id ||
-              expense.splitWith.includes(currentUser.id)
-          )
-        : [];
+      // Get connected users using both old and new logic
+      const getConnectedUsers = () => {
+        const currentUser = currentUsers.find((u) => u.email === user.email);
+        if (!currentUser) return [];
+
+        const connectedUserIds = new Set<string>();
+
+        // Add current user
+        connectedUserIds.add(currentUser.id);
+
+        // Add users that current user added (old logic)
+        currentUsers.forEach((user) => {
+          if (user.addedBy === currentUser.id) {
+            connectedUserIds.add(user.id);
+          }
+        });
+
+        // Add user who added current user (old logic)
+        if (currentUser.addedBy) {
+          connectedUserIds.add(currentUser.addedBy);
+        }
+
+        // Add siblings (users added by the same person who added current user - old logic)
+        if (currentUser.addedBy) {
+          currentUsers.forEach((user) => {
+            if (
+              user.addedBy === currentUser.addedBy &&
+              user.id !== currentUser.id
+            ) {
+              connectedUserIds.add(user.id);
+            }
+          });
+        }
+
+        // Add users connected through the new connections field
+        if (currentUser.connections) {
+          currentUser.connections.forEach((userId) => {
+            connectedUserIds.add(userId);
+          });
+        }
+
+        // Add users who have the current user in their connections
+        currentUsers.forEach((user) => {
+          if (user.connections?.includes(currentUser.id)) {
+            connectedUserIds.add(user.id);
+          }
+        });
+
+        return Array.from(connectedUserIds);
+      };
+
+      const connectedUserIds = getConnectedUsers();
+
+      // Filter expenses to show those where any connected user is involved
+      const filteredExpenses = expensesData.filter(
+        (expense) =>
+          connectedUserIds.includes(expense.paidBy) ||
+          expense.splitWith.some((userId) => connectedUserIds.includes(userId))
+      );
 
       setExpenses(filteredExpenses);
     });
@@ -515,11 +655,11 @@ const ExpenseSplittingApp = () => {
   };
 
   const tabs = [
-    { id: "expenses", label: "Expenses", icon: "💰" },
-    { id: "settlements", label: "Settlements", icon: "💸" },
-    { id: "groups", label: "Groups", icon: "👥" },
-    { id: "users", label: "Users", icon: "👤" },
-    { id: "logs", label: "Activity", icon: "📋" },
+    { id: "expenses", label: "Expenses", icon: Receipt },
+    { id: "settlements", label: "Settlements", icon: CreditCard },
+    { id: "groups", label: "Groups", icon: UsersIcon },
+    { id: "users", label: "Users", icon: User },
+    // { id: "logs", label: "Activity", icon: Activity },
   ];
 
   return (
@@ -548,8 +688,9 @@ const ExpenseSplittingApp = () => {
           </div>
           <button
             onClick={logout}
-            className="px-2 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
+            className="px-2 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm flex items-center gap-2"
           >
+            <LogOut className="w-4 h-4" />
             Logout
           </button>
         </div>
@@ -557,20 +698,23 @@ const ExpenseSplittingApp = () => {
 
       {/* Tabs */}
       <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? "bg-white text-blue-600 shadow-md"
-                : "text-gray-600 hover:bg-white/50"
-            }`}
-          >
-            <span className="mr-2">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const IconComponent = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                activeTab === tab.id
+                  ? "bg-white text-blue-600 shadow-md"
+                  : "text-gray-600 hover:bg-white/50"
+              }`}
+            >
+              <IconComponent className="w-4 h-4 mr-2" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab Content */}
@@ -609,12 +753,6 @@ const ExpenseSplittingApp = () => {
             onGroupUpdate={() => {}}
             currentUser={(() => {
               const foundUser = users.find((u) => u.email === user?.email);
-              console.log("Current Firebase user:", user?.email);
-              console.log(
-                "Available users:",
-                users.map((u) => ({ id: u.id, name: u.name, email: u.email }))
-              );
-              console.log("Found user:", foundUser);
               return foundUser || null;
             })()}
           />

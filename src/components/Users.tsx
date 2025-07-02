@@ -6,16 +6,23 @@ import {
   deleteDoc,
   doc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import toast from "react-hot-toast";
 import { UsersIcon, EditIcon, DeleteIcon, SaveIcon, CloseIcon } from "./icons";
+import { mergeDuplicateUsers } from "../utils/userMerge";
 
 interface User {
   id: string;
   name: string;
   email?: string;
   groups?: string[];
+  addedBy?: string | null;
+  createdAt?: string;
+  mergedFrom?: string;
+  lastLogin?: string;
+  connections?: string[]; // Track all connected user IDs
 }
 
 interface Group {
@@ -57,12 +64,30 @@ const Users = ({
       return;
     }
 
+    if (!currentUserData) {
+      toast.error("You must be logged in to add users!");
+      return;
+    }
+
     try {
-      await addDoc(collection(db, "users"), {
+      const newUserRef = await addDoc(collection(db, "users"), {
         name: newUserName,
         email: newUserEmail.trim() || null,
         groups: [],
+        addedBy: currentUserData.id, // Track who added this user
+        createdAt: new Date().toISOString(),
+        connections: [currentUserData.id], // Connect to the user who added them
       });
+
+      // Update current user's connections to include the new user
+      const currentUserRef = doc(db, "users", currentUserData.id);
+      const currentUserConnections = currentUserData.connections || [];
+      if (!currentUserConnections.includes(newUserRef.id)) {
+        await updateDoc(currentUserRef, {
+          connections: [...currentUserConnections, newUserRef.id],
+        });
+      }
+
       setNewUserName("");
       setNewUserEmail("");
       onUserUpdate();
@@ -129,16 +154,153 @@ const Users = ({
     }
   };
 
+  const handleMergeDuplicates = async () => {
+    try {
+      toast.loading("Merging duplicate users...");
+      const result = await mergeDuplicateUsers();
+
+      if (result.success) {
+        toast.dismiss();
+        if (result.mergeCount && result.mergeCount > 0) {
+          toast.success(
+            `Successfully merged ${result.mergeCount} sets of duplicate users!`
+          );
+        } else {
+          toast.success("No duplicate users found!");
+        }
+        onUserUpdate(); // Refresh the user list
+      } else {
+        toast.dismiss();
+        toast.error("Failed to merge duplicate users. Please try again.");
+      }
+    } catch (error) {
+      toast.dismiss();
+      console.error("Error merging duplicates:", error);
+      toast.error("Error merging duplicate users. Please try again.");
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
     >
-      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
-        <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600" />
-        Group Members
-      </h2>
+      <div className="flex justify-between items-center mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center">
+          <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-blue-600" />
+          Connected Users
+        </h2>
+        <div className="flex gap-2">
+          <button
+            onClick={handleMergeDuplicates}
+            className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors text-sm"
+          >
+            Merge Duplicates
+          </button>
+          <button
+            onClick={async () => {
+              if (!currentUserData) return;
+              console.log("Current user data:", currentUserData);
+              console.log("All users:", users);
+              // Manually establish connections for testing
+              const currentUserRef = doc(db, "users", currentUserData.id);
+              const allUserIds = users
+                .map((u) => u.id)
+                .filter((id) => id !== currentUserData.id);
+              await updateDoc(currentUserRef, {
+                connections: allUserIds,
+              });
+              toast.success("Connections established for testing!");
+            }}
+            className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors text-sm"
+          >
+            Test Connections
+          </button>
+          <button
+            onClick={async () => {
+              if (!currentUserData) return;
+              console.log("=== DEBUGGING CONNECTIONS ===");
+              console.log("Current user:", currentUserData);
+              console.log("All users with connections:");
+              users.forEach((user) => {
+                console.log(`${user.name} (${user.id}):`, {
+                  addedBy: user.addedBy,
+                  connections: user.connections || [],
+                });
+              });
+
+              // Check if any users are missing connections
+              const usersWithoutConnections = users.filter(
+                (u) => !u.connections || u.connections.length === 0
+              );
+              console.log(
+                "Users without connections:",
+                usersWithoutConnections.map((u) => u.name)
+              );
+
+              toast.success("Connection debug info logged to console!");
+            }}
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+          >
+            Debug Connections
+          </button>
+          <button
+            onClick={async () => {
+              if (!currentUserData) return;
+
+              // Find users who don't have connections with current user
+              const usersToConnect = users.filter(
+                (user) =>
+                  user.id !== currentUserData.id &&
+                  (!currentUserData.connections ||
+                    !currentUserData.connections.includes(user.id))
+              );
+
+              if (usersToConnect.length === 0) {
+                toast.success("All users are already connected!");
+                return;
+              }
+
+              console.log(
+                "Establishing connections with:",
+                usersToConnect.map((u) => u.name)
+              );
+
+              // Establish bidirectional connections
+              const batch = writeBatch(db);
+
+              // Update current user's connections
+              const currentUserRef = doc(db, "users", currentUserData.id);
+              const currentUserConnections = currentUserData.connections || [];
+              const newCurrentUserConnections = [
+                ...currentUserConnections,
+                ...usersToConnect.map((u) => u.id),
+              ];
+              batch.update(currentUserRef, {
+                connections: newCurrentUserConnections,
+              });
+
+              // Update other users' connections
+              usersToConnect.forEach((user) => {
+                const userRef = doc(db, "users", user.id);
+                const userConnections = user.connections || [];
+                const newUserConnections = [
+                  ...userConnections,
+                  currentUserData.id,
+                ];
+                batch.update(userRef, { connections: newUserConnections });
+              });
+
+              await batch.commit();
+              toast.success(`Connected with ${usersToConnect.length} users!`);
+            }}
+            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors text-sm"
+          >
+            Connect All
+          </button>
+        </div>
+      </div>
 
       <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 gap-2">
         <input
@@ -165,21 +327,41 @@ const Users = ({
 
       <div>
         {(() => {
-          // Filter users to only show those that are part of the current user's groups
+          // Filter users to show connected users using both old and new logic
           const filteredUsers = currentUserData
             ? users.filter((user) => {
-                // Check if user is in any of the current user's groups
-                return groups.some(
-                  (group) =>
-                    group.members.includes(currentUserData.id) &&
-                    group.members.includes(user.id)
-                );
+                // Show current user
+                if (user.id === currentUserData.id) return true;
+
+                // Show users added by current user (old logic)
+                if (user.addedBy === currentUserData.id) return true;
+
+                // Show users who added the current user (old logic)
+                if (currentUserData.addedBy === user.id) return true;
+
+                // Show users who were added by the same person who added the current user (siblings - old logic)
+                if (
+                  currentUserData.addedBy &&
+                  user.addedBy === currentUserData.addedBy &&
+                  user.id !== currentUserData.id
+                )
+                  return true;
+
+                // Show users connected through the new connections field
+                if (
+                  currentUserData.connections?.includes(user.id) ||
+                  user.connections?.includes(currentUserData.id)
+                )
+                  return true;
+
+                return false;
               })
             : users;
 
           return filteredUsers.length === 0 ? (
             <p className="text-gray-500 italic text-center py-4">
-              No users in your groups yet
+              No connected users yet. Add users or get added by someone to see
+              them here.
             </p>
           ) : (
             <ul className="divide-y divide-gray-200">
@@ -245,6 +427,27 @@ const Users = ({
                                 {user.email}
                               </span>
                             )}
+                            {user.addedBy && (
+                              <span className="text-blue-500 text-xs">
+                                {user.addedBy === currentUserData?.id
+                                  ? "Added by you"
+                                  : currentUserData?.addedBy === user.addedBy
+                                  ? `Sibling (added by ${
+                                      users.find((u) => u.id === user.addedBy)
+                                        ?.name || "Unknown"
+                                    })`
+                                  : `Added by ${
+                                      users.find((u) => u.id === user.addedBy)
+                                        ?.name || "Unknown"
+                                    }`}
+                              </span>
+                            )}
+                            {!user.addedBy &&
+                              user.id !== currentUserData?.id && (
+                                <span className="text-green-500 text-xs">
+                                  Added you
+                                </span>
+                              )}
                           </div>
                           <span
                             className={`text-xs sm:text-sm px-2 py-1 rounded-full ${

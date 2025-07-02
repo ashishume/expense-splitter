@@ -18,6 +18,10 @@ interface User {
   name: string;
   email?: string;
   groups?: string[];
+  addedBy?: string | null;
+  createdAt?: string;
+  mergedFrom?: string;
+  lastLogin?: string;
 }
 
 interface Group {

@@ -12,6 +12,11 @@ interface User {
   name: string;
   email?: string;
   groups?: string[];
+  addedBy?: string | null;
+  createdAt?: string;
+  mergedFrom?: string;
+  lastLogin?: string;
+  connections?: string[]; // Track all connected user IDs
 }
 
 interface Settlement {
@@ -72,22 +77,71 @@ const Settlements = ({
 }: SettlementsProps) => {
   const [viewMode, setViewMode] = useState<"pending" | "settled">("pending");
 
-  // Filter settlements and expenses to only show those where current user is involved
-  const filteredSettlements = currentUserData
-    ? settlements.filter(
-        (settlement) =>
-          settlement.from === currentUserData.id ||
-          settlement.to === currentUserData.id
-      )
-    : [];
+  // Get connected users using both old and new logic
+  const getConnectedUsers = () => {
+    if (!currentUserData) return [];
 
-  const filteredExpenses = currentUserData
-    ? expenses.filter(
-        (expense) =>
-          expense.paidBy === currentUserData.id ||
-          expense.splitWith.includes(currentUserData.id)
-      )
-    : [];
+    const connectedUserIds = new Set<string>();
+
+    // Add current user
+    connectedUserIds.add(currentUserData.id);
+
+    // Add users that current user added (old logic)
+    users.forEach((user) => {
+      if (user.addedBy === currentUserData.id) {
+        connectedUserIds.add(user.id);
+      }
+    });
+
+    // Add user who added current user (old logic)
+    if (currentUserData.addedBy) {
+      connectedUserIds.add(currentUserData.addedBy);
+    }
+
+    // Add siblings (users added by the same person who added current user - old logic)
+    if (currentUserData.addedBy) {
+      users.forEach((user) => {
+        if (
+          user.addedBy === currentUserData.addedBy &&
+          user.id !== currentUserData.id
+        ) {
+          connectedUserIds.add(user.id);
+        }
+      });
+    }
+
+    // Add users connected through the new connections field
+    if (currentUserData.connections) {
+      currentUserData.connections.forEach((userId) => {
+        connectedUserIds.add(userId);
+      });
+    }
+
+    // Add users who have the current user in their connections
+    users.forEach((user) => {
+      if (user.connections?.includes(currentUserData.id)) {
+        connectedUserIds.add(user.id);
+      }
+    });
+
+    return Array.from(connectedUserIds);
+  };
+
+  const connectedUserIds = getConnectedUsers();
+
+  // Filter settlements to only show those involving connected users
+  const filteredSettlements = settlements.filter(
+    (settlement) =>
+      connectedUserIds.includes(settlement.from) ||
+      connectedUserIds.includes(settlement.to)
+  );
+
+  // Filter expenses to only show those involving connected users
+  const filteredExpenses = expenses.filter(
+    (expense) =>
+      connectedUserIds.includes(expense.paidBy) ||
+      expense.splitWith.some((userId) => connectedUserIds.includes(userId))
+  );
 
   // Get settled transactions (expenses with isSettlement: true)
   const settledTransactions = filteredExpenses.filter(
@@ -121,10 +175,17 @@ const Settlements = ({
       animate={{ opacity: 1, y: 0 }}
       className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
     >
-      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
-        <ArrowsIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600" />
-        Who Owes Whom
-      </h2>
+      <div className="flex items-center justify-between mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center">
+          <ArrowsIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600" />
+          Who Owes Whom
+        </h2>
+        {currentUserData && (
+          <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+            Connected users: {connectedUserIds.length}
+          </div>
+        )}
+      </div>
 
       {/* General Empty State - when no settlements exist at all */}
       {!hasAnySettlements && (
@@ -140,8 +201,14 @@ const Settlements = ({
             the moment. This usually means all expenses are balanced or you
             haven't added any expenses yet.
           </p>
-          <div className="text-sm text-gray-400">
-            💡 Tip: Add some expenses to your groups to see settlements here
+          <div className="text-sm text-gray-400 space-y-1">
+            <div>
+              💡 Tip: Add some expenses to your groups to see settlements here
+            </div>
+            <div>
+              🔗 Note: Settlements are shown for you and your connected users
+              only
+            </div>
           </div>
         </div>
       )}
@@ -311,6 +378,17 @@ const Settlements = ({
                                       </div>
                                       <div className="text-xs sm:text-sm text-gray-500">
                                         Settlement required
+                                        {currentUserData && (
+                                          <span className="ml-2 text-blue-600">
+                                            {settlement.from ===
+                                            currentUserData.id
+                                              ? " (You owe)"
+                                              : settlement.to ===
+                                                currentUserData.id
+                                              ? " (You are owed)"
+                                              : " (Between connected users)"}
+                                          </span>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
@@ -326,7 +404,7 @@ const Settlements = ({
                                 <div className="mt-2 sm:mt-3 flex items-center justify-between">
                                   <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
                                   <div className="flex items-center space-x-2">
-                                    {onDeleteSettlement && (
+                                    {/* {onDeleteSettlement && (
                                       <button
                                         onClick={() =>
                                           onDeleteSettlement(settlement)
@@ -336,7 +414,7 @@ const Settlements = ({
                                         <DeleteIcon className="w-3 h-3" />
                                         <span>Delete</span>
                                       </button>
-                                    )}
+                                    )} */}
                                     {onSettle && (
                                       <button
                                         onClick={() => onSettle(settlement)}
@@ -444,13 +522,15 @@ const Settlements = ({
                   <>
                     <div>
                       Total settlements needed:{" "}
-                      <span className="font-medium">{settlements.length}</span>
+                      <span className="font-medium">
+                        {filteredSettlements.length}
+                      </span>
                     </div>
                     <div>
                       Total amount to be settled:{" "}
                       <span className="font-medium">
                         ₹
-                        {settlements
+                        {filteredSettlements
                           .reduce((sum, s) => sum + s.amount, 0)
                           .toFixed(2)}
                       </span>

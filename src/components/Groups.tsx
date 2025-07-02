@@ -17,6 +17,11 @@ interface User {
   name: string;
   email?: string;
   groups?: string[];
+  addedBy?: string | null;
+  createdAt?: string;
+  mergedFrom?: string;
+  lastLogin?: string;
+  connections?: string[]; // Track all connected user IDs
 }
 
 interface Group {
@@ -56,7 +61,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
     try {
       const groupRef = await addDoc(collection(db, "groups"), {
         name: newGroupName,
-        members: [currentUser.id],
+        members: [currentUser.id], // Only add the current user initially
         createdAt: new Date().toISOString(),
       });
 
@@ -67,7 +72,9 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
 
       setNewGroupName("");
       onGroupUpdate();
-      toast.success("Group created successfully!");
+      toast.success(
+        "Group created successfully! You can now add your connected users to this group."
+      );
     } catch (error) {
       console.error("Error adding group: ", error);
       toast.error("Error adding group. Please try again.");
@@ -76,6 +83,12 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
 
   const addUserToGroup = async (userId: string, groupId: string) => {
     try {
+      console.log("Adding user to group:", {
+        userId,
+        groupId,
+        currentUser: currentUser?.id,
+      });
+
       const groupRef = doc(db, "groups", groupId);
       const group = groups.find((g) => g.id === groupId);
 
@@ -89,6 +102,45 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
       const user = users.find((u) => u.id === userId);
       const updatedGroups = [...(user?.groups || []), groupId];
       await updateDoc(userRef, { groups: updatedGroups });
+
+      // Establish connection between current user and the user being added to group
+      if (currentUser && currentUser.id !== userId) {
+        console.log(
+          "Establishing connection between:",
+          currentUser.id,
+          "and",
+          userId
+        );
+
+        // Add the user to current user's connections
+        const currentUserRef = doc(db, "users", currentUser.id);
+        const currentUserConnections = currentUser.connections || [];
+        console.log("Current user connections before:", currentUserConnections);
+
+        if (!currentUserConnections.includes(userId)) {
+          const newConnections = [...currentUserConnections, userId];
+          console.log("Updating current user connections to:", newConnections);
+          await updateDoc(currentUserRef, {
+            connections: newConnections,
+          });
+        }
+
+        // Add current user to the other user's connections
+        const otherUserConnections = user?.connections || [];
+        console.log("Other user connections before:", otherUserConnections);
+
+        if (!otherUserConnections.includes(currentUser.id)) {
+          const newOtherConnections = [...otherUserConnections, currentUser.id];
+          console.log(
+            "Updating other user connections to:",
+            newOtherConnections
+          );
+          await updateDoc(userRef, {
+            connections: newOtherConnections,
+          });
+        }
+      }
+
       onGroupUpdate();
       toast.success("User added to group successfully!");
     } catch (error) {
@@ -148,10 +200,17 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
       animate={{ opacity: 1, y: 0 }}
       className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
     >
-      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
-        <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
-        Groups
-      </h2>
+      <div className="mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-gray-800 flex items-center">
+          <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
+          Groups
+        </h2>
+        <p className="text-sm text-gray-600">
+          You can only add users you're connected to (users you added, users who
+          added you, or users added by the same person who added you) to your
+          groups.
+        </p>
+      </div>
 
       <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 gap-2">
         <input
@@ -194,42 +253,103 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">Members</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className={`flex items-center gap-2 p-2 rounded border ${
-                        group.members.includes(user.id)
-                          ? "bg-green-50 border-green-200"
-                          : "bg-white border-gray-200"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={group.members.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            addUserToGroup(user.id, group.id);
-                          } else {
-                            removeUserFromGroup(user.id, group.id);
-                          }
-                        }}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{user.name}</span>
-                        {user.email && (
-                          <span className="text-xs text-gray-500">
-                            {user.email}
-                          </span>
-                        )}
-                        {group.members.includes(user.id) && (
-                          <span className="text-xs text-green-600 font-medium">
-                            ✓ Member
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                  {(() => {
+                    // Filter users to show connected users using both old and new logic
+                    const filteredUsers = currentUser
+                      ? users.filter((user) => {
+                          // Show current user
+                          if (user.id === currentUser.id) return true;
+
+                          // Show users added by current user (old logic)
+                          if (user.addedBy === currentUser.id) return true;
+
+                          // Show users who added the current user (old logic)
+                          if (currentUser.addedBy === user.id) return true;
+
+                          // Show users who were added by the same person who added the current user (siblings - old logic)
+                          if (
+                            currentUser.addedBy &&
+                            user.addedBy === currentUser.addedBy &&
+                            user.id !== currentUser.id
+                          )
+                            return true;
+
+                          // Show users connected through the new connections field
+                          if (
+                            currentUser.connections?.includes(user.id) ||
+                            user.connections?.includes(currentUser.id)
+                          )
+                            return true;
+
+                          return false;
+                        })
+                      : users;
+
+                    return filteredUsers.length === 0 ? (
+                      <p className="text-gray-500 italic text-center py-4 col-span-2 sm:col-span-3">
+                        No connected users available to add to this group
+                      </p>
+                    ) : (
+                      filteredUsers.map((user) => (
+                        <div
+                          key={user.id}
+                          className={`flex items-center gap-2 p-2 rounded border ${
+                            group.members.includes(user.id)
+                              ? "bg-green-50 border-green-200"
+                              : "bg-white border-gray-200"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={group.members.includes(user.id)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                addUserToGroup(user.id, group.id);
+                              } else {
+                                removeUserFromGroup(user.id, group.id);
+                              }
+                            }}
+                            className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                          />
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {user.name}
+                            </span>
+                            {user.email && (
+                              <span className="text-xs text-gray-500">
+                                {user.email}
+                              </span>
+                            )}
+                            {user.addedBy && (
+                              <span className="text-blue-500 text-xs">
+                                {user.addedBy === currentUser?.id
+                                  ? "Added by you"
+                                  : currentUser?.addedBy === user.addedBy
+                                  ? `Sibling (added by ${
+                                      users.find((u) => u.id === user.addedBy)
+                                        ?.name || "Unknown"
+                                    })`
+                                  : `Added by ${
+                                      users.find((u) => u.id === user.addedBy)
+                                        ?.name || "Unknown"
+                                    }`}
+                              </span>
+                            )}
+                            {!user.addedBy && user.id !== currentUser?.id && (
+                              <span className="text-green-500 text-xs">
+                                Added you
+                              </span>
+                            )}
+                            {group.members.includes(user.id) && (
+                              <span className="text-xs text-green-600 font-medium">
+                                ✓ Member
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    );
+                  })()}
                 </div>
               </div>
             </div>
