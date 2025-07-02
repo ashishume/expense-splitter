@@ -67,12 +67,17 @@ const ExpenseSplittingApp = () => {
 
   // Set up real-time listeners for users, groups, and expenses
   useEffect(() => {
+    if (!user?.email) return;
+
+    let currentUsers: User[] = [];
+
     // Listen for users collection changes
     const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
       const usersData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       })) as User[];
+      currentUsers = usersData;
       setUsers(usersData);
     });
 
@@ -84,7 +89,14 @@ const ExpenseSplittingApp = () => {
           id: doc.id,
           ...doc.data(),
         })) as Group[];
-        setGroups(groupsData);
+
+        // Filter groups to only show those where current user is a member
+        const currentUser = currentUsers.find((u) => u.email === user.email);
+        const filteredGroups = currentUser
+          ? groupsData.filter((group) => group.members.includes(currentUser.id))
+          : [];
+
+        setGroups(filteredGroups);
       }
     );
 
@@ -98,7 +110,18 @@ const ExpenseSplittingApp = () => {
         id: doc.id,
         ...doc.data(),
       })) as Expense[];
-      setExpenses(expensesData);
+
+      // Filter expenses to only show those where current user is involved
+      const currentUser = currentUsers.find((u) => u.email === user.email);
+      const filteredExpenses = currentUser
+        ? expensesData.filter(
+            (expense) =>
+              expense.paidBy === currentUser.id ||
+              expense.splitWith.includes(currentUser.id)
+          )
+        : [];
+
+      setExpenses(filteredExpenses);
     });
 
     // Cleanup listeners on component unmount
@@ -107,7 +130,7 @@ const ExpenseSplittingApp = () => {
       groupsUnsubscribe();
       expensesUnsubscribe();
     };
-  }, []);
+  }, [user?.email]);
 
   // Fixed calculateSettlements function for ExpenseSplittingApp.tsx
   const calculateSettlements = (currentExpenses: Expense[]) => {
@@ -513,13 +536,19 @@ const ExpenseSplittingApp = () => {
             className="w-20 h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
           />
         </motion.h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-700">
-            {user?.displayName || user?.email}
-          </span>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <div className="hidden sm:block text-gray-700">
+            {user?.displayName} | {user?.email}
+          </div>
+          <div className="sm:hidden text-gray-700 text-xs">
+            <div className="font-medium truncate max-w-24">
+              {user?.displayName}
+            </div>
+            <div className="text-gray-500 truncate max-w-36">{user?.email}</div>
+          </div>
           <button
             onClick={logout}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            className="px-2 sm:px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
           >
             Logout
           </button>
@@ -553,6 +582,7 @@ const ExpenseSplittingApp = () => {
             expenses={expenses}
             onExpenseUpdate={() => {}}
             currentUser={user}
+            currentUserData={users.find((u) => u.email === user?.email) || null}
           />
         )}
 
@@ -568,11 +598,26 @@ const ExpenseSplittingApp = () => {
             onResetAllSettlements={handleResetAllSettlements}
             onResetAllSettledTransactions={handleResetAllSettledTransactions}
             individualBalances={individualBalances}
+            currentUserData={users.find((u) => u.email === user?.email) || null}
           />
         )}
 
         {activeTab === "groups" && (
-          <Groups users={users} groups={groups} onGroupUpdate={() => {}} />
+          <Groups
+            users={users}
+            groups={groups}
+            onGroupUpdate={() => {}}
+            currentUser={(() => {
+              const foundUser = users.find((u) => u.email === user?.email);
+              console.log("Current Firebase user:", user?.email);
+              console.log(
+                "Available users:",
+                users.map((u) => ({ id: u.id, name: u.name, email: u.email }))
+              );
+              console.log("Found user:", foundUser);
+              return foundUser || null;
+            })()}
+          />
         )}
 
         {activeTab === "users" && (
@@ -580,6 +625,8 @@ const ExpenseSplittingApp = () => {
             users={users}
             individualBalances={individualBalances}
             onUserUpdate={() => {}}
+            currentUserData={users.find((u) => u.email === user?.email) || null}
+            groups={groups}
           />
         )}
 

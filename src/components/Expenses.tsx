@@ -44,6 +44,7 @@ interface ExpensesProps {
   expenses: Expense[];
   onExpenseUpdate: () => void;
   currentUser: FirebaseUser | null;
+  currentUserData: User | null;
 }
 
 const Expenses = ({
@@ -52,6 +53,7 @@ const Expenses = ({
   expenses,
   onExpenseUpdate,
   currentUser,
+  currentUserData,
 }: ExpensesProps) => {
   const [newExpense, setNewExpense] = useState({
     paidBy: "",

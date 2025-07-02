@@ -18,13 +18,27 @@ interface User {
   groups?: string[];
 }
 
+interface Group {
+  id: string;
+  name: string;
+  members: string[];
+}
+
 interface UsersProps {
   users: User[];
   individualBalances: Record<string, number>;
   onUserUpdate: () => void;
+  currentUserData: User | null;
+  groups: Group[];
 }
 
-const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
+const Users = ({
+  users,
+  individualBalances,
+  onUserUpdate,
+  currentUserData,
+  groups,
+}: UsersProps) => {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
@@ -150,109 +164,125 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
       </div>
 
       <div>
-        {users.length === 0 ? (
-          <p className="text-gray-500 italic text-center py-4">
-            No users added yet
-          </p>
-        ) : (
-          <ul className="divide-y divide-gray-200">
-            <AnimatePresence>
-              {users.map((user) => (
-                <motion.li
-                  key={user.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  className="py-3 flex justify-between items-center group"
-                >
-                  <div className="flex items-center space-x-2 sm:space-x-4">
-                    {editingUserId === user.id ? (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
-                        <div className="flex flex-col space-y-1">
-                          <label className="text-xs text-gray-500">Name:</label>
-                          <input
-                            type="text"
-                            value={editingName}
-                            onChange={(e) => setEditingName(e.target.value)}
-                            className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            autoFocus
-                          />
+        {(() => {
+          // Filter users to only show those that are part of the current user's groups
+          const filteredUsers = currentUserData
+            ? users.filter((user) => {
+                // Check if user is in any of the current user's groups
+                return groups.some(
+                  (group) =>
+                    group.members.includes(currentUserData.id) &&
+                    group.members.includes(user.id)
+                );
+              })
+            : users;
+
+          return filteredUsers.length === 0 ? (
+            <p className="text-gray-500 italic text-center py-4">
+              No users in your groups yet
+            </p>
+          ) : (
+            <ul className="divide-y divide-gray-200">
+              <AnimatePresence>
+                {filteredUsers.map((user) => (
+                  <motion.li
+                    key={user.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="py-3 flex justify-between items-center group"
+                  >
+                    <div className="flex items-center space-x-2 sm:space-x-4">
+                      {editingUserId === user.id ? (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-2">
+                          <div className="flex flex-col space-y-1">
+                            <label className="text-xs text-gray-500">
+                              Name:
+                            </label>
+                            <input
+                              type="text"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              autoFocus
+                            />
+                          </div>
+                          <div className="flex flex-col space-y-1">
+                            <label className="text-xs text-gray-500">
+                              Email:
+                            </label>
+                            <input
+                              type="email"
+                              value={editingEmail}
+                              onChange={(e) => setEditingEmail(e.target.value)}
+                              className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                              placeholder="Optional"
+                            />
+                          </div>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => saveEdit(user.id)}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              <SaveIcon className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={cancelEditing}
+                              className="text-gray-600 hover:text-gray-800"
+                            >
+                              <CloseIcon className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex flex-col space-y-1">
-                          <label className="text-xs text-gray-500">
-                            Email:
-                          </label>
-                          <input
-                            type="email"
-                            value={editingEmail}
-                            onChange={(e) => setEditingEmail(e.target.value)}
-                            className="px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                            placeholder="Optional"
-                          />
-                        </div>
-                        <div className="flex space-x-1">
-                          <button
-                            onClick={() => saveEdit(user.id)}
-                            className="text-green-600 hover:text-green-800"
-                          >
-                            <SaveIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={cancelEditing}
-                            className="text-gray-600 hover:text-gray-800"
-                          >
-                            <CloseIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
-                        <div className="flex flex-col">
-                          <span className="text-gray-700 font-medium text-sm sm:text-base">
-                            {user.name}
-                          </span>
-                          {user.email && (
-                            <span className="text-gray-500 text-xs sm:text-sm">
-                              {user.email}
+                      ) : (
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-4">
+                          <div className="flex flex-col">
+                            <span className="text-gray-700 font-medium text-sm sm:text-base">
+                              {user.name}
                             </span>
-                          )}
+                            {user.email && (
+                              <span className="text-gray-500 text-xs sm:text-sm">
+                                {user.email}
+                              </span>
+                            )}
+                          </div>
+                          <span
+                            className={`text-xs sm:text-sm px-2 py-1 rounded-full ${
+                              individualBalances[user.id] > 0
+                                ? "bg-green-100 text-green-800"
+                                : individualBalances[user.id] < 0
+                                ? "bg-red-100 text-red-800"
+                                : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {individualBalances[user.id] > 0 ? "+" : ""}₹
+                            {Math.abs(individualBalances[user.id]).toFixed(2)}
+                          </span>
                         </div>
-                        <span
-                          className={`text-xs sm:text-sm px-2 py-1 rounded-full ${
-                            individualBalances[user.id] > 0
-                              ? "bg-green-100 text-green-800"
-                              : individualBalances[user.id] < 0
-                              ? "bg-red-100 text-red-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      {editingUserId !== user.id && (
+                        <button
+                          onClick={() => startEditing(user)}
+                          className="text-blue-500 hover:text-blue-700"
                         >
-                          {individualBalances[user.id] > 0 ? "+" : ""}₹
-                          {Math.abs(individualBalances[user.id]).toFixed(2)}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    {editingUserId !== user.id && (
+                          <EditIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
+                      )}
                       <button
-                        onClick={() => startEditing(user)}
-                        className="text-blue-500 hover:text-blue-700"
+                        onClick={() => removeUser(user.id)}
+                        className="text-red-500"
                       >
-                        <EditIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <DeleteIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                       </button>
-                    )}
-                    <button
-                      onClick={() => removeUser(user.id)}
-                      className="text-red-500"
-                    >
-                      <DeleteIcon className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
-                  </div>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
-        )}
+                    </div>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          );
+        })()}
       </div>
     </motion.div>
   );

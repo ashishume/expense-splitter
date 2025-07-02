@@ -30,9 +30,10 @@ interface GroupsProps {
   users: User[];
   groups: Group[];
   onGroupUpdate: () => void;
+  currentUser: User | null;
 }
 
-const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
+const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   const [newGroupName, setNewGroupName] = useState("");
 
   const addGroup = async () => {
@@ -47,12 +48,23 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
       return;
     }
 
+    if (!currentUser) {
+      toast.error("You must be logged in to create a group!");
+      return;
+    }
+
     try {
-      await addDoc(collection(db, "groups"), {
+      const groupRef = await addDoc(collection(db, "groups"), {
         name: newGroupName,
-        members: [],
+        members: [currentUser.id],
         createdAt: new Date().toISOString(),
       });
+
+      // Update user's groups array
+      const userRef = doc(db, "users", currentUser.id);
+      const updatedGroups = [...(currentUser.groups || []), groupRef.id];
+      await updateDoc(userRef, { groups: updatedGroups });
+
       setNewGroupName("");
       onGroupUpdate();
       toast.success("Group created successfully!");
@@ -185,7 +197,11 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
                   {users.map((user) => (
                     <div
                       key={user.id}
-                      className="flex items-center gap-2 bg-white p-2 rounded border border-gray-200"
+                      className={`flex items-center gap-2 p-2 rounded border ${
+                        group.members.includes(user.id)
+                          ? "bg-green-50 border-green-200"
+                          : "bg-white border-gray-200"
+                      }`}
                     >
                       <input
                         type="checkbox"
@@ -204,6 +220,11 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
                         {user.email && (
                           <span className="text-xs text-gray-500">
                             {user.email}
+                          </span>
+                        )}
+                        {group.members.includes(user.id) && (
+                          <span className="text-xs text-green-600 font-medium">
+                            ✓ Member
                           </span>
                         )}
                       </div>
