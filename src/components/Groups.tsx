@@ -7,17 +7,16 @@ import {
   doc,
   updateDoc,
   writeBatch,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import toast from "react-hot-toast";
-import { UsersIcon } from "./icons";
+import { UsersIcon, LoadingSpinner } from "./icons/index";
+import type { User } from "firebase/auth";
 
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  groups?: string[];
-}
+import type { User as AppUser } from "../types";
 
 interface Group {
   id: string;
@@ -27,13 +26,29 @@ interface Group {
 }
 
 interface GroupsProps {
-  users: User[];
+  users: AppUser[];
   groups: Group[];
   onGroupUpdate: () => void;
+  currentUser: User | null;
 }
 
-const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
+const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   const [newGroupName, setNewGroupName] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [showUserForm] = useState(true);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState<string | null>(null);
+  const [isRemovingUser, setIsRemovingUser] = useState<string | null>(null);
+
+  // Filter groups to only show groups the current user is a member of
+  const userGroups = groups.filter((group) =>
+    group.members.includes(currentUser?.uid || "")
+  );
+
+  // Get current user's app data
+  const currentAppUser = users.find((user) => user.id === currentUser?.uid);
 
   const addGroup = async () => {
     if (newGroupName.trim() === "") return;
@@ -47,18 +62,104 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
       return;
     }
 
+    if (isCreatingGroup) return; // Prevent duplicate submissions
+
+    setIsCreatingGroup(true);
     try {
-      await addDoc(collection(db, "groups"), {
+      // Create group and automatically add the current user as a member
+      const groupRef = await addDoc(collection(db, "groups"), {
         name: newGroupName,
-        members: [],
+        members: [currentUser?.uid || ""],
         createdAt: new Date().toISOString(),
       });
+
+      // Update current user's groups array
+      if (currentUser?.uid) {
+        const userRef = doc(db, "users", currentUser.uid);
+        const updatedGroups = [...(currentAppUser?.groups || []), groupRef.id];
+        await updateDoc(userRef, { groups: updatedGroups });
+      }
+
       setNewGroupName("");
       onGroupUpdate();
       toast.success("Group created successfully!");
     } catch (error) {
       console.error("Error adding group: ", error);
       toast.error("Error adding group. Please try again.");
+    } finally {
+      setIsCreatingGroup(false);
+    }
+  };
+
+  const addUser = async (groupId?: string) => {
+    if (newUserName.trim() === "" || newUserEmail.trim() === "") return;
+
+    if (isAddingUser) return; // Prevent duplicate submissions
+
+    setIsAddingUser(true);
+    try {
+      // Check if user already exists by email
+      let existingUser: AppUser | null = null;
+      if (newUserEmail.trim()) {
+        const usersQuery = query(
+          collection(db, "users"),
+          where("email", "==", newUserEmail.trim())
+        );
+        const querySnapshot = await getDocs(usersQuery);
+        if (!querySnapshot.empty) {
+          const userData = querySnapshot.docs[0].data();
+          existingUser = {
+            id: querySnapshot.docs[0].id,
+            name: userData.name,
+            email: userData.email,
+            groups: userData.groups || [],
+            createdAt: userData.createdAt,
+            lastLogin: userData.lastLogin,
+          } as AppUser;
+        }
+      }
+
+      let userId: string;
+
+      if (existingUser) {
+        // Use existing user
+        userId = existingUser.id;
+        toast.success(`Using existing user: ${existingUser.name}`);
+      } else {
+        // Create new user
+        const userExists = users.some(
+          (user) => user.name.toLowerCase() === newUserName.toLowerCase()
+        );
+
+        if (userExists) {
+          toast.error("This user already exists!");
+          return;
+        }
+
+        const userRef = await addDoc(collection(db, "users"), {
+          name: newUserName,
+          email: newUserEmail.trim() || null,
+          groups: [],
+          createdAt: new Date().toISOString(),
+        });
+        userId = userRef.id;
+        toast.success("User added successfully!");
+      }
+
+      // Add user to the specified group
+      if (groupId) {
+        await addUserToGroup(userId, groupId);
+      }
+
+      setNewUserName("");
+      setNewUserEmail("");
+      // setShowUserForm(false);
+      onGroupUpdate();
+    } catch (error) {
+      console.error("Error adding user: ", error);
+      toast.error("Error adding user. Please try again.");
+    } finally {
+      setIsAddingUser(false);
     }
   };
 
@@ -86,6 +187,10 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
   };
 
   const removeUserFromGroup = async (userId: string, groupId: string) => {
+    const operationKey = `${userId}-${groupId}`;
+    if (isRemovingUser === operationKey) return; // Prevent duplicate submissions
+
+    setIsRemovingUser(operationKey);
     try {
       const groupRef = doc(db, "groups", groupId);
       const group = groups.find((g) => g.id === groupId);
@@ -105,10 +210,15 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
     } catch (error) {
       console.error("Error removing user from group: ", error);
       toast.error("Error removing user from group. Please try again.");
+    } finally {
+      setIsRemovingUser(null);
     }
   };
 
   const deleteGroup = async (groupId: string) => {
+    if (isDeletingGroup === groupId) return; // Prevent duplicate submissions
+
+    setIsDeletingGroup(groupId);
     try {
       await deleteDoc(doc(db, "groups", groupId));
 
@@ -127,6 +237,8 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
     } catch (error) {
       console.error("Error deleting group: ", error);
       toast.error("Error deleting group. Please try again.");
+    } finally {
+      setIsDeletingGroup(null);
     }
   };
 
@@ -138,7 +250,7 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
     >
       <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
         <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
-        Groups
+        My Groups
       </h2>
 
       <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 gap-2">
@@ -151,68 +263,150 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
         />
         <button
           onClick={addGroup}
-          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md"
+          disabled={isCreatingGroup}
+          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          Create Group
+          {isCreatingGroup ? (
+            <>
+              <LoadingSpinner className="w-4 h-4 mr-2" />
+              Creating...
+            </>
+          ) : (
+            "Create Group"
+          )}
         </button>
       </div>
 
       <div className="space-y-4">
-        {groups.length === 0 ? (
+        {userGroups.length === 0 ? (
           <p className="text-gray-500 italic text-center py-4">
-            No groups created yet
+            You are not a member of any groups yet. Create a group to get
+            started!
           </p>
         ) : (
-          groups.map((group) => (
-            <div
-              key={group.id}
-              className="bg-gray-50 p-4 rounded-lg border border-gray-200"
-            >
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-lg font-medium text-gray-800">
-                  {group.name}
-                </h3>
-                <button
-                  onClick={() => deleteGroup(group.id)}
-                  className="text-red-600 hover:text-red-800"
-                >
-                  Delete Group
-                </button>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-gray-700">Members</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {users.map((user) => (
-                    <div
-                      key={user.id}
-                      className="flex items-center gap-2 bg-white p-2 rounded border border-gray-200"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={group.members.includes(user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            addUserToGroup(user.id, group.id);
-                          } else {
-                            removeUserFromGroup(user.id, group.id);
-                          }
-                        }}
-                        className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                      />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-medium">{user.name}</span>
-                        {user.email && (
-                          <span className="text-xs text-gray-500">
-                            {user.email}
-                          </span>
-                        )}
+          userGroups.map((group) => {
+            // Get only the members that are actually in this group
+            const groupMembers = users.filter((user) =>
+              group.members.includes(user.id)
+            );
+
+            return (
+              <div
+                key={group.id}
+                className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <h3 className="text-lg font-medium text-gray-800">
+                    {group.name}
+                  </h3>
+                  <button
+                    onClick={() => deleteGroup(group.id)}
+                    disabled={isDeletingGroup === group.id}
+                    className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                  >
+                    {isDeletingGroup === group.id ? (
+                      <>
+                        <LoadingSpinner className="w-3 h-3 mr-1" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete Group"
+                    )}
+                  </button>
+                </div>
+
+                {showUserForm && (
+                  <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                    <div className="p-3 bg-gray-50 rounded-lg">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                        <input
+                          type="text"
+                          value={newUserName}
+                          onChange={(e) => setNewUserName(e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                          placeholder="Enter name"
+                        />
+                        <input
+                          type="email"
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                          placeholder="Enter email"
+                        />
+                        <button
+                          onClick={() => addUser(group.id)}
+                          disabled={isAddingUser}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                        >
+                          {isAddingUser ? (
+                            <>
+                              <LoadingSpinner className="w-3 h-3 mr-1" />
+                              Adding...
+                            </>
+                          ) : (
+                            "Add User"
+                          )}
+                        </button>
                       </div>
+                      <p className="text-xs text-gray-500">
+                        If email exists, will use existing user. Otherwise
+                        creates new user.
+                      </p>
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <h4 className="text-sm font-medium text-gray-700">
+                    Members ({groupMembers.length})
+                  </h4>
+                  {groupMembers.length === 0 ? (
+                    <p className="text-gray-500 italic text-sm">
+                      No members in this group yet. Add users to get started!
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {groupMembers.map((user) => (
+                        <div
+                          key={user.id}
+                          className="flex items-center gap-2 p-2 rounded border bg-indigo-50 border-indigo-200"
+                        >
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium">
+                              {user.name}
+                            </span>
+                            {user.email && (
+                              <span className="text-xs text-gray-500">
+                                {user.email}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            onClick={() =>
+                              removeUserFromGroup(user.id, group.id)
+                            }
+                            disabled={
+                              isRemovingUser === `${user.id}-${group.id}`
+                            }
+                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                          >
+                            {isRemovingUser === `${user.id}-${group.id}` ? (
+                              <>
+                                <LoadingSpinner className="w-2 h-2 mr-1" />
+                                Removing...
+                              </>
+                            ) : (
+                              "Remove"
+                            )}
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </motion.div>

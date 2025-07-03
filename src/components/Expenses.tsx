@@ -11,14 +11,14 @@ import { db } from "../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
 import { logExpenseAction } from "../utils/logger";
 import toast from "react-hot-toast";
-import { EditIcon, DeleteIcon, CurrencyIcon } from "./icons";
+import {
+  EditIcon,
+  DeleteIcon,
+  CurrencyIcon,
+  LoadingSpinner,
+} from "./icons/index";
 
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  groups?: string[];
-}
+import type { User } from "../types";
 
 interface Group {
   id: string;
@@ -63,6 +63,16 @@ const Expenses = ({
 
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [activeTab, setActiveTab] = useState<string>("all");
+  const [isAddingExpense, setIsAddingExpense] = useState(false);
+  const [isUpdatingExpense, setIsUpdatingExpense] = useState(false);
+  const [isDeletingExpense, setIsDeletingExpense] = useState<string | null>(
+    null
+  );
+
+  // Filter groups to only show groups the current user is a member of
+  const userGroups = groups.filter((group) =>
+    group.members.includes(currentUser?.uid || "")
+  );
 
   const toggleUserForExpense = (userId: string) => {
     const currentSelection = [...newExpense.splitWith];
@@ -100,6 +110,9 @@ const Expenses = ({
       return;
     }
 
+    if (isAddingExpense) return; // Prevent duplicate submissions
+
+    setIsAddingExpense(true);
     try {
       const paidByUser = users.find((user) => user.id === newExpense.paidBy);
       if (!paidByUser) {
@@ -121,7 +134,8 @@ const Expenses = ({
         expenseRef.id,
         `Created expense: ${newExpense.description} - ₹${amount}`,
         currentUser?.uid,
-        currentUser?.displayName || undefined
+        currentUser?.displayName || undefined,
+        newExpense.groupId || undefined
       );
 
       setNewExpense({
@@ -136,10 +150,15 @@ const Expenses = ({
     } catch (error) {
       console.error("Error adding expense: ", error);
       toast.error("Error adding expense. Please try again.");
+    } finally {
+      setIsAddingExpense(false);
     }
   };
 
   const removeExpense = async (expenseId: string) => {
+    if (isDeletingExpense === expenseId) return; // Prevent duplicate submissions
+
+    setIsDeletingExpense(expenseId);
     try {
       const expense = expenses.find((e) => e.id === expenseId);
       if (!expense) return;
@@ -150,13 +169,16 @@ const Expenses = ({
         expenseId,
         `Deleted expense: ${expense.description} - ₹${expense.amount}`,
         currentUser?.uid,
-        currentUser?.displayName || undefined
+        currentUser?.displayName || undefined,
+        expense.groupId || undefined
       );
       onExpenseUpdate();
       toast.success("Expense removed successfully!");
     } catch (error) {
       console.error("Error removing expense: ", error);
       toast.error("Error removing expense. Please try again.");
+    } finally {
+      setIsDeletingExpense(null);
     }
   };
 
@@ -203,6 +225,9 @@ const Expenses = ({
       return;
     }
 
+    if (isUpdatingExpense) return; // Prevent duplicate submissions
+
+    setIsUpdatingExpense(true);
     try {
       const paidByUser = users.find((user) => user.id === newExpense.paidBy);
       if (!paidByUser) {
@@ -224,7 +249,8 @@ const Expenses = ({
         editingExpense.id,
         `Updated expense: ${newExpense.description} - ₹${amount}`,
         currentUser?.uid,
-        currentUser?.displayName || undefined
+        currentUser?.displayName || undefined,
+        newExpense.groupId || undefined
       );
 
       setEditingExpense(null);
@@ -240,6 +266,8 @@ const Expenses = ({
     } catch (error) {
       console.error("Error updating expense: ", error);
       toast.error("Error updating expense. Please try again.");
+    } finally {
+      setIsUpdatingExpense(false);
     }
   };
 
@@ -273,7 +301,7 @@ const Expenses = ({
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
           >
             <option value="">Select a group</option>
-            {groups.map((group) => (
+            {userGroups.map((group) => (
               <option key={group.id} value={group.id}>
                 {group.name}
               </option>
@@ -298,7 +326,7 @@ const Expenses = ({
             </option>
             {newExpense.groupId
               ? (() => {
-                  const selectedGroup = groups.find(
+                  const selectedGroup = userGroups.find(
                     (g) => g.id === newExpense.groupId
                   );
                   if (selectedGroup) {
@@ -362,7 +390,7 @@ const Expenses = ({
           {newExpense.groupId ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
               {(() => {
-                const selectedGroup = groups.find(
+                const selectedGroup = userGroups.find(
                   (g) => g.id === newExpense.groupId
                 );
                 if (selectedGroup) {
@@ -417,9 +445,17 @@ const Expenses = ({
             <>
               <button
                 onClick={updateExpense}
-                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
+                disabled={isUpdatingExpense}
+                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
-                Update Expense
+                {isUpdatingExpense ? (
+                  <>
+                    <LoadingSpinner className="w-4 h-4 mr-2" />
+                    Updating...
+                  </>
+                ) : (
+                  "Update Expense"
+                )}
               </button>
               <button
                 onClick={cancelEditing}
@@ -431,9 +467,17 @@ const Expenses = ({
           ) : (
             <button
               onClick={addExpense}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md"
+              disabled={isAddingExpense}
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
             >
-              Add Expense
+              {isAddingExpense ? (
+                <>
+                  <LoadingSpinner className="w-4 h-4 mr-2" />
+                  Adding...
+                </>
+              ) : (
+                "Add Expense"
+              )}
             </button>
           )}
         </div>
@@ -446,7 +490,13 @@ const Expenses = ({
 
           {/* Tabs */}
           {(() => {
-            const groupedExpenses = expenses.reduce((acc, expense) => {
+            // Filter expenses to only show those for groups the user is a member of
+            const userExpenses = expenses.filter((expense) => {
+              if (!expense.groupId) return false; // Skip ungrouped expenses
+              return userGroups.some((group) => group.id === expense.groupId);
+            });
+
+            const groupedExpenses = userExpenses.reduce((acc, expense) => {
               const groupId = expense.groupId || "no-group";
               if (!acc[groupId]) {
                 acc[groupId] = [];
@@ -456,10 +506,10 @@ const Expenses = ({
             }, {} as Record<string, Expense[]>);
 
             const tabs = [
-              { id: "all", name: "All Expenses", count: expenses.length },
+              { id: "all", name: "All Expenses", count: userExpenses.length },
               ...Object.entries(groupedExpenses).map(
                 ([groupId, groupExpenses]) => {
-                  const group = groups.find((g) => g.id === groupId);
+                  const group = userGroups.find((g) => g.id === groupId);
                   return {
                     id: groupId,
                     name: group ? group.name : "No Group",
@@ -507,7 +557,7 @@ const Expenses = ({
                 >
                   {activeTab === "all"
                     ? // Show all expenses
-                      expenses.map((expense) => (
+                      userExpenses.map((expense) => (
                         <div
                           key={expense.id}
                           className={`p-4 rounded-md flex justify-between items-start ${
@@ -529,8 +579,9 @@ const Expenses = ({
                               {expense.groupId && !expense.isSettlement && (
                                 <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
                                   {
-                                    groups.find((g) => g.id === expense.groupId)
-                                      ?.name
+                                    userGroups.find(
+                                      (g) => g.id === expense.groupId
+                                    )?.name
                                   }
                                 </span>
                               )}
@@ -563,10 +614,15 @@ const Expenses = ({
                               </button>
                               <button
                                 onClick={() => removeExpense(expense.id)}
-                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200"
+                                disabled={isDeletingExpense === expense.id}
+                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Remove expense"
                               >
-                                <DeleteIcon />
+                                {isDeletingExpense === expense.id ? (
+                                  <LoadingSpinner className="w-4 h-4" />
+                                ) : (
+                                  <DeleteIcon />
+                                )}
                               </button>
                             </div>
                           )}

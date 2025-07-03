@@ -4,6 +4,8 @@ A modern expense splitting application built with React, TypeScript, and Firebas
 
 ## Features
 
+- **Google Authentication**: Seamless sign-in with Google accounts
+- **Automatic User Registration**: Users are automatically added to the database when they sign in with Google
 - **User Management**: Add and manage users for expense tracking
 - **Group Management**: Create groups to organize expenses by activity or trip
 - **Expense Tracking**: Add expenses with detailed descriptions and split them among group members
@@ -59,12 +61,14 @@ The settlement system is designed to be accurate and group-specific:
 ```
 src/
 ├── components/          # React components
-│   ├── AuthContext.tsx  # Authentication context
+│   ├── AuthContext.tsx  # Authentication context with auto-user registration
 │   ├── Expenses.tsx     # Expense management
 │   ├── Groups.tsx       # Group management
 │   ├── Settlements.tsx  # Settlement display and actions
 │   ├── Users.tsx        # User management
 │   └── Logs.tsx         # Activity logs
+├── types/               # TypeScript type definitions
+│   └── index.ts         # Shared interfaces for User, Group, Expense, etc.
 ├── utils/
 │   └── logger.ts        # Logging utilities
 ├── firebase.ts          # Firebase configuration

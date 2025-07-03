@@ -1,9 +1,21 @@
+import { useState } from "react";
 import { useAuth } from "./AuthContext";
 import logo from "../assets/logo.jpg";
-import { CheckIcon } from "./icons";
+import { CheckIcon, LoadingSpinner } from "./icons/index";
 
 export const SignIn = () => {
   const { signInWithGoogle } = useAuth();
+  const [isSigningIn, setIsSigningIn] = useState(false);
+
+  const handleSignIn = async () => {
+    if (isSigningIn) return;
+    setIsSigningIn(true);
+    try {
+      await signInWithGoogle();
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-50">
@@ -41,15 +53,20 @@ export const SignIn = () => {
 
         {/* Sign In Button */}
         <button
-          onClick={signInWithGoogle}
-          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 rounded-xl px-6 py-4 text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium text-lg shadow-sm"
+          onClick={handleSignIn}
+          disabled={isSigningIn}
+          className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 rounded-xl px-6 py-4 text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium text-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <img
-            src="https://www.google.com/favicon.ico"
-            alt="Google"
-            className="w-6 h-6"
-          />
-          Continue with Google
+          {isSigningIn ? (
+            <LoadingSpinner className="w-6 h-6" />
+          ) : (
+            <img
+              src="https://www.google.com/favicon.ico"
+              alt="Google"
+              className="w-6 h-6"
+            />
+          )}
+          {isSigningIn ? "Signing in..." : "Continue with Google"}
         </button>
 
         {/* Footer */}

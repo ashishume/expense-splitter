@@ -3,21 +3,39 @@ import { motion } from "framer-motion";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import type { LogEntry } from "../utils/logger";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  FileText,
+  ClipboardList,
+  Inbox,
+} from "lucide-react";
+import type { User } from "firebase/auth";
 
 interface ExtendedLogEntry extends LogEntry {
   id: string;
 }
 
-interface LogsProps {
-  currentUser: {
-    uid: string;
-    displayName: string | null;
-  } | null;
+interface Group {
+  id: string;
+  name: string;
+  members: string[];
 }
 
-const Logs = ({ currentUser }: LogsProps) => {
+interface LogsProps {
+  currentUser: User | null;
+  groups: Group[];
+}
+
+const Logs = ({ currentUser, groups }: LogsProps) => {
   const [logs, setLogs] = useState<ExtendedLogEntry[]>([]);
   const [filter, setFilter] = useState<string>("all");
+
+  // Get groups that the current user is a member of
+  const userGroups = groups.filter((group) =>
+    group.members.includes(currentUser?.uid || "")
+  );
 
   useEffect(() => {
     const logsQuery = query(
@@ -52,17 +70,17 @@ const Logs = ({ currentUser }: LogsProps) => {
   const getActionIcon = (action: string) => {
     switch (action) {
       case "EXPENSE_CREATE":
-        return "➕";
+        return Plus;
       case "EXPENSE_UPDATE":
-        return "✏️";
+        return Edit;
       case "EXPENSE_DELETE":
-        return "🗑️";
+        return Trash2;
       default:
-        return "📝";
+        return FileText;
     }
   };
 
-  const formatTimestamp = (timestamp: any) => {
+  const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
     const now = new Date();
     const diffInHours = (now.getTime() - date.getTime()) / (1000 * 60 * 60);
@@ -83,7 +101,17 @@ const Logs = ({ currentUser }: LogsProps) => {
     }
   };
 
-  const filteredLogs = logs.filter((log) => {
+  // Filter logs to only show those from groups the user is a member of
+  const userLogs = logs.filter((log) => {
+    // If the log has a groupId, check if the user is a member of that group
+    if (log.groupId) {
+      return userGroups.some((group) => group.id === log.groupId);
+    }
+    // If no groupId, show the log (for backward compatibility with existing logs)
+    return true;
+  });
+
+  const filteredLogs = userLogs.filter((log) => {
     if (filter === "all") return true;
     if (filter === "my-actions" && log.userId === currentUser?.uid) return true;
     return log.action === filter;
@@ -97,7 +125,7 @@ const Logs = ({ currentUser }: LogsProps) => {
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center">
-          <span className="mr-3 text-2xl">📋</span>
+          <ClipboardList className="w-6 h-6 mr-3 text-blue-600" />
           Activity Logs
         </h2>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -127,7 +155,10 @@ const Logs = ({ currentUser }: LogsProps) => {
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200">
-                  <span className="text-xl">{getActionIcon(log.action)}</span>
+                  {(() => {
+                    const IconComponent = getActionIcon(log.action);
+                    return <IconComponent className="w-6 h-6 text-gray-600" />;
+                  })()}
                 </div>
               </div>
 
@@ -144,6 +175,12 @@ const Logs = ({ currentUser }: LogsProps) => {
                     {log.userName && (
                       <span className="text-sm font-medium text-gray-700">
                         by {log.userName}
+                      </span>
+                    )}
+                    {log.groupId && (
+                      <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                        {userGroups.find((g) => g.id === log.groupId)?.name ||
+                          "Unknown Group"}
                       </span>
                     )}
                   </div>
@@ -168,9 +205,13 @@ const Logs = ({ currentUser }: LogsProps) => {
             animate={{ opacity: 1 }}
             className="text-center py-12 text-gray-500"
           >
-            <div className="text-4xl mb-3">📭</div>
+            <Inbox className="w-16 h-16 mx-auto mb-3 text-gray-300" />
             <p className="text-lg font-medium">No logs found</p>
-            <p className="text-sm">Try adjusting your filter settings</p>
+            <p className="text-sm">
+              {userGroups.length === 0
+                ? "Join a group to see activity logs."
+                : "Try adjusting your filter settings"}
+            </p>
           </motion.div>
         )}
       </div>
