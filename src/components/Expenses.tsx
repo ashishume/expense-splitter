@@ -446,7 +446,7 @@ const Expenses = ({
               <button
                 onClick={updateExpense}
                 disabled={isUpdatingExpense}
-                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-4 sm:px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
+                className="btn btn-success flex-1 text-sm sm:text-base"
               >
                 {isUpdatingExpense ? (
                   <>
@@ -463,7 +463,7 @@ const Expenses = ({
               </button>
               <button
                 onClick={cancelEditing}
-                className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-medium text-sm sm:text-base"
+                className="btn btn-secondary px-4 py-3 text-sm sm:text-base"
               >
                 Cancel
               </button>
@@ -472,7 +472,7 @@ const Expenses = ({
             <button
               onClick={addExpense}
               disabled={isAddingExpense}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-4 sm:px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
+              className="btn btn-success w-full text-sm sm:text-base"
             >
               {isAddingExpense ? (
                 <>
@@ -535,10 +535,10 @@ const Expenses = ({
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`px-3 py-2 sm:px-4 sm:py-2 rounded-t-lg font-medium transition-all duration-200 flex items-center gap-1 sm:gap-2 whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
+                      className={`btn px-3 py-2 sm:px-4 sm:py-2 rounded-t-lg font-medium flex items-center gap-1 sm:gap-2 whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
                         activeTab === tab.id
-                          ? "bg-green-600 text-white shadow-md"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                          ? "btn-success shadow-md"
+                          : "btn-secondary"
                       }`}
                     >
                       <span className="truncate max-w-[100px] sm:max-w-none">
@@ -547,8 +547,8 @@ const Expenses = ({
                       <span
                         className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs rounded-full flex-shrink-0 ${
                           activeTab === tab.id
-                            ? "bg-white text-green-600"
-                            : "bg-gray-200 text-gray-600"
+                            ? "bg-white text-success"
+                            : "bg-secondary text-secondary"
                         }`}
                       >
                         {tab.count}
@@ -617,7 +617,7 @@ const Expenses = ({
                             <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                               <button
                                 onClick={() => startEditing(expense)}
-                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
+                                className="btn btn-ghost p-2 text-link hover:bg-primary/10 rounded-full"
                                 title="Edit expense"
                               >
                                 <EditIcon />
@@ -625,7 +625,7 @@ const Expenses = ({
                               <button
                                 onClick={() => removeExpense(expense.id)}
                                 disabled={isDeletingExpense === expense.id}
-                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="btn btn-ghost p-2 text-error hover:bg-error/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Remove expense"
                               >
                                 {isDeletingExpense === expense.id ? (
@@ -680,17 +680,21 @@ const Expenses = ({
                             <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                               <button
                                 onClick={() => startEditing(expense)}
-                                className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
+                                className="btn btn-ghost p-2 text-link hover:bg-primary/10 rounded-full"
                                 title="Edit expense"
                               >
                                 <EditIcon />
                               </button>
                               <button
                                 onClick={() => removeExpense(expense.id)}
-                                className="p-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-full transition-colors duration-200"
+                                className="btn btn-ghost p-2 text-error hover:bg-error/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
                                 title="Remove expense"
                               >
-                                <DeleteIcon />
+                                {isDeletingExpense === expense.id ? (
+                                  <LoadingSpinner className="w-4 h-4" />
+                                ) : (
+                                  <DeleteIcon />
+                                )}
                               </button>
                             </div>
                           )}

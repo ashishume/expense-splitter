@@ -265,7 +265,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
         <button
           onClick={addGroup}
           disabled={isCreatingGroup}
-          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 sm:px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
+          className="btn btn-primary px-4 sm:px-6 py-3 sm:rounded-l-none sm:rounded-r-lg text-sm sm:text-base"
         >
           {isCreatingGroup ? (
             <>
@@ -307,7 +307,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                   <button
                     onClick={() => deleteGroup(group.id)}
                     disabled={isDeletingGroup === group.id}
-                    className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
+                    className="btn btn-error text-sm flex items-center"
                   >
                     {isDeletingGroup === group.id ? (
                       <>
@@ -347,7 +347,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                         <button
                           onClick={() => addUser(group.id)}
                           disabled={isAddingUser}
-                          className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                          className="btn btn-primary text-sm flex items-center justify-center"
                         >
                           {isAddingUser ? (
                             <>
@@ -405,7 +405,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                             disabled={
                               isRemovingUser === `${user.id}-${group.id}`
                             }
-                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center flex-shrink-0 ml-2 min-w-fit"
+                            className="btn btn-error text-xs flex items-center flex-shrink-0 ml-2 min-w-fit"
                           >
                             {isRemovingUser === `${user.id}-${group.id}` ? (
                               <>

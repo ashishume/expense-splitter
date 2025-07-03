@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@import "./styles/variables.css";
+@import "./styles/components.css";
 
 :root {
   /* font-family: system-ui, Avenir, Helvetica, Arial, sans-serif; */
@@ -41,22 +43,22 @@
   textarea {
     -webkit-appearance: none;
     -webkit-border-radius: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     -webkit-box-shadow: none;
     box-shadow: none;
-    background-color: white;
-    border: 1px solid #d1d5db;
-    padding: 12px 16px;
-    font-size: 16px; /* Prevents zoom on iOS Safari */
-    line-height: 1.5;
-    color: #374151;
-    transition: all 0.2s ease;
+    background-color: var(--input-bg);
+    border: 1px solid var(--input-border);
+    padding: var(--spacing-md) var(--spacing-lg);
+    font-size: var(--font-size-base); /* Prevents zoom on iOS Safari */
+    line-height: var(--line-height-normal);
+    color: var(--input-text);
+    transition: all var(--transition-normal);
   }
 
   /* Safari select dropdown styling */
   select {
     background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 12px center;
+    background-position: right var(--spacing-md) center;
     background-repeat: no-repeat;
     background-size: 16px;
     padding-right: 40px;
@@ -67,7 +69,7 @@
   button {
     -webkit-appearance: none;
     -webkit-border-radius: 0;
-    border-radius: 8px;
+    border-radius: var(--radius-lg);
     -webkit-user-select: none;
     user-select: none;
     -webkit-tap-highlight-color: transparent;
@@ -81,7 +83,7 @@
     outline: none;
     -webkit-box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-    border-color: #3b82f6;
+    border-color: var(--border-focus);
   }
 
   /* Safari checkbox styling */
@@ -90,17 +92,17 @@
     appearance: none;
     width: 16px;
     height: 16px;
-    border: 2px solid #d1d5db;
-    border-radius: 4px;
-    background-color: white;
+    border: 2px solid var(--border-primary);
+    border-radius: var(--radius-sm);
+    background-color: var(--input-bg);
     cursor: pointer;
     position: relative;
-    transition: all 0.2s ease;
+    transition: all var(--transition-normal);
   }
 
   input[type="checkbox"]:checked {
-    background-color: #10b981;
-    border-color: #10b981;
+    background-color: var(--color-success-500);
+    border-color: var(--color-success-500);
   }
 
   input[type="checkbox"]:checked::after {
@@ -122,16 +124,16 @@
     appearance: none;
     width: 16px;
     height: 16px;
-    border: 2px solid #d1d5db;
+    border: 2px solid var(--border-primary);
     border-radius: 50%;
-    background-color: white;
+    background-color: var(--input-bg);
     cursor: pointer;
     position: relative;
-    transition: all 0.2s ease;
+    transition: all var(--transition-normal);
   }
 
   input[type="radio"]:checked {
-    border-color: #3b82f6;
+    border-color: var(--color-primary-500);
   }
 
   input[type="radio"]:checked::after {
@@ -142,7 +144,7 @@
     width: 6px;
     height: 6px;
     border-radius: 50%;
-    background-color: #3b82f6;
+    background-color: var(--color-primary-500);
   }
 
   /* Safari scrollbar styling */
@@ -152,27 +154,27 @@
   }
 
   ::-webkit-scrollbar-track {
-    background: #f1f5f9;
-    border-radius: 4px;
+    background: var(--color-neutral-100);
+    border-radius: var(--radius-sm);
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 4px;
+    background: var(--color-neutral-300);
+    border-radius: var(--radius-sm);
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: var(--color-neutral-400);
   }
 
   /* Safari text selection */
   ::selection {
-    background-color: #3b82f6;
+    background-color: var(--color-primary-500);
     color: white;
   }
 
   ::-moz-selection {
-    background-color: #3b82f6;
+    background-color: var(--color-primary-500);
     color: white;
   }
 }
@@ -212,15 +214,15 @@ input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
 input:-webkit-autofill:active {
-  -webkit-box-shadow: 0 0 0 30px white inset !important;
-  -webkit-text-fill-color: #374151 !important;
+  -webkit-box-shadow: 0 0 0 30px var(--input-bg) inset !important;
+  -webkit-text-fill-color: var(--input-text) !important;
   transition: background-color 5000s ease-in-out 0s;
 }
 
 /* Safari placeholder styling */
 input::placeholder,
 textarea::placeholder {
-  color: #9ca3af;
+  color: var(--input-placeholder);
   opacity: 1;
 }
 

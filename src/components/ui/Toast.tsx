@@ -7,21 +7,21 @@ const Toast = () => {
       toastOptions={{
         duration: 4000,
         style: {
-          background: "#363636",
-          color: "#fff",
+          background: "var(--color-neutral-800)",
+          color: "var(--text-inverse)",
         },
         success: {
           duration: 3000,
           iconTheme: {
-            primary: "#4ade80",
-            secondary: "#fff",
+            primary: "var(--color-success-400)",
+            secondary: "var(--text-inverse)",
           },
         },
         error: {
           duration: 5000,
           iconTheme: {
-            primary: "#ef4444",
-            secondary: "#fff",
+            primary: "var(--color-error-400)",
+            secondary: "var(--text-inverse)",
           },
         },
       }}

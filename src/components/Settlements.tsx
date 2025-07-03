@@ -186,10 +186,8 @@ const Settlements = ({
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setViewMode("pending")}
-            className={`flex-1 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
-              viewMode === "pending"
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-800"
+            className={`btn flex-1 text-xs sm:text-sm font-medium ${
+              viewMode === "pending" ? "btn-primary shadow-sm" : "btn-secondary"
             }`}
           >
             <span className="hidden sm:inline">Pending Settlements</span>
@@ -198,10 +196,8 @@ const Settlements = ({
           </button>
           <button
             onClick={() => setViewMode("settled")}
-            className={`flex-1 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
-              viewMode === "settled"
-                ? "bg-white text-green-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-800"
+            className={`btn flex-1 text-xs sm:text-sm font-medium ${
+              viewMode === "settled" ? "btn-success shadow-sm" : "btn-secondary"
             }`}
           >
             <span className="hidden sm:inline">Settled Transactions</span>
@@ -246,7 +242,7 @@ const Settlements = ({
                     <button
                       onClick={handleResetAllSettlements}
                       disabled={isResettingAllSettlements}
-                      className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="btn btn-error px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center space-x-2"
                     >
                       {isResettingAllSettlements ? (
                         <LoadingSpinner className="w-4 h-4" />
@@ -352,7 +348,7 @@ const Settlements = ({
                                       disabled={
                                         isDeletingSettlement === settlement.id
                                       }
-                                      className="flex-1 sm:flex-none px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="btn btn-error flex-1 sm:flex-none px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1"
                                     >
                                       {isDeletingSettlement ===
                                       settlement.id ? (
@@ -388,7 +384,7 @@ const Settlements = ({
                                     <button
                                       onClick={() => handleSettle(settlement)}
                                       disabled={isSettling === settlement.id}
-                                      className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="btn btn-success flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1 sm:space-x-2"
                                     >
                                       {isSettling === settlement.id ? (
                                         <LoadingSpinner className="w-4 h-4" />
@@ -437,7 +433,7 @@ const Settlements = ({
                       <button
                         onClick={handleResetAllSettledTransactions}
                         disabled={isResettingAllSettledTransactions}
-                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="btn btn-error px-4 py-2 text-sm font-medium flex items-center space-x-2"
                       >
                         {isResettingAllSettledTransactions ? (
                           <LoadingSpinner className="w-4 h-4" />
