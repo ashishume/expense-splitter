@@ -21,11 +21,17 @@
 
     <!-- PWA Meta Tags -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
     <meta name="apple-mobile-web-app-title" content="Axpo" />
     <meta name="application-name" content="Axpo" />
     <meta name="theme-color" content="#3b82f6" />
     <meta name="msapplication-TileColor" content="#3b82f6" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="format-detection" content="telephone=no" />
+    <meta name="apple-touch-fullscreen" content="yes" />
 
     <!-- Description and Keywords -->
     <meta
@@ -60,17 +66,33 @@
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script>
-      // Register Service Worker for PWA
+      // Register Service Worker for PWA with iOS compatibility
       if ("serviceWorker" in navigator) {
         window.addEventListener("load", () => {
-          navigator.serviceWorker
-            .register("/sw.js")
-            .then((registration) => {
-              console.log("SW registered: ", registration);
-            })
-            .catch((registrationError) => {
-              console.log("SW registration failed: ", registrationError);
-            });
+          // Add a small delay for iOS Safari
+          setTimeout(() => {
+            navigator.serviceWorker
+              .register("/sw.js", { scope: "/" })
+              .then((registration) => {
+                console.log("SW registered successfully: ", registration);
+                // Check if service worker is active
+                if (registration.active) {
+                  console.log("Service Worker is active");
+                }
+              })
+              .catch((registrationError) => {
+                console.error("SW registration failed: ", registrationError);
+              });
+          }, 100);
+        });
+      } else {
+        console.log("Service Worker not supported");
+      }
+
+      // Debug service worker state
+      if ("serviceWorker" in navigator) {
+        navigator.serviceWorker.addEventListener("message", (event) => {
+          console.log("Message from Service Worker:", event.data);
         });
       }
     </script>
