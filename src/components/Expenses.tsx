@@ -134,7 +134,8 @@ const Expenses = ({
         expenseRef.id,
         `Created expense: ${newExpense.description} - ₹${amount}`,
         currentUser?.uid,
-        currentUser?.displayName || undefined
+        currentUser?.displayName || undefined,
+        newExpense.groupId || undefined
       );
 
       setNewExpense({
@@ -168,7 +169,8 @@ const Expenses = ({
         expenseId,
         `Deleted expense: ${expense.description} - ₹${expense.amount}`,
         currentUser?.uid,
-        currentUser?.displayName || undefined
+        currentUser?.displayName || undefined,
+        expense.groupId || undefined
       );
       onExpenseUpdate();
       toast.success("Expense removed successfully!");
@@ -247,7 +249,8 @@ const Expenses = ({
         editingExpense.id,
         `Updated expense: ${newExpense.description} - ₹${amount}`,
         currentUser?.uid,
-        currentUser?.displayName || undefined
+        currentUser?.displayName || undefined,
+        newExpense.groupId || undefined
       );
 
       setEditingExpense(null);

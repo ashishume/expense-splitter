@@ -284,7 +284,8 @@ const ExpenseSplittingApp = () => {
         expenseRef.id,
         `Settled payment: ${settlement.fromName} paid ₹${settlement.amount} to ${settlement.toName}`,
         user?.uid,
-        user?.displayName || undefined
+        user?.displayName || undefined,
+        settlement.groupId || undefined
       );
 
       toast.success(
@@ -334,7 +335,8 @@ const ExpenseSplittingApp = () => {
         settlementExpense.id,
         `Deleted settlement: ${settlement.fromName} to ${settlement.toName} for ₹${settlement.amount}`,
         user?.uid,
-        user?.displayName || undefined
+        user?.displayName || undefined,
+        settlement.groupId || undefined
       );
 
       toast.success("Settlement deleted successfully!");
@@ -378,7 +380,8 @@ const ExpenseSplittingApp = () => {
         "bulk",
         `Reset all settlements: deleted ${settlementExpenses.length} settlement transactions`,
         user?.uid,
-        user?.displayName || undefined
+        user?.displayName || undefined,
+        undefined // No specific group for bulk operations
       );
 
       toast.success(
@@ -409,7 +412,8 @@ const ExpenseSplittingApp = () => {
         expense.id,
         `Deleted settled transaction: ${expense.description} for ₹${expense.amount}`,
         user?.uid,
-        user?.displayName || undefined
+        user?.displayName || undefined,
+        expense.groupId || undefined
       );
 
       toast.success("Settled transaction deleted successfully!");
@@ -453,7 +457,8 @@ const ExpenseSplittingApp = () => {
         "bulk",
         `Deleted all settled transactions: ${settlementExpenses.length} transactions`,
         user?.uid,
-        user?.displayName || undefined
+        user?.displayName || undefined,
+        undefined // No specific group for bulk operations
       );
 
       toast.success(
@@ -558,7 +563,7 @@ const ExpenseSplittingApp = () => {
           />
         )}
 
-        {activeTab === "logs" && <Logs currentUser={user} />}
+        {activeTab === "logs" && <Logs currentUser={user} groups={groups} />}
       </div>
     </div>
   );

@@ -11,21 +11,32 @@ import {
   ClipboardList,
   Inbox,
 } from "lucide-react";
+import type { User } from "firebase/auth";
+import type { User as AppUser } from "../types";
 
 interface ExtendedLogEntry extends LogEntry {
   id: string;
 }
 
-interface LogsProps {
-  currentUser: {
-    uid: string;
-    displayName: string | null;
-  } | null;
+interface Group {
+  id: string;
+  name: string;
+  members: string[];
 }
 
-const Logs = ({ currentUser }: LogsProps) => {
+interface LogsProps {
+  currentUser: User | null;
+  groups: Group[];
+}
+
+const Logs = ({ currentUser, groups }: LogsProps) => {
   const [logs, setLogs] = useState<ExtendedLogEntry[]>([]);
   const [filter, setFilter] = useState<string>("all");
+
+  // Get groups that the current user is a member of
+  const userGroups = groups.filter((group) =>
+    group.members.includes(currentUser?.uid || "")
+  );
 
   useEffect(() => {
     const logsQuery = query(
@@ -91,7 +102,17 @@ const Logs = ({ currentUser }: LogsProps) => {
     }
   };
 
-  const filteredLogs = logs.filter((log) => {
+  // Filter logs to only show those from groups the user is a member of
+  const userLogs = logs.filter((log) => {
+    // If the log has a groupId, check if the user is a member of that group
+    if (log.groupId) {
+      return userGroups.some((group) => group.id === log.groupId);
+    }
+    // If no groupId, show the log (for backward compatibility with existing logs)
+    return true;
+  });
+
+  const filteredLogs = userLogs.filter((log) => {
     if (filter === "all") return true;
     if (filter === "my-actions" && log.userId === currentUser?.uid) return true;
     return log.action === filter;
@@ -157,6 +178,12 @@ const Logs = ({ currentUser }: LogsProps) => {
                         by {log.userName}
                       </span>
                     )}
+                    {log.groupId && (
+                      <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                        {userGroups.find((g) => g.id === log.groupId)?.name ||
+                          "Unknown Group"}
+                      </span>
+                    )}
                   </div>
                   <span className="text-sm text-gray-500 font-medium">
                     {formatTimestamp(log.timestamp)}
@@ -181,7 +208,11 @@ const Logs = ({ currentUser }: LogsProps) => {
           >
             <Inbox className="w-16 h-16 mx-auto mb-3 text-gray-300" />
             <p className="text-lg font-medium">No logs found</p>
-            <p className="text-sm">Try adjusting your filter settings</p>
+            <p className="text-sm">
+              {userGroups.length === 0
+                ? "Join a group to see activity logs."
+                : "Try adjusting your filter settings"}
+            </p>
           </motion.div>
         )}
       </div>

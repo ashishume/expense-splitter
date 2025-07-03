@@ -7,6 +7,7 @@ export interface LogEntry {
   timestamp: string;
   userId?: string;
   userName?: string;
+  groupId?: string;
 }
 
 export const logAction = async (entry: LogEntry) => {
@@ -25,7 +26,8 @@ export const logExpenseAction = async (
   expenseId: string,
   details: string,
   userId?: string,
-  userName?: string
+  userName?: string,
+  groupId?: string
 ) => {
   await logAction({
     action: `EXPENSE_${action.toUpperCase()}`,
@@ -33,5 +35,6 @@ export const logExpenseAction = async (
     timestamp: new Date().toISOString(),
     userId,
     userName,
+    groupId,
   });
 };
