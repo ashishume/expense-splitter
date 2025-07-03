@@ -17,6 +17,7 @@ import { UsersIcon, LoadingSpinner } from "./icons/index";
 import type { User } from "firebase/auth";
 
 import type { User as AppUser } from "../types";
+import { Trash2 } from "lucide-react";
 
 interface Group {
   id: string;
@@ -258,21 +259,25 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
           type="text"
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}
-          className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+          className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
           placeholder="Enter group name"
         />
         <button
           onClick={addGroup}
           disabled={isCreatingGroup}
-          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-4 sm:px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
         >
           {isCreatingGroup ? (
             <>
               <LoadingSpinner className="w-4 h-4 mr-2" />
-              Creating...
+              <span className="hidden sm:inline">Creating...</span>
+              <span className="sm:hidden">Create...</span>
             </>
           ) : (
-            "Create Group"
+            <>
+              <span className="hidden sm:inline">Create Group</span>
+              <span className="sm:hidden">Create</span>
+            </>
           )}
         </button>
       </div>
@@ -293,24 +298,30 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
             return (
               <div
                 key={group.id}
-                className="bg-gray-50 p-4 rounded-lg border border-gray-200"
+                className="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-hidden"
               >
-                <div className="flex justify-between items-center mb-3">
-                  <h3 className="text-lg font-medium text-gray-800">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+                  <h3 className="text-base sm:text-lg font-medium text-gray-800 truncate">
                     {group.name}
                   </h3>
                   <button
                     onClick={() => deleteGroup(group.id)}
                     disabled={isDeletingGroup === group.id}
-                    className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                    className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center text-sm"
                   >
                     {isDeletingGroup === group.id ? (
                       <>
                         <LoadingSpinner className="w-3 h-3 mr-1" />
-                        Deleting...
+                        <span className="hidden sm:inline">Deleting...</span>
+                        <span className="sm:hidden">Delete...</span>
                       </>
                     ) : (
-                      "Delete Group"
+                      <>
+                        <span className="hidden sm:inline">Delete Group</span>
+                        <span className="sm:hidden">
+                          <Trash2 />
+                        </span>
+                      </>
                     )}
                   </button>
                 </div>
@@ -336,15 +347,21 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                         <button
                           onClick={() => addUser(group.id)}
                           disabled={isAddingUser}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                          className="bg-indigo-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
                           {isAddingUser ? (
                             <>
                               <LoadingSpinner className="w-3 h-3 mr-1" />
-                              Adding...
+                              <span className="hidden sm:inline">
+                                Adding...
+                              </span>
+                              <span className="sm:hidden">Add...</span>
                             </>
                           ) : (
-                            "Add User"
+                            <>
+                              <span className="hidden sm:inline">Add User</span>
+                              <span className="sm:hidden">Add</span>
+                            </>
                           )}
                         </button>
                       </div>
@@ -365,18 +382,18 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                       No members in this group yet. Add users to get started!
                     </p>
                   ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-w-full">
                       {groupMembers.map((user) => (
                         <div
                           key={user.id}
-                          className="flex items-center gap-2 p-2 rounded border bg-indigo-50 border-indigo-200"
+                          className="flex items-center justify-between gap-2 p-2 rounded border bg-indigo-50 border-indigo-200 min-w-0 w-full overflow-hidden group-member-card"
                         >
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium">
+                          <div className="flex flex-col min-w-0 flex-1 overflow-hidden text-container">
+                            <span className="text-sm font-medium truncate w-full">
                               {user.name}
                             </span>
                             {user.email && (
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 truncate w-full">
                                 {user.email}
                               </span>
                             )}
@@ -388,15 +405,25 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                             disabled={
                               isRemovingUser === `${user.id}-${group.id}`
                             }
-                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center flex-shrink-0 ml-2 min-w-fit"
                           >
                             {isRemovingUser === `${user.id}-${group.id}` ? (
                               <>
                                 <LoadingSpinner className="w-2 h-2 mr-1" />
-                                Removing...
+                                <span className="hidden sm:inline">
+                                  Removing...
+                                </span>
+                                <span className="sm:hidden">Remove...</span>
                               </>
                             ) : (
-                              "Remove"
+                              <>
+                                <span className="hidden sm:inline">
+                                  <Trash2 />
+                                </span>
+                                <span className="sm:hidden">
+                                  <Trash2 />
+                                </span>
+                              </>
                             )}
                           </button>
                         </div>

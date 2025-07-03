@@ -478,49 +478,55 @@ const ExpenseSplittingApp = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-2 sm:p-4 mx-auto px-4">
-      <div className="flex justify-between items-center mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-2 sm:p-4">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-3">
         <motion.h1
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="text-3xl sm:text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center"
+          className="text-2xl sm:text-3xl lg:text-4xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center"
         >
           <img
             src={logo}
             alt="Axpo splitter"
-            className="w-20 h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
+            className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
           />
         </motion.h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-700">
-            {user?.displayName} | {user?.email}
-          </span>
+        <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-4 w-full sm:w-auto">
+          <div className="text-center sm:text-left">
+            <div className="text-sm sm:text-base text-gray-700 font-medium truncate max-w-[200px] sm:max-w-none">
+              {user?.displayName}
+            </div>
+            <div className="text-xs sm:text-sm text-gray-600 truncate max-w-[200px] sm:max-w-none">
+              {user?.email}
+            </div>
+          </div>
           <button
             onClick={logout}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
+            className="px-3 py-2 sm:px-4 sm:py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2 text-sm sm:text-base w-full sm:w-auto justify-center"
           >
             <LogOut className="w-4 h-4" />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
+            <span className="sm:hidden">Exit</span>
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
+      <div className="flex space-x-1 sm:space-x-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide">
         {tabs.map((tab) => {
           const IconComponent = tab.icon;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              className={`flex items-center px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
                 activeTab === tab.id
                   ? "bg-white text-blue-600 shadow-md"
                   : "text-gray-600 hover:bg-white/50"
               }`}
             >
-              <IconComponent className="w-4 h-4 mr-2" />
-              {tab.label}
+              <IconComponent className="w-4 h-4 mr-1 sm:mr-2" />
+              <span className="text-sm sm:text-base">{tab.label}</span>
             </button>
           );
         })}
