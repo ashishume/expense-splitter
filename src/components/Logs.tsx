@@ -3,6 +3,14 @@ import { motion } from "framer-motion";
 import { collection, query, orderBy, onSnapshot } from "firebase/firestore";
 import { db } from "../firebase";
 import type { LogEntry } from "../utils/logger";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  FileText,
+  ClipboardList,
+  Inbox,
+} from "lucide-react";
 
 interface ExtendedLogEntry extends LogEntry {
   id: string;
@@ -52,13 +60,13 @@ const Logs = ({ currentUser }: LogsProps) => {
   const getActionIcon = (action: string) => {
     switch (action) {
       case "EXPENSE_CREATE":
-        return "➕";
+        return Plus;
       case "EXPENSE_UPDATE":
-        return "✏️";
+        return Edit;
       case "EXPENSE_DELETE":
-        return "🗑️";
+        return Trash2;
       default:
-        return "📝";
+        return FileText;
     }
   };
 
@@ -97,7 +105,7 @@ const Logs = ({ currentUser }: LogsProps) => {
     >
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 flex items-center">
-          <span className="mr-3 text-2xl">📋</span>
+          <ClipboardList className="w-6 h-6 mr-3 text-blue-600" />
           Activity Logs
         </h2>
         <div className="flex gap-2 w-full sm:w-auto">
@@ -127,7 +135,10 @@ const Logs = ({ currentUser }: LogsProps) => {
             <div className="flex items-start space-x-4">
               <div className="flex-shrink-0">
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-gray-200">
-                  <span className="text-xl">{getActionIcon(log.action)}</span>
+                  {(() => {
+                    const IconComponent = getActionIcon(log.action);
+                    return <IconComponent className="w-6 h-6 text-gray-600" />;
+                  })()}
                 </div>
               </div>
 
@@ -168,7 +179,7 @@ const Logs = ({ currentUser }: LogsProps) => {
             animate={{ opacity: 1 }}
             className="text-center py-12 text-gray-500"
           >
-            <div className="text-4xl mb-3">📭</div>
+            <Inbox className="w-16 h-16 mx-auto mb-3 text-gray-300" />
             <p className="text-lg font-medium">No logs found</p>
             <p className="text-sm">Try adjusting your filter settings</p>
           </motion.div>

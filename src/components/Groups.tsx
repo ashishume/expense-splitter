@@ -13,7 +13,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import toast from "react-hot-toast";
-import { UsersIcon } from "./icons";
+import { UsersIcon, LoadingSpinner } from "./icons/index";
 import type { User } from "firebase/auth";
 
 import type { User as AppUser } from "../types";
@@ -37,6 +37,10 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
   const [showUserForm, setShowUserForm] = useState(true);
+  const [isCreatingGroup, setIsCreatingGroup] = useState(false);
+  const [isAddingUser, setIsAddingUser] = useState(false);
+  const [isDeletingGroup, setIsDeletingGroup] = useState<string | null>(null);
+  const [isRemovingUser, setIsRemovingUser] = useState<string | null>(null);
 
   // Filter groups to only show groups the current user is a member of
   const userGroups = groups.filter((group) =>
@@ -58,6 +62,9 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
       return;
     }
 
+    if (isCreatingGroup) return; // Prevent duplicate submissions
+
+    setIsCreatingGroup(true);
     try {
       // Create group and automatically add the current user as a member
       const groupRef = await addDoc(collection(db, "groups"), {
@@ -79,12 +86,17 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
     } catch (error) {
       console.error("Error adding group: ", error);
       toast.error("Error adding group. Please try again.");
+    } finally {
+      setIsCreatingGroup(false);
     }
   };
 
   const addUser = async (groupId?: string) => {
     if (newUserName.trim() === "" || newUserEmail.trim() === "") return;
 
+    if (isAddingUser) return; // Prevent duplicate submissions
+
+    setIsAddingUser(true);
     try {
       // Check if user already exists by email
       let existingUser: AppUser | null = null;
@@ -146,6 +158,8 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
     } catch (error) {
       console.error("Error adding user: ", error);
       toast.error("Error adding user. Please try again.");
+    } finally {
+      setIsAddingUser(false);
     }
   };
 
@@ -173,6 +187,10 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   };
 
   const removeUserFromGroup = async (userId: string, groupId: string) => {
+    const operationKey = `${userId}-${groupId}`;
+    if (isRemovingUser === operationKey) return; // Prevent duplicate submissions
+
+    setIsRemovingUser(operationKey);
     try {
       const groupRef = doc(db, "groups", groupId);
       const group = groups.find((g) => g.id === groupId);
@@ -192,10 +210,15 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
     } catch (error) {
       console.error("Error removing user from group: ", error);
       toast.error("Error removing user from group. Please try again.");
+    } finally {
+      setIsRemovingUser(null);
     }
   };
 
   const deleteGroup = async (groupId: string) => {
+    if (isDeletingGroup === groupId) return; // Prevent duplicate submissions
+
+    setIsDeletingGroup(groupId);
     try {
       await deleteDoc(doc(db, "groups", groupId));
 
@@ -214,6 +237,8 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
     } catch (error) {
       console.error("Error deleting group: ", error);
       toast.error("Error deleting group. Please try again.");
+    } finally {
+      setIsDeletingGroup(null);
     }
   };
 
@@ -238,9 +263,17 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
         />
         <button
           onClick={addGroup}
-          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md"
+          disabled={isCreatingGroup}
+          className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white px-6 py-3 rounded-lg sm:rounded-l-none sm:rounded-r-lg hover:from-indigo-700 hover:to-indigo-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
         >
-          Create Group
+          {isCreatingGroup ? (
+            <>
+              <LoadingSpinner className="w-4 h-4 mr-2" />
+              Creating...
+            </>
+          ) : (
+            "Create Group"
+          )}
         </button>
       </div>
 
@@ -268,9 +301,17 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                   </h3>
                   <button
                     onClick={() => deleteGroup(group.id)}
-                    className="text-red-600 hover:text-red-800"
+                    disabled={isDeletingGroup === group.id}
+                    className="text-red-600 hover:text-red-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                   >
-                    Delete Group
+                    {isDeletingGroup === group.id ? (
+                      <>
+                        <LoadingSpinner className="w-3 h-3 mr-1" />
+                        Deleting...
+                      </>
+                    ) : (
+                      "Delete Group"
+                    )}
                   </button>
                 </div>
 
@@ -294,9 +335,17 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                         />
                         <button
                           onClick={() => addUser(group.id)}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                          disabled={isAddingUser}
+                          className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                          Add User
+                          {isAddingUser ? (
+                            <>
+                              <LoadingSpinner className="w-3 h-3 mr-1" />
+                              Adding...
+                            </>
+                          ) : (
+                            "Add User"
+                          )}
                         </button>
                       </div>
                       <p className="text-xs text-gray-500">
@@ -336,9 +385,19 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                             onClick={() =>
                               removeUserFromGroup(user.id, group.id)
                             }
-                            className="text-red-500 hover:text-red-700 text-xs"
+                            disabled={
+                              isRemovingUser === `${user.id}-${group.id}`
+                            }
+                            className="text-red-500 hover:text-red-700 text-xs disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
                           >
-                            Remove
+                            {isRemovingUser === `${user.id}-${group.id}` ? (
+                              <>
+                                <LoadingSpinner className="w-2 h-2 mr-1" />
+                                Removing...
+                              </>
+                            ) : (
+                              "Remove"
+                            )}
                           </button>
                         </div>
                       ))}

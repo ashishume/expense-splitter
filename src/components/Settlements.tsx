@@ -5,7 +5,8 @@ import {
   UserProfileIcon,
   DeleteIcon,
   CheckCircleIcon,
-} from "./icons";
+  LoadingSpinner,
+} from "./icons/index";
 import type { User } from "firebase/auth";
 
 import type { User as AppUser } from "../types";
@@ -67,6 +68,18 @@ const Settlements = ({
   currentUser,
 }: SettlementsProps) => {
   const [viewMode, setViewMode] = useState<"pending" | "settled">("pending");
+  const [isSettling, setIsSettling] = useState<string | null>(null);
+  const [isDeletingSettlement, setIsDeletingSettlement] = useState<
+    string | null
+  >(null);
+  const [isDeletingSettledTransaction, setIsDeletingSettledTransaction] =
+    useState<string | null>(null);
+  const [isResettingAllSettlements, setIsResettingAllSettlements] =
+    useState(false);
+  const [
+    isResettingAllSettledTransactions,
+    setIsResettingAllSettledTransactions,
+  ] = useState(false);
 
   // Get groups that the current user is a member of
   const userGroups = groups.filter((group) =>
@@ -104,6 +117,57 @@ const Settlements = ({
     return expenses
       .filter((expense) => expense.groupId === groupId && !expense.isSettlement)
       .reduce((total, expense) => total + expense.amount, 0);
+  };
+
+  // Wrapper functions with loading states
+  const handleSettle = async (settlement: Settlement) => {
+    if (isSettling === settlement.id) return;
+    setIsSettling(settlement.id);
+    try {
+      await onSettle?.(settlement);
+    } finally {
+      setIsSettling(null);
+    }
+  };
+
+  const handleDeleteSettlement = async (settlement: Settlement) => {
+    if (isDeletingSettlement === settlement.id) return;
+    setIsDeletingSettlement(settlement.id);
+    try {
+      await onDeleteSettlement?.(settlement);
+    } finally {
+      setIsDeletingSettlement(null);
+    }
+  };
+
+  const handleDeleteSettledTransaction = async (expense: Expense) => {
+    if (isDeletingSettledTransaction === expense.id) return;
+    setIsDeletingSettledTransaction(expense.id);
+    try {
+      await onDeleteSettledTransaction?.(expense);
+    } finally {
+      setIsDeletingSettledTransaction(null);
+    }
+  };
+
+  const handleResetAllSettlements = async () => {
+    if (isResettingAllSettlements) return;
+    setIsResettingAllSettlements(true);
+    try {
+      await onResetAllSettlements?.();
+    } finally {
+      setIsResettingAllSettlements(false);
+    }
+  };
+
+  const handleResetAllSettledTransactions = async () => {
+    if (isResettingAllSettledTransactions) return;
+    setIsResettingAllSettledTransactions(true);
+    try {
+      await onResetAllSettledTransactions?.();
+    } finally {
+      setIsResettingAllSettledTransactions(false);
+    }
   };
 
   return (
@@ -149,11 +213,20 @@ const Settlements = ({
         userSettlements.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <button
-              onClick={onResetAllSettlements}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
+              onClick={handleResetAllSettlements}
+              disabled={isResettingAllSettlements}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <DeleteIcon className="w-4 h-4" />
-              <span>Reset All Pending Settlements</span>
+              {isResettingAllSettlements ? (
+                <LoadingSpinner className="w-4 h-4" />
+              ) : (
+                <DeleteIcon className="w-4 h-4" />
+              )}
+              <span>
+                {isResettingAllSettlements
+                  ? "Resetting..."
+                  : "Reset All Pending Settlements"}
+              </span>
             </button>
           </div>
         )}
@@ -163,11 +236,20 @@ const Settlements = ({
         userSettledTransactions.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <button
-              onClick={onResetAllSettledTransactions}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
+              onClick={handleResetAllSettledTransactions}
+              disabled={isResettingAllSettledTransactions}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <DeleteIcon className="w-4 h-4" />
-              <span>Delete All Settled Transactions</span>
+              {isResettingAllSettledTransactions ? (
+                <LoadingSpinner className="w-4 h-4" />
+              ) : (
+                <DeleteIcon className="w-4 h-4" />
+              )}
+              <span>
+                {isResettingAllSettledTransactions
+                  ? "Deleting..."
+                  : "Delete All Settled Transactions"}
+              </span>
             </button>
           </div>
         )}
@@ -280,20 +362,42 @@ const Settlements = ({
                             <div className="flex items-center space-x-2">
                               {onDeleteSettlement && (
                                 <button
-                                  onClick={() => onDeleteSettlement(settlement)}
-                                  className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium"
+                                  onClick={() =>
+                                    handleDeleteSettlement(settlement)
+                                  }
+                                  disabled={
+                                    isDeletingSettlement === settlement.id
+                                  }
+                                  className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <DeleteIcon className="w-3 h-3" />
-                                  <span>Delete</span>
+                                  {isDeletingSettlement === settlement.id ? (
+                                    <LoadingSpinner className="w-3 h-3" />
+                                  ) : (
+                                    <DeleteIcon className="w-3 h-3" />
+                                  )}
+                                  <span>
+                                    {isDeletingSettlement === settlement.id
+                                      ? "Deleting..."
+                                      : "Delete"}
+                                  </span>
                                 </button>
                               )}
                               {onSettle && (
                                 <button
-                                  onClick={() => onSettle(settlement)}
-                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium"
+                                  onClick={() => handleSettle(settlement)}
+                                  disabled={isSettling === settlement.id}
+                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                  <ArrowsIcon className="w-4 h-4" />
-                                  <span>Settle</span>
+                                  {isSettling === settlement.id ? (
+                                    <LoadingSpinner className="w-4 h-4" />
+                                  ) : (
+                                    <ArrowsIcon className="w-4 h-4" />
+                                  )}
+                                  <span>
+                                    {isSettling === settlement.id
+                                      ? "Settling..."
+                                      : "Settle"}
+                                  </span>
                                 </button>
                               )}
                             </div>
@@ -363,11 +467,24 @@ const Settlements = ({
                   <div className="mt-2 sm:mt-3 flex items-center justify-end">
                     {onDeleteSettledTransaction && (
                       <button
-                        onClick={() => onDeleteSettledTransaction(transaction)}
-                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium"
+                        onClick={() =>
+                          handleDeleteSettledTransaction(transaction)
+                        }
+                        disabled={
+                          isDeletingSettledTransaction === transaction.id
+                        }
+                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <DeleteIcon className="w-3 h-3" />
-                        <span>Delete Transaction</span>
+                        {isDeletingSettledTransaction === transaction.id ? (
+                          <LoadingSpinner className="w-3 h-3" />
+                        ) : (
+                          <DeleteIcon className="w-3 h-3" />
+                        )}
+                        <span>
+                          {isDeletingSettledTransaction === transaction.id
+                            ? "Deleting..."
+                            : "Delete Transaction"}
+                        </span>
                       </button>
                     )}
                   </div>

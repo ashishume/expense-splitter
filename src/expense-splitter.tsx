@@ -18,6 +18,13 @@ import Logs from "./components/Logs";
 import logo from "./assets/logo.jpg";
 import { logExpenseAction } from "./utils/logger";
 import toast from "react-hot-toast";
+import {
+  DollarSign,
+  ArrowRightLeft,
+  Users,
+  FileText,
+  LogOut,
+} from "lucide-react";
 
 import type { User, Group, Expense, Settlement } from "./types";
 
@@ -459,10 +466,10 @@ const ExpenseSplittingApp = () => {
   };
 
   const tabs = [
-    { id: "expenses", label: "Expenses", icon: "💰" },
-    { id: "settlements", label: "Settlements", icon: "💸" },
-    { id: "groups", label: "Groups", icon: "👥" },
-    { id: "logs", label: "Activity", icon: "📋" },
+    { id: "expenses", label: "Expenses", icon: DollarSign },
+    { id: "settlements", label: "Settlements", icon: ArrowRightLeft },
+    { id: "groups", label: "Groups", icon: Users },
+    { id: "logs", label: "Activity", icon: FileText },
   ];
 
   return (
@@ -485,8 +492,9 @@ const ExpenseSplittingApp = () => {
           </span>
           <button
             onClick={logout}
-            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center gap-2"
           >
+            <LogOut className="w-4 h-4" />
             Logout
           </button>
         </div>
@@ -494,20 +502,23 @@ const ExpenseSplittingApp = () => {
 
       {/* Tabs */}
       <div className="flex space-x-2 mb-6 overflow-x-auto pb-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-              activeTab === tab.id
-                ? "bg-white text-blue-600 shadow-md"
-                : "text-gray-600 hover:bg-white/50"
-            }`}
-          >
-            <span className="mr-2">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
+        {tabs.map((tab) => {
+          const IconComponent = tab.icon;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                activeTab === tab.id
+                  ? "bg-white text-blue-600 shadow-md"
+                  : "text-gray-600 hover:bg-white/50"
+              }`}
+            >
+              <IconComponent className="w-4 h-4 mr-2" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Tab Content */}
