@@ -133,7 +133,7 @@ const Logs = ({ currentUser, groups }: LogsProps) => {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-xs sm:text-sm font-medium w-full sm:w-auto"
+            className="px-3 sm:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 bg-white text-xs sm:text-sm font-medium w-full sm:w-auto safari-form-fix"
           >
             <option value="all">All Actions</option>
             <option value="my-actions">My Actions</option>

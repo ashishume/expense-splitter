@@ -59,7 +59,7 @@ export const SignIn = () => {
         <button
           onClick={handleSignIn}
           disabled={isSigningIn}
-          className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-white border-2 border-gray-300 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium text-sm sm:text-base lg:text-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full flex items-center justify-center gap-2 sm:gap-3 bg-white border-2 border-gray-300 rounded-xl px-4 sm:px-6 py-3 sm:py-4 text-gray-700 hover:bg-gray-50 hover:border-gray-400 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-500 transition-all duration-200 font-medium text-sm sm:text-base lg:text-lg shadow-sm disabled:opacity-50 disabled:cursor-not-allowed safari-form-fix"
         >
           {isSigningIn ? (
             <LoadingSpinner className="w-5 h-5 sm:w-6 sm:h-6" />

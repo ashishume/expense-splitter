@@ -259,7 +259,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
           type="text"
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}
-          className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
+          className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base safari-form-fix"
           placeholder="Enter group name"
         />
         <button
@@ -334,14 +334,14 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                           type="text"
                           value={newUserName}
                           onChange={(e) => setNewUserName(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
                           placeholder="Enter name"
                         />
                         <input
                           type="email"
                           value={newUserEmail}
                           onChange={(e) => setNewUserEmail(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
                           placeholder="Enter email"
                         />
                         <button

@@ -298,7 +298,7 @@ const Expenses = ({
                 splitWith: [], // Reset split with when group changes
               });
             }}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 safari-form-fix"
           >
             <option value="">Select a group</option>
             {userGroups.map((group) => (
@@ -318,7 +318,7 @@ const Expenses = ({
             onChange={(e) =>
               setNewExpense({ ...newExpense, paidBy: e.target.value })
             }
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 safari-form-fix"
             disabled={!newExpense.groupId}
           >
             <option value="">
@@ -357,7 +357,7 @@ const Expenses = ({
               onChange={(e) =>
                 setNewExpense({ ...newExpense, amount: e.target.value })
               }
-              className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+              className="w-full pl-8 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 safari-form-fix"
               placeholder="Amount"
               min="0"
               step="0.01"
@@ -378,7 +378,7 @@ const Expenses = ({
                 description: e.target.value,
               })
             }
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 safari-form-fix"
             placeholder="Description"
           />
         </div>
