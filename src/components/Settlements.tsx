@@ -130,15 +130,15 @@ const Settlements = ({
     }
   };
 
-  const handleDeleteSettlement = async (settlement: Settlement) => {
-    if (isDeletingSettlement === settlement.id) return;
-    setIsDeletingSettlement(settlement.id);
-    try {
-      await onDeleteSettlement?.(settlement);
-    } finally {
-      setIsDeletingSettlement(null);
-    }
-  };
+  // const handleDeleteSettlement = async (settlement: Settlement) => {
+  //   if (isDeletingSettlement === settlement.id) return;
+  //   setIsDeletingSettlement(settlement.id);
+  //   try {
+  //     await onDeleteSettlement?.(settlement);
+  //   } finally {
+  //     setIsDeletingSettlement(null);
+  //   }
+  // };
 
   const handleDeleteSettledTransaction = async (expense: Expense) => {
     if (isDeletingSettledTransaction === expense.id) return;
@@ -150,15 +150,15 @@ const Settlements = ({
     }
   };
 
-  const handleResetAllSettlements = async () => {
-    if (isResettingAllSettlements) return;
-    setIsResettingAllSettlements(true);
-    try {
-      await onResetAllSettlements?.();
-    } finally {
-      setIsResettingAllSettlements(false);
-    }
-  };
+  // const handleResetAllSettlements = async () => {
+  //   if (isResettingAllSettlements) return;
+  //   setIsResettingAllSettlements(true);
+  //   try {
+  //     await onResetAllSettlements?.();
+  //   } finally {
+  //     setIsResettingAllSettlements(false);
+  //   }
+  // };
 
   const handleResetAllSettledTransactions = async () => {
     if (isResettingAllSettledTransactions) return;
@@ -236,39 +236,6 @@ const Settlements = ({
           <>
             {viewMode === "pending" && (
               <>
-                {/* Reset All Button */}
-                {onResetAllSettlements && userSettlements.length > 0 && (
-                  <div className="mb-4 sm:mb-6">
-                    <button
-                      onClick={handleResetAllSettlements}
-                      disabled={isResettingAllSettlements}
-                      className="btn btn-error px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center space-x-2"
-                    >
-                      {isResettingAllSettlements ? (
-                        <LoadingSpinner className="w-4 h-4" />
-                      ) : (
-                        <DeleteIcon className="w-4 h-4" />
-                      )}
-                      <span>
-                        {isResettingAllSettlements ? (
-                          <>
-                            <span className="hidden sm:inline">
-                              Resetting...
-                            </span>
-                            <span className="sm:hidden">Reset...</span>
-                          </>
-                        ) : (
-                          <>
-                            <span className="hidden sm:inline">
-                              Reset All Pending Settlements
-                            </span>
-                            <span className="sm:hidden">Reset All</span>
-                          </>
-                        )}
-                      </span>
-                    </button>
-                  </div>
-                )}
                 {/* Pending Settlements List */}
                 {Object.entries(settlementsByGroup).map(
                   ([groupId, groupSettlements]) => {
@@ -340,7 +307,7 @@ const Settlements = ({
                               <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                                 <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
                                 <div className="flex items-center gap-2">
-                                  {onDeleteSettlement && (
+                                  {/* {onDeleteSettlement && (
                                     <button
                                       onClick={() =>
                                         handleDeleteSettlement(settlement)
@@ -379,7 +346,7 @@ const Settlements = ({
                                         )}
                                       </span>
                                     </button>
-                                  )}
+                                  )} */}
                                   {onSettle && (
                                     <button
                                       onClick={() => handleSettle(settlement)}
