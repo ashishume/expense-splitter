@@ -186,23 +186,27 @@ const Settlements = ({
         <div className="flex bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setViewMode("pending")}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
               viewMode === "pending"
                 ? "bg-white text-blue-600 shadow-sm"
                 : "text-gray-600 hover:text-gray-800"
             }`}
           >
-            Pending Settlements ({userSettlements.length})
+            <span className="hidden sm:inline">Pending Settlements</span>
+            <span className="sm:hidden">Pending</span>
+            <span className="ml-1">({userSettlements.length})</span>
           </button>
           <button
             onClick={() => setViewMode("settled")}
-            className={`flex-1 px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+            className={`flex-1 px-3 sm:px-4 py-2 rounded-md text-xs sm:text-sm font-medium transition-colors ${
               viewMode === "settled"
                 ? "bg-white text-green-600 shadow-sm"
                 : "text-gray-600 hover:text-gray-800"
             }`}
           >
-            Settled Transactions ({userSettledTransactions.length})
+            <span className="hidden sm:inline">Settled Transactions</span>
+            <span className="sm:hidden">Settled</span>
+            <span className="ml-1">({userSettledTransactions.length})</span>
           </button>
         </div>
       </div>
@@ -242,7 +246,7 @@ const Settlements = ({
                     <button
                       onClick={handleResetAllSettlements}
                       disabled={isResettingAllSettlements}
-                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-3 sm:px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isResettingAllSettlements ? (
                         <LoadingSpinner className="w-4 h-4" />
@@ -250,9 +254,21 @@ const Settlements = ({
                         <DeleteIcon className="w-4 h-4" />
                       )}
                       <span>
-                        {isResettingAllSettlements
-                          ? "Resetting..."
-                          : "Reset All Pending Settlements"}
+                        {isResettingAllSettlements ? (
+                          <>
+                            <span className="hidden sm:inline">
+                              Resetting...
+                            </span>
+                            <span className="sm:hidden">Reset...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="hidden sm:inline">
+                              Reset All Pending Settlements
+                            </span>
+                            <span className="sm:hidden">Reset All</span>
+                          </>
+                        )}
                       </span>
                     </button>
                   </div>
@@ -266,10 +282,10 @@ const Settlements = ({
                       <div key={groupId} className="space-y-3">
                         {group && (
                           <div className="bg-gray-50 p-3 rounded-lg">
-                            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 truncate">
                               {group.name}
                             </h3>
-                            <div className="text-sm text-gray-600 space-y-1">
+                            <div className="text-xs sm:text-sm text-gray-600 space-y-1">
                               <div>
                                 Total Group Expenses: ₹{groupTotal.toFixed(2)}
                               </div>
@@ -299,15 +315,15 @@ const Settlements = ({
                                       <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
                                     </div>
                                   </div>
-                                  <div>
-                                    <div className="flex items-center space-x-1 sm:space-x-2">
-                                      <span className="text-base sm:text-lg font-bold text-red-700">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                                      <span className="text-sm sm:text-base font-bold text-red-700 truncate">
                                         {settlement.fromName}
                                       </span>
-                                      <span className="text-gray-600">
+                                      <span className="text-gray-600 text-xs sm:text-sm">
                                         owes
                                       </span>
-                                      <span className="text-base sm:text-lg font-bold text-green-700">
+                                      <span className="text-sm sm:text-base font-bold text-green-700 truncate">
                                         {settlement.toName}
                                       </span>
                                     </div>
@@ -316,8 +332,8 @@ const Settlements = ({
                                     </div>
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className="text-2xl sm:text-3xl font-bold text-red-600">
+                                <div className="text-right flex-shrink-0">
+                                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600">
                                     ₹{settlement.amount.toFixed(2)}
                                   </div>
                                   <div className="text-xs sm:text-sm text-gray-500">
@@ -325,9 +341,9 @@ const Settlements = ({
                                   </div>
                                 </div>
                               </div>
-                              <div className="mt-2 sm:mt-3 flex items-center justify-between">
+                              <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
                                 <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
-                                <div className="flex items-center space-x-2">
+                                <div className="flex items-center gap-2">
                                   {onDeleteSettlement && (
                                     <button
                                       onClick={() =>
@@ -336,7 +352,7 @@ const Settlements = ({
                                       disabled={
                                         isDeletingSettlement === settlement.id
                                       }
-                                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="flex-1 sm:flex-none px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center justify-center space-x-1 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       {isDeletingSettlement ===
                                       settlement.id ? (
@@ -345,9 +361,26 @@ const Settlements = ({
                                         <DeleteIcon className="w-3 h-3" />
                                       )}
                                       <span>
-                                        {isDeletingSettlement === settlement.id
-                                          ? "Deleting..."
-                                          : "Delete"}
+                                        {isDeletingSettlement ===
+                                        settlement.id ? (
+                                          <>
+                                            <span className="hidden sm:inline">
+                                              Deleting...
+                                            </span>
+                                            <span className="sm:hidden">
+                                              Delete...
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="hidden sm:inline">
+                                              Delete
+                                            </span>
+                                            <span className="sm:hidden">
+                                              Delete
+                                            </span>
+                                          </>
+                                        )}
                                       </span>
                                     </button>
                                   )}
@@ -355,7 +388,7 @@ const Settlements = ({
                                     <button
                                       onClick={() => handleSettle(settlement)}
                                       disabled={isSettling === settlement.id}
-                                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center justify-center space-x-1 sm:space-x-2 text-xs sm:text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                       {isSettling === settlement.id ? (
                                         <LoadingSpinner className="w-4 h-4" />
@@ -363,9 +396,25 @@ const Settlements = ({
                                         <ArrowsIcon className="w-4 h-4" />
                                       )}
                                       <span>
-                                        {isSettling === settlement.id
-                                          ? "Settling..."
-                                          : "Settle"}
+                                        {isSettling === settlement.id ? (
+                                          <>
+                                            <span className="hidden sm:inline">
+                                              Settling...
+                                            </span>
+                                            <span className="sm:hidden">
+                                              Settle...
+                                            </span>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <span className="hidden sm:inline">
+                                              Settle
+                                            </span>
+                                            <span className="sm:hidden">
+                                              Settle
+                                            </span>
+                                          </>
+                                        )}
                                       </span>
                                     </button>
                                   )}

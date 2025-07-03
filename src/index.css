@@ -3,3 +3,51 @@
 :root {
   /* font-family: system-ui, Avenir, Helvetica, Arial, sans-serif; */
 }
+
+/* Custom scrollbar styles for better mobile experience */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Ensure touch targets are at least 44px */
+  button,
+  select,
+  input {
+    min-height: 44px;
+  }
+
+  /* Improve text readability on small screens */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+/* Prevent text overflow in group member cards */
+.group-member-card {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+/* Ensure proper text truncation */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  width: 100%;
+}
+
+/* Additional text overflow prevention */
+.text-container {
+  max-width: 100%;
+  overflow: hidden;
+}

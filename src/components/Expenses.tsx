@@ -440,26 +440,30 @@ const Expenses = ({
           )}
         </div>
 
-        <div className="flex gap-2 mt-4">
+        <div className="flex flex-col sm:flex-row gap-2 mt-4">
           {editingExpense ? (
             <>
               <button
                 onClick={updateExpense}
                 disabled={isUpdatingExpense}
-                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="flex-1 bg-gradient-to-r from-green-600 to-green-700 text-white px-4 sm:px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
               >
                 {isUpdatingExpense ? (
                   <>
                     <LoadingSpinner className="w-4 h-4 mr-2" />
-                    Updating...
+                    <span className="hidden sm:inline">Updating...</span>
+                    <span className="sm:hidden">Update...</span>
                   </>
                 ) : (
-                  "Update Expense"
+                  <>
+                    <span className="hidden sm:inline">Update Expense</span>
+                    <span className="sm:hidden">Update</span>
+                  </>
                 )}
               </button>
               <button
                 onClick={cancelEditing}
-                className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-medium"
+                className="px-4 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-all duration-200 font-medium text-sm sm:text-base"
               >
                 Cancel
               </button>
@@ -468,15 +472,19 @@ const Expenses = ({
             <button
               onClick={addExpense}
               disabled={isAddingExpense}
-              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              className="w-full bg-gradient-to-r from-green-600 to-green-700 text-white px-4 sm:px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center text-sm sm:text-base"
             >
               {isAddingExpense ? (
                 <>
                   <LoadingSpinner className="w-4 h-4 mr-2" />
-                  Adding...
+                  <span className="hidden sm:inline">Adding...</span>
+                  <span className="sm:hidden">Add...</span>
                 </>
               ) : (
-                "Add Expense"
+                <>
+                  <span className="hidden sm:inline">Add Expense</span>
+                  <span className="sm:hidden">Add</span>
+                </>
               )}
             </button>
           )}
@@ -522,20 +530,22 @@ const Expenses = ({
             return (
               <div>
                 {/* Tab Navigation */}
-                <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-200">
+                <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto pb-2">
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`px-4 py-2 rounded-t-lg font-medium transition-all duration-200 flex items-center gap-2 ${
+                      className={`px-3 py-2 sm:px-4 sm:py-2 rounded-t-lg font-medium transition-all duration-200 flex items-center gap-1 sm:gap-2 whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
                         activeTab === tab.id
                           ? "bg-green-600 text-white shadow-md"
                           : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                     >
-                      <span>{tab.name}</span>
+                      <span className="truncate max-w-[100px] sm:max-w-none">
+                        {tab.name}
+                      </span>
                       <span
-                        className={`px-2 py-1 text-xs rounded-full ${
+                        className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs rounded-full flex-shrink-0 ${
                           activeTab === tab.id
                             ? "bg-white text-green-600"
                             : "bg-gray-200 text-gray-600"
@@ -560,24 +570,24 @@ const Expenses = ({
                       userExpenses.map((expense) => (
                         <div
                           key={expense.id}
-                          className={`p-4 rounded-md flex justify-between items-start ${
+                          className={`p-3 sm:p-4 rounded-md flex flex-col sm:flex-row justify-between items-start gap-3 ${
                             expense.isSettlement
                               ? "bg-green-50 border-l-4 border-green-400"
                               : "bg-gray-50"
                           }`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-lg font-medium">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h3 className="text-base sm:text-lg font-medium truncate">
                                 {expense.description}
                               </h3>
                               {expense.isSettlement && (
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex-shrink-0">
                                   Settlement
                                 </span>
                               )}
                               {expense.groupId && !expense.isSettlement && (
-                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full flex-shrink-0">
                                   {
                                     userGroups.find(
                                       (g) => g.id === expense.groupId
@@ -586,10 +596,10 @@ const Expenses = ({
                                 </span>
                               )}
                             </div>
-                            <p className="text-gray-600">
+                            <p className="text-sm sm:text-base text-gray-600">
                               Paid by {expense.paidByName} - ₹{expense.amount}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs sm:text-sm text-gray-500 truncate">
                               Split with:{" "}
                               {expense.splitWith
                                 .map(
@@ -604,7 +614,7 @@ const Expenses = ({
                             </p>
                           </div>
                           {!expense.isSettlement && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                               <button
                                 onClick={() => startEditing(expense)}
                                 className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
@@ -632,27 +642,27 @@ const Expenses = ({
                       groupedExpenses[activeTab]?.map((expense) => (
                         <div
                           key={expense.id}
-                          className={`p-4 rounded-md flex justify-between items-start ${
+                          className={`p-3 sm:p-4 rounded-md flex flex-col sm:flex-row justify-between items-start gap-3 ${
                             expense.isSettlement
                               ? "bg-green-50 border-l-4 border-green-400"
                               : "bg-gray-50"
                           }`}
                         >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <h3 className="text-lg font-medium">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-2 mb-2">
+                              <h3 className="text-base sm:text-lg font-medium truncate">
                                 {expense.description}
                               </h3>
                               {expense.isSettlement && (
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex-shrink-0">
                                   Settlement
                                 </span>
                               )}
                             </div>
-                            <p className="text-gray-600">
+                            <p className="text-sm sm:text-base text-gray-600">
                               Paid by {expense.paidByName} - ₹{expense.amount}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs sm:text-sm text-gray-500 truncate">
                               Split with:{" "}
                               {expense.splitWith
                                 .map(
@@ -667,7 +677,7 @@ const Expenses = ({
                             </p>
                           </div>
                           {!expense.isSettlement && (
-                            <div className="flex gap-2">
+                            <div className="flex gap-1 sm:gap-2 flex-shrink-0">
                               <button
                                 onClick={() => startEditing(expense)}
                                 className="p-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-full transition-colors duration-200"
