@@ -534,6 +534,7 @@ const ExpenseSplittingApp = () => {
             onResetAllSettlements={handleResetAllSettlements}
             onResetAllSettledTransactions={handleResetAllSettledTransactions}
             individualBalances={individualBalances}
+            currentUser={user}
           />
         )}
 

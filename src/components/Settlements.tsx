@@ -6,8 +6,9 @@ import {
   DeleteIcon,
   CheckCircleIcon,
 } from "./icons";
+import type { User } from "firebase/auth";
 
-import type { User } from "../types";
+import type { User as AppUser } from "../types";
 
 interface Settlement {
   id: string;
@@ -42,13 +43,14 @@ interface SettlementsProps {
   settlements: Settlement[];
   groups: Group[];
   expenses: Expense[];
-  users: User[];
+  users: AppUser[];
   onSettle?: (settlement: Settlement) => void;
   onDeleteSettlement?: (settlement: Settlement) => void;
   onDeleteSettledTransaction?: (expense: Expense) => void;
   onResetAllSettlements?: () => void;
   onResetAllSettledTransactions?: () => void;
   individualBalances: Record<string, number>;
+  currentUser: User | null;
 }
 
 const Settlements = ({
@@ -62,18 +64,33 @@ const Settlements = ({
   onResetAllSettlements,
   onResetAllSettledTransactions,
   individualBalances,
+  currentUser,
 }: SettlementsProps) => {
   const [viewMode, setViewMode] = useState<"pending" | "settled">("pending");
 
-  // Get settled transactions (expenses with isSettlement: true)
-  const settledTransactions = expenses.filter(
-    (expense) => expense.isSettlement
+  // Get groups that the current user is a member of
+  const userGroups = groups.filter((group) =>
+    group.members.includes(currentUser?.uid || "")
   );
 
-  if (settlements.length === 0 && settledTransactions.length === 0) return null;
+  // Filter settlements to only show those for groups the current user is a member of
+  const userSettlements = settlements.filter((settlement) => {
+    if (!settlement.groupId) return false; // Skip ungrouped settlements
+    return userGroups.some((group) => group.id === settlement.groupId);
+  });
+
+  // Filter settled transactions to only show those for groups the current user is a member of
+  const userSettledTransactions = expenses.filter((expense) => {
+    if (!expense.isSettlement) return false;
+    if (!expense.groupId) return false; // Skip ungrouped settlements
+    return userGroups.some((group) => group.id === expense.groupId);
+  });
+
+  if (userSettlements.length === 0 && userSettledTransactions.length === 0)
+    return null;
 
   // Group settlements by group
-  const settlementsByGroup = settlements.reduce((acc, settlement) => {
+  const settlementsByGroup = userSettlements.reduce((acc, settlement) => {
     const groupId = settlement.groupId || "ungrouped";
     if (!acc[groupId]) {
       acc[groupId] = [];
@@ -97,7 +114,7 @@ const Settlements = ({
     >
       <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
         <ArrowsIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-red-600" />
-        Who Owes Whom
+        My Settlements
       </h2>
 
       {/* View Mode Toggle */}
@@ -111,7 +128,7 @@ const Settlements = ({
                 : "text-gray-600 hover:text-gray-800"
             }`}
           >
-            Pending Settlements ({settlements.length})
+            Pending Settlements ({userSettlements.length})
           </button>
           <button
             onClick={() => setViewMode("settled")}
@@ -121,7 +138,7 @@ const Settlements = ({
                 : "text-gray-600 hover:text-gray-800"
             }`}
           >
-            Settled Transactions ({settledTransactions.length})
+            Settled Transactions ({userSettledTransactions.length})
           </button>
         </div>
       </div>
@@ -129,7 +146,7 @@ const Settlements = ({
       {/* Reset All Button */}
       {viewMode === "pending" &&
         onResetAllSettlements &&
-        settlements.length > 0 && (
+        userSettlements.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <button
               onClick={onResetAllSettlements}
@@ -143,7 +160,7 @@ const Settlements = ({
 
       {viewMode === "settled" &&
         onResetAllSettledTransactions &&
-        settledTransactions.length > 0 && (
+        userSettledTransactions.length > 0 && (
           <div className="mb-4 sm:mb-6">
             <button
               onClick={onResetAllSettledTransactions}
@@ -293,13 +310,13 @@ const Settlements = ({
 
         {viewMode === "settled" && (
           <div className="space-y-4">
-            {settledTransactions.length === 0 ? (
+            {userSettledTransactions.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                 <p>No settled transactions found.</p>
               </div>
             ) : (
-              settledTransactions.map((transaction, index) => (
+              userSettledTransactions.map((transaction, index) => (
                 <motion.div
                   key={transaction.id}
                   initial={{ opacity: 0, scale: 0.95 }}
@@ -373,13 +390,15 @@ const Settlements = ({
             <>
               <div>
                 Total settlements needed:{" "}
-                <span className="font-medium">{settlements.length}</span>
+                <span className="font-medium">{userSettlements.length}</span>
               </div>
               <div>
                 Total amount to be settled:{" "}
                 <span className="font-medium">
                   ₹
-                  {settlements.reduce((sum, s) => sum + s.amount, 0).toFixed(2)}
+                  {userSettlements
+                    .reduce((sum, s) => sum + s.amount, 0)
+                    .toFixed(2)}
                 </span>
               </div>
             </>
@@ -388,14 +407,14 @@ const Settlements = ({
               <div>
                 Total settled transactions:{" "}
                 <span className="font-medium">
-                  {settledTransactions.length}
+                  {userSettledTransactions.length}
                 </span>
               </div>
               <div>
                 Total amount settled:{" "}
                 <span className="font-medium">
                   ₹
-                  {settledTransactions
+                  {userSettledTransactions
                     .reduce((sum, t) => sum + t.amount, 0)
                     .toFixed(2)}
                 </span>
