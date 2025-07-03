@@ -481,7 +481,7 @@ const ExpenseSplittingApp = () => {
         </motion.h1>
         <div className="flex items-center gap-4">
           <span className="text-gray-700">
-            {user?.displayName || user?.email}
+            {user?.displayName} | {user?.email}
           </span>
           <button
             onClick={logout}
@@ -538,7 +538,12 @@ const ExpenseSplittingApp = () => {
         )}
 
         {activeTab === "groups" && (
-          <Groups users={users} groups={groups} onGroupUpdate={() => {}} />
+          <Groups
+            users={users}
+            groups={groups}
+            onGroupUpdate={() => {}}
+            currentUser={user}
+          />
         )}
 
         {activeTab === "logs" && <Logs currentUser={user} />}
