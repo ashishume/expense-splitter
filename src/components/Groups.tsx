@@ -7,6 +7,9 @@ import {
   doc,
   updateDoc,
   writeBatch,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../firebase";
 import toast from "react-hot-toast";
@@ -29,6 +32,10 @@ interface GroupsProps {
 
 const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
   const [newGroupName, setNewGroupName] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [showUserForm, setShowUserForm] = useState(true);
+  const [selectedGroupForUser, setSelectedGroupForUser] = useState<string>("");
 
   const addGroup = async () => {
     if (newGroupName.trim() === "") return;
@@ -54,6 +61,74 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
     } catch (error) {
       console.error("Error adding group: ", error);
       toast.error("Error adding group. Please try again.");
+    }
+  };
+
+  const addUser = async () => {
+    if (newUserName.trim() === "") return;
+
+    try {
+      // Check if user already exists by email
+      let existingUser: User | null = null;
+      if (newUserEmail.trim()) {
+        const usersQuery = query(
+          collection(db, "users"),
+          where("email", "==", newUserEmail.trim())
+        );
+        const querySnapshot = await getDocs(usersQuery);
+        if (!querySnapshot.empty) {
+          const userData = querySnapshot.docs[0].data();
+          existingUser = {
+            id: querySnapshot.docs[0].id,
+            name: userData.name,
+            email: userData.email,
+            groups: userData.groups || [],
+            createdAt: userData.createdAt,
+            lastLogin: userData.lastLogin,
+          } as User;
+        }
+      }
+
+      let userId: string;
+
+      if (existingUser) {
+        // Use existing user
+        userId = existingUser.id;
+        toast.success(`Using existing user: ${existingUser.name}`);
+      } else {
+        // Create new user
+        const userExists = users.some(
+          (user) => user.name.toLowerCase() === newUserName.toLowerCase()
+        );
+
+        if (userExists) {
+          toast.error("This user already exists!");
+          return;
+        }
+
+        const userRef = await addDoc(collection(db, "users"), {
+          name: newUserName,
+          email: newUserEmail.trim() || null,
+          groups: [],
+          createdAt: new Date().toISOString(),
+        });
+        userId = userRef.id;
+        toast.success("User added successfully!");
+      }
+
+      // Add user to selected group if one is selected
+      if (selectedGroupForUser) {
+        await addUserToGroup(userId, selectedGroupForUser);
+        setSelectedGroupForUser("");
+      }
+
+      setNewUserName("");
+      setNewUserEmail("");
+      setShowUserForm(false);
+      onGroupUpdate();
+    } catch (error) {
+      console.error("Error adding user: ", error);
+      toast.error("Error adding user. Please try again.");
     }
   };
 
@@ -174,13 +249,54 @@ const Groups = ({ users, groups, onGroupUpdate }: GroupsProps) => {
                   Delete Group
                 </button>
               </div>
+
+              {showUserForm && (
+                <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                      <input
+                        type="text"
+                        value={newUserName}
+                        onChange={(e) => setNewUserName(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                        placeholder="Enter name"
+                      />
+                      <input
+                        type="email"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                        placeholder="Enter email (optional)"
+                      />
+                      <button
+                        onClick={() => {
+                          setSelectedGroupForUser(group.id);
+                          addUser();
+                        }}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors text-sm"
+                      >
+                        Add User
+                      </button>
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      If email exists, will use existing user. Otherwise creates
+                      new user.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <h4 className="text-sm font-medium text-gray-700">Members</h4>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {users.map((user) => (
                     <div
                       key={user.id}
-                      className="flex items-center gap-2 bg-white p-2 rounded border border-gray-200"
+                      className={`flex items-center gap-2 p-2 rounded border ${
+                        group.members.includes(user.id)
+                          ? "bg-indigo-50 border-indigo-200"
+                          : "bg-white border-gray-200"
+                      }`}
                     >
                       <input
                         type="checkbox"

@@ -22,7 +22,7 @@ export interface Expense {
   description: string;
   splitWith: string[];
   date: string;
-  groupId?: string | null;
+  groupId?: string;
   isSettlement?: boolean;
 }
 

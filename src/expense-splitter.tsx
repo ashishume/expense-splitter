@@ -11,7 +11,6 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { useAuth } from "./components/AuthContext";
-import Users from "./components/Users";
 import Groups from "./components/Groups";
 import Expenses from "./components/Expenses";
 import Settlements from "./components/Settlements";
@@ -463,7 +462,6 @@ const ExpenseSplittingApp = () => {
     { id: "expenses", label: "Expenses", icon: "💰" },
     { id: "settlements", label: "Settlements", icon: "💸" },
     { id: "groups", label: "Groups", icon: "👥" },
-    { id: "users", label: "Users", icon: "👤" },
     { id: "logs", label: "Activity", icon: "📋" },
   ];
 
@@ -541,14 +539,6 @@ const ExpenseSplittingApp = () => {
 
         {activeTab === "groups" && (
           <Groups users={users} groups={groups} onGroupUpdate={() => {}} />
-        )}
-
-        {activeTab === "users" && (
-          <Users
-            users={users}
-            individualBalances={individualBalances}
-            onUserUpdate={() => {}}
-          />
         )}
 
         {activeTab === "logs" && <Logs currentUser={user} />}
