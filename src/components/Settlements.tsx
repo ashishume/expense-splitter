@@ -65,7 +65,6 @@ const Settlements = ({
   onDeleteSettledTransaction,
   onResetAllSettlements,
   onResetAllSettledTransactions,
-  individualBalances,
   currentUser,
 }: SettlementsProps) => {
   const [viewMode, setViewMode] = useState<"pending" | "settled">("pending");

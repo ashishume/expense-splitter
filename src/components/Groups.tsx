@@ -36,7 +36,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   const [newGroupName, setNewGroupName] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
-  const [showUserForm, setShowUserForm] = useState(true);
+  const [showUserForm] = useState(true);
   const [isCreatingGroup, setIsCreatingGroup] = useState(false);
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState<string | null>(null);

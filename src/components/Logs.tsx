@@ -12,7 +12,6 @@ import {
   Inbox,
 } from "lucide-react";
 import type { User } from "firebase/auth";
-import type { User as AppUser } from "../types";
 
 interface ExtendedLogEntry extends LogEntry {
   id: string;
