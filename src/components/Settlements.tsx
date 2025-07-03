@@ -7,12 +7,7 @@ import {
   CheckCircleIcon,
 } from "./icons";
 
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  groups?: string[];
-}
+import type { User } from "../types";
 
 interface Settlement {
   id: string;

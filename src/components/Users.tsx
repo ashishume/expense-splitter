@@ -10,13 +10,7 @@ import {
 import { db } from "../firebase";
 import toast from "react-hot-toast";
 import { UsersIcon, EditIcon, DeleteIcon, SaveIcon, CloseIcon } from "./icons";
-
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  groups?: string[];
-}
+import type { User } from "../types";
 
 interface UsersProps {
   users: User[];
@@ -48,6 +42,7 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
         name: newUserName,
         email: newUserEmail.trim() || null,
         groups: [],
+        createdAt: new Date().toISOString(),
       });
       setNewUserName("");
       setNewUserEmail("");
@@ -216,6 +211,20 @@ const Users = ({ users, individualBalances, onUserUpdate }: UsersProps) => {
                               {user.email}
                             </span>
                           )}
+                          <div className="flex flex-col text-xs text-gray-400 mt-1">
+                            {user.createdAt && (
+                              <span>
+                                Created:{" "}
+                                {new Date(user.createdAt).toLocaleDateString()}
+                              </span>
+                            )}
+                            {user.lastLogin && (
+                              <span>
+                                Last login:{" "}
+                                {new Date(user.lastLogin).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <span
                           className={`text-xs sm:text-sm px-2 py-1 rounded-full ${

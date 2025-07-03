@@ -13,12 +13,7 @@ import { logExpenseAction } from "../utils/logger";
 import toast from "react-hot-toast";
 import { EditIcon, DeleteIcon, CurrencyIcon } from "./icons";
 
-interface User {
-  id: string;
-  name: string;
-  email?: string;
-  groups?: string[];
-}
+import type { User } from "../types";
 
 interface Group {
   id: string;
