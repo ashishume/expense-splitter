@@ -7,6 +7,7 @@ import {
   CheckCircleIcon,
   LoadingSpinner,
 } from "./icons/index";
+import { Handshake, ArrowRightLeft } from "lucide-react";
 import type { User } from "firebase/auth";
 
 import type { User as AppUser } from "../types";
@@ -99,8 +100,8 @@ const Settlements = ({
     return userGroups.some((group) => group.id === expense.groupId);
   });
 
-  if (userSettlements.length === 0 && userSettledTransactions.length === 0)
-    return null;
+  // Check if user has any groups
+  const hasGroups = userGroups.length > 0;
 
   // Group settlements by group
   const settlementsByGroup = userSettlements.reduce((acc, settlement) => {
@@ -207,291 +208,282 @@ const Settlements = ({
         </div>
       </div>
 
-      {/* Reset All Button */}
-      {viewMode === "pending" &&
-        onResetAllSettlements &&
-        userSettlements.length > 0 && (
-          <div className="mb-4 sm:mb-6">
-            <button
-              onClick={handleResetAllSettlements}
-              disabled={isResettingAllSettlements}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isResettingAllSettlements ? (
-                <LoadingSpinner className="w-4 h-4" />
-              ) : (
-                <DeleteIcon className="w-4 h-4" />
-              )}
-              <span>
-                {isResettingAllSettlements
-                  ? "Resetting..."
-                  : "Reset All Pending Settlements"}
-              </span>
-            </button>
-          </div>
-        )}
-
-      {viewMode === "settled" &&
-        onResetAllSettledTransactions &&
-        userSettledTransactions.length > 0 && (
-          <div className="mb-4 sm:mb-6">
-            <button
-              onClick={handleResetAllSettledTransactions}
-              disabled={isResettingAllSettledTransactions}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isResettingAllSettledTransactions ? (
-                <LoadingSpinner className="w-4 h-4" />
-              ) : (
-                <DeleteIcon className="w-4 h-4" />
-              )}
-              <span>
-                {isResettingAllSettledTransactions
-                  ? "Deleting..."
-                  : "Delete All Settled Transactions"}
-              </span>
-            </button>
-          </div>
-        )}
-
       <div className="space-y-6">
-        {viewMode === "pending" && (
+        {/* Empty State */}
+        {!hasGroups ? (
+          <div className="text-center py-12 text-gray-500">
+            <ArrowRightLeft className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium mb-2">No Groups Found</h3>
+            <p className="text-sm mb-4">
+              You need to be part of a group to see settlements.
+            </p>
+            <p className="text-xs text-gray-400">
+              Create or join a group in the Groups tab to get started.
+            </p>
+          </div>
+        ) : userSettlements.length === 0 &&
+          userSettledTransactions.length === 0 ? (
+          <div className="text-center py-12 text-gray-500">
+            <Handshake className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-medium mb-2">All Settled Up!</h3>
+            <p className="text-sm mb-4">
+              No pending settlements or settled transactions found.
+            </p>
+            <p className="text-xs text-gray-400">
+              Add some expenses in the Expenses tab to see settlements here.
+            </p>
+          </div>
+        ) : (
           <>
-            {Object.entries(settlementsByGroup).map(
-              ([groupId, groupSettlements]) => {
-                const group = groups.find((g) => g.id === groupId);
-                const groupTotal = calculateGroupTotal(groupId);
-
-                return (
-                  <div key={groupId} className="space-y-3">
-                    {group && (
-                      <div className="bg-gray-50 p-3 rounded-lg">
-                        <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                          {group.name}
-                        </h3>
-                        <div className="text-sm text-gray-600 space-y-1">
-                          <div>
-                            Total Group Expenses: ₹{groupTotal.toFixed(2)}
-                          </div>
-                          <div>
-                            Average per person: ₹
-                            {(groupTotal / (group.members.length || 1)).toFixed(
-                              2
-                            )}
-                          </div>
-                          <div className="mt-2 pt-2 border-t border-gray-200">
-                            <div className="font-medium mb-1">
-                              Individual Balances:
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              {group.members.map((memberId) => {
-                                const member = users.find(
-                                  (u) => u.id === memberId
-                                );
-                                const spending =
-                                  individualBalances[memberId] || 0;
-                                return (
-                                  <div
-                                    key={memberId}
-                                    className="flex justify-between items-center text-xs"
-                                  >
-                                    <span className="font-medium">
-                                      {member?.name}
-                                    </span>
-                                    <span
-                                      className={`${
-                                        spending >= 0
-                                          ? "text-green-600"
-                                          : "text-red-600"
-                                      }`}
-                                    >
-                                      {spending >= 0 ? "+" : ""}
-                                      {spending.toFixed(2)}
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="space-y-3 sm:space-y-4">
-                      {groupSettlements.map((settlement, index) => (
-                        <motion.div
-                          key={settlement.id}
-                          initial={{ opacity: 0, scale: 0.95 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: index * 0.1 }}
-                          className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-                        >
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <div className="flex items-center space-x-2 sm:space-x-3">
-                              <div className="flex-shrink-0">
-                                <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                  <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
-                                </div>
+            {viewMode === "pending" && (
+              <>
+                {/* Reset All Button */}
+                {onResetAllSettlements && userSettlements.length > 0 && (
+                  <div className="mb-4 sm:mb-6">
+                    <button
+                      onClick={handleResetAllSettlements}
+                      disabled={isResettingAllSettlements}
+                      className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {isResettingAllSettlements ? (
+                        <LoadingSpinner className="w-4 h-4" />
+                      ) : (
+                        <DeleteIcon className="w-4 h-4" />
+                      )}
+                      <span>
+                        {isResettingAllSettlements
+                          ? "Resetting..."
+                          : "Reset All Pending Settlements"}
+                      </span>
+                    </button>
+                  </div>
+                )}
+                {/* Pending Settlements List */}
+                {Object.entries(settlementsByGroup).map(
+                  ([groupId, groupSettlements]) => {
+                    const group = groups.find((g) => g.id === groupId);
+                    const groupTotal = calculateGroupTotal(groupId);
+                    return (
+                      <div key={groupId} className="space-y-3">
+                        {group && (
+                          <div className="bg-gray-50 p-3 rounded-lg">
+                            <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                              {group.name}
+                            </h3>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <div>
+                                Total Group Expenses: ₹{groupTotal.toFixed(2)}
                               </div>
                               <div>
-                                <div className="flex items-center space-x-1 sm:space-x-2">
-                                  <span className="text-base sm:text-lg font-bold text-red-700">
-                                    {settlement.fromName}
-                                  </span>
-                                  <span className="text-gray-600">owes</span>
-                                  <span className="text-base sm:text-lg font-bold text-green-700">
-                                    {settlement.toName}
-                                  </span>
-                                </div>
-                                <div className="text-xs sm:text-sm text-gray-500">
-                                  Settlement required
-                                </div>
+                                Average per person: ₹
+                                {(
+                                  groupTotal / (group.members.length || 1)
+                                ).toFixed(2)}
                               </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl sm:text-3xl font-bold text-red-600">
-                                ₹{settlement.amount.toFixed(2)}
-                              </div>
-                              <div className="text-xs sm:text-sm text-gray-500">
-                                Amount owed
-                              </div>
+                              <div className="mt-2 pt-2 border-t border-gray-200"></div>
                             </div>
                           </div>
-                          <div className="mt-2 sm:mt-3 flex items-center justify-between">
-                            <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
-                            <div className="flex items-center space-x-2">
-                              {onDeleteSettlement && (
-                                <button
-                                  onClick={() =>
-                                    handleDeleteSettlement(settlement)
-                                  }
-                                  disabled={
-                                    isDeletingSettlement === settlement.id
-                                  }
-                                  className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isDeletingSettlement === settlement.id ? (
-                                    <LoadingSpinner className="w-3 h-3" />
-                                  ) : (
-                                    <DeleteIcon className="w-3 h-3" />
+                        )}
+                        <div className="space-y-3 sm:space-y-4">
+                          {groupSettlements.map((settlement, index) => (
+                            <motion.div
+                              key={settlement.id}
+                              initial={{ opacity: 0, scale: 0.95 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: index * 0.1 }}
+                              className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                            >
+                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                                <div className="flex items-center space-x-2 sm:space-x-3">
+                                  <div className="flex-shrink-0">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                      <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+                                    </div>
+                                  </div>
+                                  <div>
+                                    <div className="flex items-center space-x-1 sm:space-x-2">
+                                      <span className="text-base sm:text-lg font-bold text-red-700">
+                                        {settlement.fromName}
+                                      </span>
+                                      <span className="text-gray-600">
+                                        owes
+                                      </span>
+                                      <span className="text-base sm:text-lg font-bold text-green-700">
+                                        {settlement.toName}
+                                      </span>
+                                    </div>
+                                    <div className="text-xs sm:text-sm text-gray-500">
+                                      Settlement required
+                                    </div>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-2xl sm:text-3xl font-bold text-red-600">
+                                    ₹{settlement.amount.toFixed(2)}
+                                  </div>
+                                  <div className="text-xs sm:text-sm text-gray-500">
+                                    Amount owed
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-2 sm:mt-3 flex items-center justify-between">
+                                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
+                                <div className="flex items-center space-x-2">
+                                  {onDeleteSettlement && (
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteSettlement(settlement)
+                                      }
+                                      disabled={
+                                        isDeletingSettlement === settlement.id
+                                      }
+                                      className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {isDeletingSettlement ===
+                                      settlement.id ? (
+                                        <LoadingSpinner className="w-3 h-3" />
+                                      ) : (
+                                        <DeleteIcon className="w-3 h-3" />
+                                      )}
+                                      <span>
+                                        {isDeletingSettlement === settlement.id
+                                          ? "Deleting..."
+                                          : "Delete"}
+                                      </span>
+                                    </button>
                                   )}
-                                  <span>
-                                    {isDeletingSettlement === settlement.id
-                                      ? "Deleting..."
-                                      : "Delete"}
-                                  </span>
-                                </button>
-                              )}
-                              {onSettle && (
-                                <button
-                                  onClick={() => handleSettle(settlement)}
-                                  disabled={isSettling === settlement.id}
-                                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  {isSettling === settlement.id ? (
-                                    <LoadingSpinner className="w-4 h-4" />
-                                  ) : (
-                                    <ArrowsIcon className="w-4 h-4" />
+                                  {onSettle && (
+                                    <button
+                                      onClick={() => handleSettle(settlement)}
+                                      disabled={isSettling === settlement.id}
+                                      className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                                    >
+                                      {isSettling === settlement.id ? (
+                                        <LoadingSpinner className="w-4 h-4" />
+                                      ) : (
+                                        <ArrowsIcon className="w-4 h-4" />
+                                      )}
+                                      <span>
+                                        {isSettling === settlement.id
+                                          ? "Settling..."
+                                          : "Settle"}
+                                      </span>
+                                    </button>
                                   )}
-                                  <span>
-                                    {isSettling === settlement.id
-                                      ? "Settling..."
-                                      : "Settle"}
-                                  </span>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                );
-              }
+                                </div>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  }
+                )}
+              </>
             )}
-          </>
-        )}
-
-        {viewMode === "settled" && (
-          <div className="space-y-4">
-            {userSettledTransactions.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                <p>No settled transactions found.</p>
-              </div>
-            ) : (
-              userSettledTransactions.map((transaction, index) => (
-                <motion.div
-                  key={transaction.id}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div className="flex items-center space-x-2 sm:space-x-3">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center">
-                          <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center space-x-1 sm:space-x-2">
-                          <span className="text-base sm:text-lg font-bold text-green-700">
-                            {transaction.paidByName}
-                          </span>
-                          <span className="text-gray-600">paid</span>
-                          <span className="text-base sm:text-lg font-bold text-blue-700">
-                            {users.find(
-                              (u) => u.id === transaction.splitWith[0]
-                            )?.name || "Unknown"}
-                          </span>
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-500">
-                          {transaction.description}
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          {new Date(transaction.date).toLocaleDateString()}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-2xl sm:text-3xl font-bold text-green-600">
-                        ₹{transaction.amount.toFixed(2)}
-                      </div>
-                      <div className="text-xs sm:text-sm text-gray-500">
-                        Amount settled
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-2 sm:mt-3 flex items-center justify-end">
-                    {onDeleteSettledTransaction && (
+            {viewMode === "settled" && (
+              <div className="space-y-4">
+                {onResetAllSettledTransactions &&
+                  userSettledTransactions.length > 0 && (
+                    <div className="mb-4 sm:mb-6">
                       <button
-                        onClick={() =>
-                          handleDeleteSettledTransaction(transaction)
-                        }
-                        disabled={
-                          isDeletingSettledTransaction === transaction.id
-                        }
-                        className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={handleResetAllSettledTransactions}
+                        disabled={isResettingAllSettledTransactions}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-200 flex items-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isDeletingSettledTransaction === transaction.id ? (
-                          <LoadingSpinner className="w-3 h-3" />
+                        {isResettingAllSettledTransactions ? (
+                          <LoadingSpinner className="w-4 h-4" />
                         ) : (
-                          <DeleteIcon className="w-3 h-3" />
+                          <DeleteIcon className="w-4 h-4" />
                         )}
                         <span>
-                          {isDeletingSettledTransaction === transaction.id
+                          {isResettingAllSettledTransactions
                             ? "Deleting..."
-                            : "Delete Transaction"}
+                            : "Delete All Settled Transactions"}
                         </span>
                       </button>
-                    )}
+                    </div>
+                  )}
+                {userSettledTransactions.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500">
+                    <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No settled transactions found.</p>
                   </div>
-                </motion.div>
-              ))
+                ) : (
+                  userSettledTransactions.map((transaction, index) => (
+                    <motion.div
+                      key={transaction.id}
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: index * 0.1 }}
+                      className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div className="flex items-center space-x-2 sm:space-x-3">
+                          <div className="flex-shrink-0">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center">
+                              <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-1 sm:space-x-2">
+                              <span className="text-base sm:text-lg font-bold text-green-700">
+                                {transaction.paidByName}
+                              </span>
+                              <span className="text-gray-600">paid</span>
+                              <span className="text-base sm:text-lg font-bold text-blue-700">
+                                {users.find(
+                                  (u) => u.id === transaction.splitWith[0]
+                                )?.name || "Unknown"}
+                              </span>
+                            </div>
+                            <div className="text-xs sm:text-sm text-gray-500">
+                              {transaction.description}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {new Date(transaction.date).toLocaleDateString()}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-2xl sm:text-3xl font-bold text-green-600">
+                            ₹{transaction.amount.toFixed(2)}
+                          </div>
+                          <div className="text-xs sm:text-sm text-gray-500">
+                            Amount settled
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-2 sm:mt-3 flex items-center justify-end">
+                        {onDeleteSettledTransaction && (
+                          <button
+                            onClick={() =>
+                              handleDeleteSettledTransaction(transaction)
+                            }
+                            disabled={
+                              isDeletingSettledTransaction === transaction.id
+                            }
+                            className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {isDeletingSettledTransaction === transaction.id ? (
+                              <LoadingSpinner className="w-3 h-3" />
+                            ) : (
+                              <DeleteIcon className="w-3 h-3" />
+                            )}
+                            <span>
+                              {isDeletingSettledTransaction === transaction.id
+                                ? "Deleting..."
+                                : "Delete Transaction"}
+                            </span>
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
       </div>
 
