@@ -3,11 +3,76 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/src/assets/logo.jpg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Axpo expense splitter</title>
+
+    <!-- Apple Touch Icons for Home Screen -->
+    <link rel="apple-touch-icon" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="144x144" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="114x114" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="76x76" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="72x72" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="60x60" href="/logo.jpg" />
+    <link rel="apple-touch-icon" sizes="57x57" href="/logo.jpg" />
+
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Axpo" />
+    <meta name="application-name" content="Axpo" />
+    <meta name="theme-color" content="#3b82f6" />
+    <meta name="msapplication-TileColor" content="#3b82f6" />
+
+    <!-- Description and Keywords -->
+    <meta
+      name="description"
+      content="Smart expense management and splitting app for groups"
+    />
+    <meta
+      name="keywords"
+      content="expense, split, group, money, bills, payments"
+    />
+    <meta name="author" content="Axpo" />
+
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="Axpo - Smart Expense Splitter" />
+    <meta
+      property="og:description"
+      content="Split expenses with friends and family easily"
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/logo.jpg" />
+
+    <!-- Twitter Card Meta Tags -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Axpo - Smart Expense Splitter" />
+    <meta
+      name="twitter:description"
+      content="Split expenses with friends and family easily"
+    />
+    <meta name="twitter:image" content="/logo.jpg" />
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Register Service Worker for PWA
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker
+            .register("/sw.js")
+            .then((registration) => {
+              console.log("SW registered: ", registration);
+            })
+            .catch((registrationError) => {
+              console.log("SW registration failed: ", registrationError);
+            });
+        });
+      }
+    </script>
   </body>
 </html>
