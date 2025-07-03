@@ -10,7 +10,7 @@ import {
   doc,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { useAuth } from "./components/AuthContext";
+import { useAuth } from "./components/useAuth";
 import Groups from "./components/Groups";
 import Expenses from "./components/Expenses";
 import Settlements from "./components/Settlements";
@@ -299,100 +299,6 @@ const ExpenseSplittingApp = () => {
     }
   };
 
-  // Handle deleting a settlement transaction
-  const handleDeleteSettlement = async (settlement: Settlement) => {
-    try {
-      // Find the settlement expense in the expenses array
-      const settlementExpense = expenses.find(
-        (expense) =>
-          expense.isSettlement &&
-          expense.paidBy === settlement.from &&
-          expense.splitWith.includes(settlement.to) &&
-          expense.amount === settlement.amount &&
-          expense.groupId === settlement.groupId
-      );
-
-      if (!settlementExpense) {
-        toast.error(
-          "Settlement transaction not found. It may have already been deleted."
-        );
-        return;
-      }
-
-      // Confirm deletion
-      const confirmed = window.confirm(
-        `Are you sure you want to delete the settlement between ${settlement.fromName} and ${settlement.toName} for ₹${settlement.amount}?`
-      );
-
-      if (!confirmed) return;
-
-      // Delete the settlement expense from Firestore
-      await deleteDoc(doc(db, "expenses", settlementExpense.id));
-
-      // Log the deletion action
-      await logExpenseAction(
-        "delete",
-        settlementExpense.id,
-        `Deleted settlement: ${settlement.fromName} to ${settlement.toName} for ₹${settlement.amount}`,
-        user?.uid,
-        user?.displayName || undefined,
-        settlement.groupId || undefined
-      );
-
-      toast.success("Settlement deleted successfully!");
-    } catch (error) {
-      console.error("Error deleting settlement: ", error);
-      toast.error("Error deleting settlement. Please try again.");
-    }
-  };
-
-  // Handle resetting all settlements
-  const handleResetAllSettlements = async () => {
-    try {
-      // Find all settlement expenses
-      const settlementExpenses = expenses.filter(
-        (expense) => expense.isSettlement
-      );
-
-      if (settlementExpenses.length === 0) {
-        toast.error("No settlements to reset.");
-        return;
-      }
-
-      // Confirm deletion
-      const confirmed = window.confirm(
-        `Are you sure you want to delete all ${settlementExpenses.length} settlement transactions? This action cannot be undone.`
-      );
-
-      if (!confirmed) return;
-
-      // Delete all settlement expenses
-      const deletePromises = settlementExpenses.map(async (expense) => {
-        await deleteDoc(doc(db, "expenses", expense.id));
-        return expense;
-      });
-
-      await Promise.all(deletePromises);
-
-      // Log the bulk deletion action
-      await logExpenseAction(
-        "delete",
-        "bulk",
-        `Reset all settlements: deleted ${settlementExpenses.length} settlement transactions`,
-        user?.uid,
-        user?.displayName || undefined,
-        undefined // No specific group for bulk operations
-      );
-
-      toast.success(
-        `Successfully reset all ${settlementExpenses.length} settlements!`
-      );
-    } catch (error) {
-      console.error("Error resetting settlements: ", error);
-      toast.error("Error resetting settlements. Please try again.");
-    }
-  };
-
   // Handle deleting a settled transaction
   const handleDeleteSettledTransaction = async (expense: Expense) => {
     try {
@@ -420,53 +326,6 @@ const ExpenseSplittingApp = () => {
     } catch (error) {
       console.error("Error deleting settled transaction: ", error);
       toast.error("Error deleting settled transaction. Please try again.");
-    }
-  };
-
-  // Handle resetting all settled transactions
-  const handleResetAllSettledTransactions = async () => {
-    try {
-      // Find all settlement expenses
-      const settlementExpenses = expenses.filter(
-        (expense) => expense.isSettlement
-      );
-
-      if (settlementExpenses.length === 0) {
-        toast.error("No settled transactions to delete.");
-        return;
-      }
-
-      // Confirm deletion
-      const confirmed = window.confirm(
-        `Are you sure you want to delete all ${settlementExpenses.length} settled transactions? This action cannot be undone.`
-      );
-
-      if (!confirmed) return;
-
-      // Delete all settlement expenses
-      const deletePromises = settlementExpenses.map(async (expense) => {
-        await deleteDoc(doc(db, "expenses", expense.id));
-        return expense;
-      });
-
-      await Promise.all(deletePromises);
-
-      // Log the bulk deletion action
-      await logExpenseAction(
-        "delete",
-        "bulk",
-        `Deleted all settled transactions: ${settlementExpenses.length} transactions`,
-        user?.uid,
-        user?.displayName || undefined,
-        undefined // No specific group for bulk operations
-      );
-
-      toast.success(
-        `Successfully deleted all ${settlementExpenses.length} settled transactions!`
-      );
-    } catch (error) {
-      console.error("Error deleting settled transactions: ", error);
-      toast.error("Error deleting settled transactions. Please try again.");
     }
   };
 
@@ -551,10 +410,7 @@ const ExpenseSplittingApp = () => {
             expenses={expenses}
             users={users}
             onSettle={handleSettle}
-            onDeleteSettlement={handleDeleteSettlement}
             onDeleteSettledTransaction={handleDeleteSettledTransaction}
-            onResetAllSettlements={handleResetAllSettlements}
-            onResetAllSettledTransactions={handleResetAllSettledTransactions}
             individualBalances={individualBalances}
             currentUser={user}
           />

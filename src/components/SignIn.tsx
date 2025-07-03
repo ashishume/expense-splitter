@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "./useAuth";
 import logo from "../assets/logo.jpg";
 import { CheckIcon, LoadingSpinner } from "./icons/index";
 

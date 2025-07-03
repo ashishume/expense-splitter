@@ -1,4 +1,5 @@
-import { AuthProvider, useAuth } from "./components/AuthContext";
+import { AuthProvider } from "./components/AuthContext";
+import { useAuth } from "./components/useAuth";
 import { SignIn } from "./components/SignIn";
 import ExpenseSplittingApp from "./expense-splitter";
 import Toast from "./components/ui/Toast";

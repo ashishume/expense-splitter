@@ -47,10 +47,7 @@ interface SettlementsProps {
   expenses: Expense[];
   users: AppUser[];
   onSettle?: (settlement: Settlement) => void;
-  onDeleteSettlement?: (settlement: Settlement) => void;
   onDeleteSettledTransaction?: (expense: Expense) => void;
-  onResetAllSettlements?: () => void;
-  onResetAllSettledTransactions?: () => void;
   individualBalances: Record<string, number>;
   currentUser: User | null;
 }
@@ -61,25 +58,13 @@ const Settlements = ({
   expenses,
   users,
   onSettle,
-  onDeleteSettlement,
   onDeleteSettledTransaction,
-  onResetAllSettlements,
-  onResetAllSettledTransactions,
   currentUser,
 }: SettlementsProps) => {
   const [viewMode, setViewMode] = useState<"pending" | "settled">("pending");
   const [isSettling, setIsSettling] = useState<string | null>(null);
-  const [isDeletingSettlement, setIsDeletingSettlement] = useState<
-    string | null
-  >(null);
   const [isDeletingSettledTransaction, setIsDeletingSettledTransaction] =
     useState<string | null>(null);
-  const [isResettingAllSettlements, setIsResettingAllSettlements] =
-    useState(false);
-  const [
-    isResettingAllSettledTransactions,
-    setIsResettingAllSettledTransactions,
-  ] = useState(false);
 
   // Get groups that the current user is a member of
   const userGroups = groups.filter((group) =>
@@ -160,15 +145,15 @@ const Settlements = ({
   //   }
   // };
 
-  const handleResetAllSettledTransactions = async () => {
-    if (isResettingAllSettledTransactions) return;
-    setIsResettingAllSettledTransactions(true);
-    try {
-      await onResetAllSettledTransactions?.();
-    } finally {
-      setIsResettingAllSettledTransactions(false);
-    }
-  };
+  // const handleResetAllSettledTransactions = async () => {
+  //   if (isResettingAllSettledTransactions) return;
+  //   setIsResettingAllSettledTransactions(true);
+  //   try {
+  //     await onResetAllSettledTransactions?.();
+  //   } finally {
+  //     setIsResettingAllSettledTransactions(false);
+  //   }
+  // };
 
   return (
     <motion.div
