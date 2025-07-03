@@ -351,7 +351,7 @@ const Settlements = ({
                                     <button
                                       onClick={() => handleSettle(settlement)}
                                       disabled={isSettling === settlement.id}
-                                      className="btn btn-success flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1 sm:space-x-2"
+                                      className="btn btn-teal flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1 sm:space-x-2"
                                     >
                                       {isSettling === settlement.id ? (
                                         <LoadingSpinner className="w-4 h-4" />
@@ -394,7 +394,7 @@ const Settlements = ({
             )}
             {viewMode === "settled" && (
               <div className="space-y-4">
-                {onResetAllSettledTransactions &&
+                {/* {onResetAllSettledTransactions &&
                   userSettledTransactions.length > 0 && (
                     <div className="mb-4 sm:mb-6">
                       <button
@@ -414,7 +414,7 @@ const Settlements = ({
                         </span>
                       </button>
                     </div>
-                  )}
+                  )} */}
                 {userSettledTransactions.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <CheckCircleIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />

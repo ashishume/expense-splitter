@@ -347,7 +347,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                         <button
                           onClick={() => addUser(group.id)}
                           disabled={isAddingUser}
-                          className="btn btn-primary text-sm flex items-center justify-center"
+                          className="btn btn-teal text-sm flex items-center justify-center"
                         >
                           {isAddingUser ? (
                             <>

@@ -446,7 +446,7 @@ const Expenses = ({
               <button
                 onClick={updateExpense}
                 disabled={isUpdatingExpense}
-                className="btn btn-success flex-1 text-sm sm:text-base"
+                className="btn btn-purple flex-1 text-sm sm:text-base"
               >
                 {isUpdatingExpense ? (
                   <>
@@ -472,7 +472,7 @@ const Expenses = ({
             <button
               onClick={addExpense}
               disabled={isAddingExpense}
-              className="btn btn-success w-full text-sm sm:text-base"
+              className="btn btn-rose w-full text-sm sm:text-base"
             >
               {isAddingExpense ? (
                 <>
@@ -577,29 +577,31 @@ const Expenses = ({
                           }`}
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <h3 className="text-base sm:text-lg font-medium truncate">
+                            <div className="flex flex-wrap items-start gap-2 mb-2">
+                              <h3 className="text-base sm:text-lg font-medium break-words flex-1 min-w-0">
                                 {expense.description}
                               </h3>
-                              {expense.isSettlement && (
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex-shrink-0">
-                                  Settlement
-                                </span>
-                              )}
-                              {expense.groupId && !expense.isSettlement && (
-                                <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full flex-shrink-0">
-                                  {
-                                    userGroups.find(
-                                      (g) => g.id === expense.groupId
-                                    )?.name
-                                  }
-                                </span>
-                              )}
+                              <div className="flex flex-wrap gap-1 flex-shrink-0">
+                                {expense.isSettlement && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                    Settlement
+                                  </span>
+                                )}
+                                {expense.groupId && !expense.isSettlement && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+                                    {
+                                      userGroups.find(
+                                        (g) => g.id === expense.groupId
+                                      )?.name
+                                    }
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-sm sm:text-base text-gray-600">
+                            <p className="text-sm sm:text-base text-gray-600 break-words">
                               Paid by {expense.paidByName} - ₹{expense.amount}
                             </p>
-                            <p className="text-xs sm:text-sm text-gray-500 truncate">
+                            <p className="text-xs sm:text-sm text-gray-500 break-words">
                               Split with:{" "}
                               {expense.splitWith
                                 .map(
@@ -649,20 +651,22 @@ const Expenses = ({
                           }`}
                         >
                           <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <h3 className="text-base sm:text-lg font-medium truncate">
+                            <div className="flex flex-wrap items-start gap-2 mb-2">
+                              <h3 className="text-base sm:text-lg font-medium break-words flex-1 min-w-0">
                                 {expense.description}
                               </h3>
-                              {expense.isSettlement && (
-                                <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full flex-shrink-0">
-                                  Settlement
-                                </span>
-                              )}
+                              <div className="flex flex-wrap gap-1 flex-shrink-0">
+                                {expense.isSettlement && (
+                                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                                    Settlement
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <p className="text-sm sm:text-base text-gray-600">
+                            <p className="text-sm sm:text-base text-gray-600 break-words">
                               Paid by {expense.paidByName} - ₹{expense.amount}
                             </p>
-                            <p className="text-xs sm:text-sm text-gray-500 truncate">
+                            <p className="text-xs sm:text-sm text-gray-500 break-words">
                               Split with:{" "}
                               {expense.splitWith
                                 .map(

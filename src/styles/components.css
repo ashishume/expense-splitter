@@ -17,6 +17,8 @@
   min-height: 44px; /* Touch target size */
   white-space: nowrap;
   user-select: none;
+  position: relative;
+  overflow: hidden;
 }
 
 .btn:disabled {
@@ -27,78 +29,139 @@
 
 .btn:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
-/* Primary Button */
+/* Primary Button - Beautiful Blue-Purple Gradient */
 .btn-primary {
-  background-color: var(--btn-primary-bg);
+  background: var(--btn-primary-bg);
   color: var(--btn-primary-text);
   border-color: var(--btn-primary-border);
+  box-shadow: 0 2px 4px rgba(99, 102, 241, 0.1);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: var(--btn-primary-hover);
-  border-color: var(--btn-primary-hover);
+  background: var(--btn-primary-hover);
+  border-color: var(--btn-primary-border);
+  box-shadow: 0 4px 8px rgba(99, 102, 241, 0.2);
+  transform: translateY(-1px);
 }
 
-/* Success Button */
+/* Success Button - Vibrant Emerald Green Gradient */
 .btn-success {
-  background-color: var(--btn-success-bg);
+  background: var(--btn-success-bg);
   color: var(--btn-success-text);
   border-color: var(--btn-success-border);
+  box-shadow: 0 2px 4px rgba(16, 185, 129, 0.1);
 }
 
 .btn-success:hover:not(:disabled) {
-  background-color: var(--btn-success-hover);
-  border-color: var(--btn-success-hover);
+  background: var(--btn-success-hover);
+  border-color: var(--btn-success-border);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+  transform: translateY(-1px);
 }
 
-/* Warning Button */
+/* Warning Button - Warm Amber/Orange Gradient */
 .btn-warning {
-  background-color: var(--btn-warning-bg);
+  background: var(--btn-warning-bg);
   color: var(--btn-warning-text);
   border-color: var(--btn-warning-border);
+  box-shadow: 0 2px 4px rgba(245, 158, 11, 0.1);
 }
 
 .btn-warning:hover:not(:disabled) {
-  background-color: var(--btn-warning-hover);
-  border-color: var(--btn-warning-hover);
+  background: var(--btn-warning-hover);
+  border-color: var(--btn-warning-border);
+  box-shadow: 0 4px 8px rgba(245, 158, 11, 0.2);
+  transform: translateY(-1px);
 }
 
-/* Error Button */
+/* Error Button - Soft Coral Red Gradient */
 .btn-error {
-  background-color: var(--btn-error-bg);
+  background: var(--btn-error-bg);
   color: var(--btn-error-text);
   border-color: var(--btn-error-border);
+  box-shadow: 0 2px 4px rgba(239, 68, 68, 0.1);
 }
 
 .btn-error:hover:not(:disabled) {
-  background-color: var(--btn-error-hover);
-  border-color: var(--btn-error-hover);
+  background: var(--btn-error-hover);
+  border-color: var(--btn-error-border);
+  box-shadow: 0 4px 8px rgba(239, 68, 68, 0.2);
+  transform: translateY(-1px);
 }
 
-/* Secondary Button */
+/* Secondary Button - Subtle Gray Gradient */
 .btn-secondary {
-  background-color: var(--btn-secondary-bg);
+  background: var(--btn-secondary-bg);
   color: var(--btn-secondary-text);
   border-color: var(--btn-secondary-border);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--btn-secondary-hover);
-  border-color: var(--btn-secondary-hover);
+  background: var(--btn-secondary-hover);
+  border-color: var(--btn-secondary-border);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
 }
 
 /* Ghost Button */
 .btn-ghost {
-  background-color: var(--btn-ghost-bg);
+  background: var(--btn-ghost-bg);
   color: var(--btn-ghost-text);
   border-color: var(--btn-ghost-border);
 }
 
 .btn-ghost:hover:not(:disabled) {
-  background-color: var(--btn-ghost-hover);
+  background: var(--btn-ghost-hover);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Teal Button - Fresh Teal Gradient */
+.btn-teal {
+  background: var(--btn-teal-bg);
+  color: var(--btn-teal-text);
+  border-color: var(--btn-teal-border);
+  box-shadow: 0 2px 4px rgba(20, 184, 166, 0.1);
+}
+
+.btn-teal:hover:not(:disabled) {
+  background: var(--btn-teal-hover);
+  border-color: var(--btn-teal-border);
+  box-shadow: 0 4px 8px rgba(20, 184, 166, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Rose Button - Soft Pink Gradient */
+.btn-rose {
+  background: var(--btn-rose-bg);
+  color: var(--btn-rose-text);
+  border-color: var(--btn-rose-border);
+  box-shadow: 0 2px 4px rgba(244, 63, 94, 0.1);
+}
+
+.btn-rose:hover:not(:disabled) {
+  background: var(--btn-rose-hover);
+  border-color: var(--btn-rose-border);
+  box-shadow: 0 4px 8px rgba(244, 63, 94, 0.2);
+  transform: translateY(-1px);
+}
+
+/* Purple Button - Vibrant Purple Gradient */
+.btn-purple {
+  background: var(--btn-purple-bg);
+  color: var(--btn-purple-text);
+  border-color: var(--btn-purple-border);
+  box-shadow: 0 2px 4px rgba(168, 85, 247, 0.1);
+}
+
+.btn-purple:hover:not(:disabled) {
+  background: var(--btn-purple-hover);
+  border-color: var(--btn-purple-border);
+  box-shadow: 0 4px 8px rgba(168, 85, 247, 0.2);
+  transform: translateY(-1px);
 }
 
 /* Button Sizes */
@@ -131,7 +194,7 @@
 .form-input:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .form-input::placeholder {
@@ -160,7 +223,7 @@
 .form-select:focus {
   outline: none;
   border-color: var(--border-focus);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
 }
 
 .form-select:disabled {
