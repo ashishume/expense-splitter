@@ -4,32 +4,6 @@ A modern, real-time expense splitting application built with React, TypeScript, 
 
 ---
 
-## Screenshots
-
-### Authentication
-
-![Login Screen](/public/screenshots/login.PNG)
-
-### Group Management
-
-![Group Management](/public/screenshots/group.PNG)
-
-### Expense Tracking
-
-![Expenses Dashboard](/public/screenshots/expenses.PNG)
-![Recent Expenses](/public/screenshots/recent-expenses.PNG)
-
-### Settlements
-
-![My Settlements](/public/screenshots/my-settlements.PNG)
-![Settled Transactions](/public/screenshots/settled.PNG)
-
-### Activity Logs
-
-![Activity Logs](/public/screenshots/logs.PNG)
-
----
-
 ## Features
 
 - **Google Authentication**: Secure sign-in with Google accounts.
@@ -127,10 +101,26 @@ Pull requests are welcome! For major changes, please open an issue first to disc
 
 ---
 
-## License
+## Screenshots
 
-[MIT](LICENSE)
+### Authentication
 
----
+![Login Screen](/public/screenshots/login.PNG)
 
-Let me know if you want to add screenshots, demo links, or any other custom section! If you want me to update the README file directly, just say so.
+### Group Management
+
+![Group Management](/public/screenshots/group.PNG)
+
+### Expense Tracking
+
+![Expenses Dashboard](/public/screenshots/expenses.PNG)
+![Recent Expenses](/public/screenshots/recent-expenses.PNG)
+
+### Settlements
+
+![My Settlements](/public/screenshots/my-settlements.PNG)
+![Settled Transactions](/public/screenshots/settled.PNG)
+
+### Activity Logs
+
+![Activity Logs](/public/screenshots/logs.PNG)
