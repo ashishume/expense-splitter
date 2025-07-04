@@ -6,11 +6,27 @@ A modern, real-time expense splitting application built with React, TypeScript, 
 
 ## Screenshots
 
-| Dashboard                                      | Add Expense                                        | Settlements                                        |
-| ---------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
-| ![Dashboard]() | ![Add Expense]() | ![Settlements]() |
+### Authentication
 
-> _Add your screenshots to `public/screenshots/` and update the file names above if needed._
+![Login Screen](/public/screenshots/login.PNG)
+
+### Group Management
+
+![Group Management](/public/screenshots/group.PNG)
+
+### Expense Tracking
+
+![Expenses Dashboard](/public/screenshots/expenses.PNG)
+![Recent Expenses](/public/screenshots/recent-expenses.PNG)
+
+### Settlements
+
+![My Settlements](/public/screenshots/my-settlements.PNG)
+![Settled Transactions](/public/screenshots/settled.PNG)
+
+### Activity Logs
+
+![Activity Logs](/public/screenshots/logs.PNG)
 
 ---
 
