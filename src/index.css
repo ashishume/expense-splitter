@@ -92,12 +92,17 @@
     appearance: none;
     width: 16px;
     height: 16px;
+    min-width: 16px;
+    min-height: 16px;
+    max-width: 16px;
+    max-height: 16px;
     border: 2px solid var(--border-primary);
     border-radius: var(--radius-sm);
     background-color: var(--input-bg);
     cursor: pointer;
     position: relative;
     transition: all var(--transition-normal);
+    flex-shrink: 0;
   }
 
   input[type="checkbox"]:checked {

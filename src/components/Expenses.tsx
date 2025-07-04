@@ -713,39 +713,60 @@ const Expenses = ({
                   );
                 }
                 return [];
-              })().map((user) => (
-                <div
-                  key={user.id}
-                  className="flex items-center p-2 sm:p-3 bg-gray-50 rounded-lg"
-                >
-                  <input
-                    type="checkbox"
-                    id={`split-${user.id}`}
-                    checked={newExpense.splitWith.includes(user.id)}
-                    onChange={() => toggleUserForExpense(user.id)}
-                    disabled={user.id === newExpense.paidBy}
-                    className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                  />
-                  <label
-                    htmlFor={`split-${user.id}`}
-                    className="ml-2 text-sm sm:text-base text-gray-700"
+              })().map((user) => {
+                const isPayer = user.id === newExpense.paidBy;
+                const isSelected = newExpense.splitWith.includes(user.id);
+                const isDisabled = isPayer;
+
+                return (
+                  <div
+                    key={user.id}
+                    onClick={() => !isDisabled && toggleUserForExpense(user.id)}
+                    className={`flex items-center p-2 sm:p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                      isDisabled
+                        ? "bg-gray-100 cursor-not-allowed opacity-60"
+                        : isSelected
+                        ? "bg-green-50 border border-green-200 hover:bg-green-100"
+                        : "bg-gray-50 hover:bg-gray-100 border border-transparent"
+                    }`}
                   >
-                    <div className="flex flex-col">
-                      <span>{user.name}</span>
-                      {user.email && (
-                        <span className="text-xs text-gray-500">
-                          {user.email}
+                    <input
+                      type="checkbox"
+                      id={`split-${user.id}`}
+                      checked={isSelected}
+                      onChange={() =>
+                        !isDisabled && toggleUserForExpense(user.id)
+                      }
+                      disabled={isDisabled}
+                      className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
+                    />
+                    <div className="ml-2 text-sm sm:text-base text-gray-700 flex-1">
+                      <div className="flex flex-col">
+                        <span
+                          className={`font-medium ${
+                            isSelected ? "text-green-800" : "text-gray-800"
+                          }`}
+                        >
+                          {user.name}
+                        </span>
+                        {user.email && (
+                          <span className="text-xs text-gray-500">
+                            {user.email}
+                          </span>
+                        )}
+                      </div>
+                      {isPayer && (
+                        <span className="text-green-600 text-xs sm:text-sm font-medium">
+                          (Payer)
                         </span>
                       )}
                     </div>
-                    {user.id === newExpense.paidBy ? (
-                      <span className="text-green-600 text-xs sm:text-sm">
-                        (Payer)
-                      </span>
-                    ) : null}
-                  </label>
-                </div>
-              ))}
+                    {isSelected && !isDisabled && (
+                      <div className="w-2 h-2 bg-green-500 rounded-full ml-2" />
+                    )}
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="p-4 bg-gray-50 rounded-lg text-center text-gray-500">
