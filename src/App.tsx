@@ -1,7 +1,7 @@
 import { AuthProvider } from "./components/AuthContext";
 import { useAuth } from "./components/useAuth";
 import { SignIn } from "./components/SignIn";
-import ExpenseSplittingApp from "./expense-splitter";
+import ExpenseSplittingApp from "./Index";
 import Toast from "./components/ui/Toast";
 
 function AppContent() {
