@@ -8,7 +8,7 @@ A modern, real-time expense splitting application built with React, TypeScript, 
 
 | Dashboard                                      | Add Expense                                        | Settlements                                        |
 | ---------------------------------------------- | -------------------------------------------------- | -------------------------------------------------- |
-| ![Dashboard](public/screenshots/dashboard.png) | ![Add Expense](public/screenshots/add-expense.png) | ![Settlements](public/screenshots/settlements.png) |
+| ![Dashboard]() | ![Add Expense]() | ![Settlements]() |
 
 > _Add your screenshots to `public/screenshots/` and update the file names above if needed._
 
