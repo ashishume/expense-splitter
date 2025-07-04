@@ -530,7 +530,7 @@ const Expenses = ({
             return (
               <div>
                 {/* Tab Navigation */}
-                <div className="flex flex-wrap gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto pb-2">
+                <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto pb-2">
                   {tabs.map((tab) => (
                     <button
                       key={tab.id}

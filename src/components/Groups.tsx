@@ -300,14 +300,14 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                 key={group.id}
                 className="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-hidden"
               >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
-                  <h3 className="text-base sm:text-lg font-medium text-gray-800 truncate">
+                <div className="flex justify-between items-start">
+                  <h3 className="pt-2 text-base sm:text-lg font-medium text-gray-800 truncate">
                     {group.name}
                   </h3>
                   <button
                     onClick={() => deleteGroup(group.id)}
                     disabled={isDeletingGroup === group.id}
-                    className="btn btn-error text-sm flex items-center"
+                    className="btn text-sm flex items-center"
                   >
                     {isDeletingGroup === group.id ? (
                       <>
@@ -405,7 +405,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                             disabled={
                               isRemovingUser === `${user.id}-${group.id}`
                             }
-                            className="btn btn-error text-xs flex items-center flex-shrink-0 ml-2 min-w-fit"
+                            className="btn text-xs flex items-center flex-shrink-0 ml-2 min-w-fit"
                           >
                             {isRemovingUser === `${user.id}-${group.id}` ? (
                               <>
