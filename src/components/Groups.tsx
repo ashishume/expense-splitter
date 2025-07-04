@@ -13,11 +13,10 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import toast from "react-hot-toast";
-import { UsersIcon, LoadingSpinner } from "./icons/index";
+import { UsersIcon, LoadingSpinner, DeleteIcon } from "./icons/index";
 import type { User } from "firebase/auth";
 
 import type { User as AppUser } from "../types";
-import { Trash2 } from "lucide-react";
 
 interface Group {
   id: string;
@@ -296,142 +295,140 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
             );
 
             return (
-              <div
+              <motion.div
                 key={group.id}
-                className="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-hidden"
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                transition={{ duration: 0.3, ease: "easeOut" }}
+                whileHover={{
+                  scale: 1.02,
+                  boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+                }}
+                className="relative overflow-hidden rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-r from-gray-50 to-slate-50"
               >
-                <div className="flex justify-between items-start">
-                  <h3 className="pt-2 text-base sm:text-lg font-medium text-gray-800 truncate">
-                    {group.name}
-                  </h3>
-                  <button
-                    onClick={() => deleteGroup(group.id)}
-                    disabled={isDeletingGroup === group.id}
-                    className="btn text-sm flex items-center"
-                  >
-                    {isDeletingGroup === group.id ? (
-                      <>
-                        <LoadingSpinner className="w-3 h-3 mr-1" />
-                        <span className="hidden sm:inline">Deleting...</span>
-                        <span className="sm:hidden">Delete...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="hidden sm:inline">Delete Group</span>
-                        <span className="sm:hidden">
-                          <Trash2 />
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {showUserForm && (
-                  <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="p-3 bg-gray-50 rounded-lg">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
-                        <input
-                          type="text"
-                          value={newUserName}
-                          onChange={(e) => setNewUserName(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
-                          placeholder="Enter name"
-                        />
-                        <input
-                          type="email"
-                          value={newUserEmail}
-                          onChange={(e) => setNewUserEmail(e.target.value)}
-                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
-                          placeholder="Enter email"
-                        />
-                        <button
-                          onClick={() => addUser(group.id)}
-                          disabled={isAddingUser}
-                          className="btn btn-teal text-sm flex items-center justify-center"
-                        >
-                          {isAddingUser ? (
-                            <>
-                              <LoadingSpinner className="w-3 h-3 mr-1" />
-                              <span className="hidden sm:inline">
-                                Adding...
-                              </span>
-                              <span className="sm:hidden">Add...</span>
-                            </>
-                          ) : (
-                            <>
-                              <span className="hidden sm:inline">Add User</span>
-                              <span className="sm:hidden">Add</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        If email exists, will use existing user. Otherwise
-                        creates new user.
-                      </p>
-                    </div>
+                {/* Background accent */}
+                <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-indigo-600" />
+                <div className="p-4 ml-1">
+                  <div className="flex justify-between items-start">
+                    <h3 className="pt-2 text-base sm:text-lg font-medium text-gray-800 truncate">
+                      {group.name}
+                    </h3>
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => deleteGroup(group.id)}
+                      disabled={isDeletingGroup === group.id}
+                      className="p-2.5 mb-1 bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Delete group"
+                    >
+                      {isDeletingGroup === group.id ? (
+                        <LoadingSpinner className="w-4 h-4" />
+                      ) : (
+                        <DeleteIcon />
+                      )}
+                    </motion.button>
                   </div>
-                )}
 
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-gray-700">
-                    Members ({groupMembers.length})
-                  </h4>
-                  {groupMembers.length === 0 ? (
-                    <p className="text-gray-500 italic text-sm">
-                      No members in this group yet. Add users to get started!
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-w-full">
-                      {groupMembers.map((user) => (
-                        <div
-                          key={user.id}
-                          className="flex items-center justify-between gap-2 p-2 rounded border bg-indigo-50 border-indigo-200 min-w-0 w-full overflow-hidden group-member-card"
-                        >
-                          <div className="flex flex-col min-w-0 flex-1 overflow-hidden text-container">
-                            <span className="text-sm font-medium truncate w-full">
-                              {user.name}
-                            </span>
-                            {user.email && (
-                              <span className="text-xs text-gray-500 truncate w-full">
-                                {user.email}
-                              </span>
-                            )}
-                          </div>
+                  {showUserForm && (
+                    <div className="mb-4 p-3 bg-white rounded-lg border border-gray-200">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-3">
+                          <input
+                            type="text"
+                            value={newUserName}
+                            onChange={(e) => setNewUserName(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
+                            placeholder="Enter name"
+                          />
+                          <input
+                            type="email"
+                            value={newUserEmail}
+                            onChange={(e) => setNewUserEmail(e.target.value)}
+                            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
+                            placeholder="Enter email"
+                          />
                           <button
-                            onClick={() =>
-                              removeUserFromGroup(user.id, group.id)
-                            }
-                            disabled={
-                              isRemovingUser === `${user.id}-${group.id}`
-                            }
-                            className="btn text-xs flex items-center flex-shrink-0 ml-2 min-w-fit"
+                            onClick={() => addUser(group.id)}
+                            disabled={isAddingUser}
+                            className="btn btn-teal text-sm flex items-center justify-center"
                           >
-                            {isRemovingUser === `${user.id}-${group.id}` ? (
+                            {isAddingUser ? (
                               <>
-                                <LoadingSpinner className="w-2 h-2 mr-1" />
+                                <LoadingSpinner className="w-3 h-3 mr-1" />
                                 <span className="hidden sm:inline">
-                                  Removing...
+                                  Adding...
                                 </span>
-                                <span className="sm:hidden">Remove...</span>
+                                <span className="sm:hidden">Add...</span>
                               </>
                             ) : (
                               <>
                                 <span className="hidden sm:inline">
-                                  <Trash2 />
+                                  Add User
                                 </span>
-                                <span className="sm:hidden">
-                                  <Trash2 />
-                                </span>
+                                <span className="sm:hidden">Add</span>
                               </>
                             )}
                           </button>
                         </div>
-                      ))}
+                        <p className="text-xs text-gray-500">
+                          If email exists, will use existing user. Otherwise
+                          creates new user.
+                        </p>
+                      </div>
                     </div>
                   )}
+
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Members ({groupMembers.length})
+                    </h4>
+                    {groupMembers.length === 0 ? (
+                      <p className="text-gray-500 italic text-sm">
+                        No members in this group yet. Add users to get started!
+                      </p>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 max-w-full">
+                        {groupMembers.map((user) => (
+                          <div
+                            key={user.id}
+                            className="flex items-center justify-between gap-2 p-2 rounded border bg-indigo-50 border-indigo-200 min-w-0 w-full overflow-hidden group-member-card"
+                          >
+                            <div className="flex flex-col min-w-0 flex-1 overflow-hidden text-container">
+                              <span className="text-sm font-medium truncate w-full">
+                                {user.name}
+                              </span>
+                              {user.email && (
+                                <span className="text-xs text-gray-500 truncate w-full">
+                                  {user.email}
+                                </span>
+                              )}
+                            </div>
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.95 }}
+                              onClick={() =>
+                                removeUserFromGroup(user.id, group.id)
+                              }
+                              disabled={
+                                isRemovingUser === `${user.id}-${group.id}`
+                              }
+                              className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ml-2"
+                              title="Remove user from group"
+                            >
+                              {isRemovingUser === `${user.id}-${group.id}` ? (
+                                <LoadingSpinner className="w-3 h-3" />
+                              ) : (
+                                <DeleteIcon className="w-3 h-3" />
+                              )}
+                            </motion.button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })
         )}

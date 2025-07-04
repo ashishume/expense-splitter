@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { formatTimestamp } from "../utils/dateUtils";
 import {
   ArrowsIcon,
   UserProfileIcon,
@@ -7,7 +8,7 @@ import {
   CheckCircleIcon,
   LoadingSpinner,
 } from "./icons/index";
-import { Handshake, ArrowRightLeft } from "lucide-react";
+import { Handshake, ArrowRightLeft, Users } from "lucide-react";
 import type { User } from "firebase/auth";
 
 import type { User as AppUser } from "../types";
@@ -229,143 +230,184 @@ const Settlements = ({
                     return (
                       <div key={groupId} className="space-y-3">
                         {group && (
-                          <div className="bg-gray-50 p-3 rounded-lg">
-                            <h3 className="text-base sm:text-lg font-semibold text-gray-800 mb-2 truncate">
-                              {group.name}
-                            </h3>
-                            <div className="text-xs sm:text-sm text-gray-600 space-y-1">
-                              <div>
-                                Total Group Expenses: ₹{groupTotal.toFixed(2)}
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="relative overflow-hidden rounded-xl border border-gray-200 shadow-sm bg-gradient-to-r from-gray-50 to-slate-50"
+                          >
+                            {/* Background accent */}
+                            <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-indigo-600" />
+
+                            <div className="p-4 sm:p-5 ml-1">
+                              {/* Group header */}
+                              <div className="flex items-center gap-3 mb-4">
+                                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-indigo-100 rounded-full flex items-center justify-center">
+                                  <span className="text-indigo-600 text-lg sm:text-xl font-bold">
+                                    {group.name.charAt(0).toUpperCase()}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="text-lg sm:text-xl font-bold text-gray-800 truncate">
+                                    {group.name}
+                                  </h3>
+                                  <p className="text-xs sm:text-sm text-gray-500">
+                                    {group.members.length} member
+                                    {group.members.length !== 1 ? "s" : ""}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                Average per person: ₹
-                                {(
-                                  groupTotal / (group.members.length || 1)
-                                ).toFixed(2)}
+
+                              {/* Financial summary */}
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {/* Total expenses */}
+                                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-100 shadow-sm">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center">
+                                      <span className="text-green-600 text-xs font-bold">
+                                        ₹
+                                      </span>
+                                    </div>
+                                    <span className="text-xs sm:text-sm font-medium text-gray-600">
+                                      Total Expenses
+                                    </span>
+                                    <span className="text-xl sm:text-2xl font-bold text-green-600">
+                                      ₹{groupTotal.toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Average per person */}
+                                <div className="bg-white p-3 sm:p-4 rounded-lg border border-gray-100 shadow-sm">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-6 h-6 bg-blue-100 rounded-full flex items-center justify-center">
+                                      <span className="text-blue-600 text-xs font-bold">
+                                        <Users className="w-3 h-3" />
+                                      </span>
+                                    </div>
+                                    <span className="text-xs sm:text-sm font-medium text-gray-600">
+                                      Per Person
+                                    </span>
+                                    <span className="text-xl sm:text-2xl font-bold text-blue-600">
+                                      ₹
+                                      {(
+                                        groupTotal / (group.members.length || 1)
+                                      ).toLocaleString()}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              <div className="mt-2 pt-2 border-t border-gray-200"></div>
+
+                              {/* Settlement status indicator */}
+                              <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></div>
+                                  <span className="text-xs sm:text-sm font-medium text-amber-800">
+                                    {groupSettlements.length} settlement
+                                    {groupSettlements.length !== 1
+                                      ? "s"
+                                      : ""}{" "}
+                                    pending
+                                  </span>
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          </motion.div>
                         )}
                         <div className="space-y-3 sm:space-y-4">
                           {groupSettlements.map((settlement, index) => (
                             <motion.div
                               key={settlement.id}
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              transition={{ delay: index * 0.1 }}
-                              className="bg-gradient-to-r from-red-50 to-orange-50 border-l-4 border-red-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                              transition={{
+                                delay: index * 0.1,
+                                duration: 0.3,
+                                ease: "easeOut",
+                              }}
+                              whileHover={{
+                                scale: 1.02,
+                                boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+                              }}
+                              className="relative overflow-hidden rounded-xl border border-red-200 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-r from-red-50 to-orange-50"
                             >
-                              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                                <div className="flex items-center space-x-2 sm:space-x-3">
-                                  <div className="flex-shrink-0">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 bg-red-100 rounded-full flex items-center justify-center">
-                                      <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+                              {/* Background accent */}
+                              <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-red-400 to-red-600" />
+                              <div className="p-3 sm:p-4 lg:p-5 ml-1">
+                                {/* Main content - better mobile layout */}
+                                <div className="flex flex-col gap-3 sm:gap-4">
+                                  {/* Header with avatar and names */}
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex-shrink-0">
+                                      <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                        <UserProfileIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
+                                      </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      {/* Settlement status - more prominent on mobile */}
+                                      <div className="text-sm sm:text-base font-semibold text-gray-800 mb-1">
+                                        Settlement Required
+                                      </div>
+                                      {/* Payment flow - better mobile layout */}
+                                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                                        <span className="font-medium text-red-700 truncate">
+                                          {settlement.fromName}
+                                        </span>
+                                        <span className="text-gray-500">→</span>
+                                        <span className="font-medium text-green-700 truncate">
+                                          {settlement.toName}
+                                        </span>
+                                      </div>
+                                      {/* Amount owed - smaller and less prominent */}
+                                      <div className="text-xs text-gray-400 mt-1">
+                                        Amount owed
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                                      <span className="text-sm sm:text-base font-bold text-red-700 truncate">
-                                        {settlement.fromName}
-                                      </span>
-                                      <span className="text-gray-600 text-xs sm:text-sm">
-                                        owes
-                                      </span>
-                                      <span className="text-sm sm:text-base font-bold text-green-700 truncate">
-                                        {settlement.toName}
-                                      </span>
+
+                                  {/* Amount and action row */}
+                                  <div className="flex items-center justify-between">
+                                    {/* Amount display */}
+                                    <div className="flex items-center gap-2">
+                                      <div className="w-8 h-8 bg-gradient-to-br from-red-400 to-red-600 rounded-full flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">
+                                          ₹
+                                        </span>
+                                      </div>
+                                      <div>
+                                        <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600">
+                                          ₹{settlement.amount.toLocaleString()}
+                                        </div>
+                                        <div className="text-xs text-gray-500">
+                                          Pending
+                                        </div>
+                                      </div>
                                     </div>
-                                    <div className="text-xs sm:text-sm text-gray-500">
-                                      Settlement required
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-right flex-shrink-0">
-                                  <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600">
-                                    ₹{settlement.amount.toFixed(2)}
-                                  </div>
-                                  <div className="text-xs sm:text-sm text-gray-500">
-                                    Amount owed
-                                  </div>
-                                </div>
-                              </div>
-                              <div className="mt-2 sm:mt-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
-                                <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-600"></div>
-                                <div className="flex items-center gap-2">
-                                  {/* {onDeleteSettlement && (
-                                    <button
-                                      onClick={() =>
-                                        handleDeleteSettlement(settlement)
-                                      }
-                                      disabled={
-                                        isDeletingSettlement === settlement.id
-                                      }
-                                      className="btn btn-error flex-1 sm:flex-none px-3 py-2 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1"
-                                    >
-                                      {isDeletingSettlement ===
-                                      settlement.id ? (
-                                        <LoadingSpinner className="w-3 h-3" />
-                                      ) : (
-                                        <DeleteIcon className="w-3 h-3" />
-                                      )}
-                                      <span>
-                                        {isDeletingSettlement ===
-                                        settlement.id ? (
-                                          <>
-                                            <span className="hidden sm:inline">
-                                              Deleting...
-                                            </span>
-                                            <span className="sm:hidden">
-                                              Delete...
-                                            </span>
-                                          </>
-                                        ) : (
-                                          <>
-                                            <span className="hidden sm:inline">
-                                              Delete
-                                            </span>
-                                            <span className="sm:hidden">
-                                              Delete
-                                            </span>
-                                          </>
-                                        )}
-                                      </span>
-                                    </button>
-                                  )} */}
-                                  {onSettle && (
-                                    <button
-                                      onClick={() => handleSettle(settlement)}
-                                      disabled={isSettling === settlement.id}
-                                      className="btn btn-teal flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium flex items-center justify-center space-x-1 sm:space-x-2"
-                                    >
-                                      {isSettling === settlement.id ? (
-                                        <LoadingSpinner className="w-4 h-4" />
-                                      ) : (
-                                        <ArrowsIcon className="w-4 h-4" />
-                                      )}
-                                      <span>
+
+                                    {/* Settle button */}
+                                    {onSettle && (
+                                      <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => handleSettle(settlement)}
+                                        disabled={isSettling === settlement.id}
+                                        className="p-3 sm:p-2.5 bg-teal-50 hover:bg-teal-100 text-teal-600 rounded-lg transition-colors duration-200 border border-teal-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 flex items-center gap-2"
+                                        title="Settle this amount"
+                                      >
                                         {isSettling === settlement.id ? (
-                                          <>
-                                            <span className="hidden sm:inline">
-                                              Settling...
-                                            </span>
-                                            <span className="sm:hidden">
-                                              Settle...
-                                            </span>
-                                          </>
+                                          <LoadingSpinner className="w-4 h-4 sm:w-5 sm:h-5" />
                                         ) : (
-                                          <>
-                                            <span className="hidden sm:inline">
-                                              Settle
-                                            </span>
-                                            <span className="sm:hidden">
-                                              Settle
-                                            </span>
-                                          </>
+                                          <ArrowsIcon className="w-4 h-4 sm:w-5 sm:h-5" />
                                         )}
-                                      </span>
-                                    </button>
-                                  )}
+                                        <span className="text-sm font-medium">
+                                          {isSettling === settlement.id
+                                            ? "Settling..."
+                                            : "Settle"}
+                                        </span>
+                                      </motion.button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </motion.div>
@@ -409,70 +451,100 @@ const Settlements = ({
                   userSettledTransactions.map((transaction, index) => (
                     <motion.div
                       key={transaction.id}
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: index * 0.1 }}
-                      className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-400 rounded-lg p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow duration-200"
+                      initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+                      transition={{
+                        delay: index * 0.1,
+                        duration: 0.3,
+                        ease: "easeOut",
+                      }}
+                      whileHover={{
+                        scale: 1.02,
+                        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+                      }}
+                      className="relative overflow-hidden rounded-xl border border-green-200 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-r from-green-50 to-emerald-50"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                        <div className="flex items-center space-x-2 sm:space-x-3">
-                          <div className="flex-shrink-0">
-                            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-green-100 rounded-full flex items-center justify-center">
-                              <UserProfileIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                      {/* Background accent */}
+                      <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-green-400 to-green-600" />
+                      <div className="p-3 sm:p-4 lg:p-5 ml-1">
+                        {/* Main content - better mobile layout */}
+                        <div className="flex flex-col gap-3 sm:gap-4">
+                          {/* Header with avatar and names */}
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                <UserProfileIcon className="w-5 h-5 sm:w-6 sm:h-6 text-green-600" />
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {/* Transaction description - more prominent on mobile */}
+                              <div className="text-sm sm:text-base font-semibold text-gray-800 mb-1 break-words">
+                                {transaction.description}
+                              </div>
+                              {/* Payment flow - better mobile layout */}
+                              <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs sm:text-sm">
+                                <span className="font-medium text-green-700 truncate">
+                                  {transaction.paidByName}
+                                </span>
+                                <span className="text-gray-500">→</span>
+                                <span className="font-medium text-blue-700 truncate">
+                                  {users.find(
+                                    (u) => u.id === transaction.splitWith[0]
+                                  )?.name || "Unknown"}
+                                </span>
+                              </div>
+                              {/* Date - smaller and less prominent */}
+                              <div className="text-xs text-gray-400 mt-1">
+                                {formatTimestamp(transaction.date)}
+                              </div>
                             </div>
                           </div>
-                          <div>
-                            <div className="flex items-center space-x-1 sm:space-x-2">
-                              <span className="text-base sm:text-lg font-bold text-green-700">
-                                {transaction.paidByName}
-                              </span>
-                              <span className="text-gray-600">paid</span>
-                              <span className="text-base sm:text-lg font-bold text-blue-700">
-                                {users.find(
-                                  (u) => u.id === transaction.splitWith[0]
-                                )?.name || "Unknown"}
-                              </span>
+
+                          {/* Amount and action row */}
+                          <div className="flex items-center justify-between">
+                            {/* Amount display */}
+                            <div className="flex items-center gap-2">
+                              <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center">
+                                <span className="text-white text-sm font-bold">
+                                  ₹
+                                </span>
+                              </div>
+                              <div>
+                                <div className="text-xl sm:text-2xl lg:text-3xl font-bold text-green-600">
+                                  ₹{transaction.amount.toLocaleString()}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  Settled
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-xs sm:text-sm text-gray-500">
-                              {transaction.description}
-                            </div>
-                            <div className="text-xs text-gray-400">
-                              {new Date(transaction.date).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-2xl sm:text-3xl font-bold text-green-600">
-                            ₹{transaction.amount.toFixed(2)}
-                          </div>
-                          <div className="text-xs sm:text-sm text-gray-500">
-                            Amount settled
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-2 sm:mt-3 flex items-center justify-end">
-                        {onDeleteSettledTransaction && (
-                          <button
-                            onClick={() =>
-                              handleDeleteSettledTransaction(transaction)
-                            }
-                            disabled={
-                              isDeletingSettledTransaction === transaction.id
-                            }
-                            className="px-3 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors duration-200 flex items-center space-x-1 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {isDeletingSettledTransaction === transaction.id ? (
-                              <LoadingSpinner className="w-3 h-3" />
-                            ) : (
-                              <DeleteIcon className="w-3 h-3" />
+
+                            {/* Delete button */}
+                            {onDeleteSettledTransaction && (
+                              <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() =>
+                                  handleDeleteSettledTransaction(transaction)
+                                }
+                                disabled={
+                                  isDeletingSettledTransaction ===
+                                  transaction.id
+                                }
+                                className="p-3 sm:p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                                title="Delete transaction"
+                              >
+                                {isDeletingSettledTransaction ===
+                                transaction.id ? (
+                                  <LoadingSpinner className="w-4 h-4 sm:w-5 sm:h-5" />
+                                ) : (
+                                  <DeleteIcon className="w-4 h-4 sm:w-5 sm:h-5" />
+                                )}
+                              </motion.button>
                             )}
-                            <span>
-                              {isDeletingSettledTransaction === transaction.id
-                                ? "Deleting..."
-                                : "Delete Transaction"}
-                            </span>
-                          </button>
-                        )}
+                          </div>
+                        </div>
                       </div>
                     </motion.div>
                   ))
