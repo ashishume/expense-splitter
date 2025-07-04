@@ -46,6 +46,206 @@ interface ExpensesProps {
   currentUser: FirebaseUser | null;
 }
 
+// Tab Navigation Component
+interface TabNavigationProps {
+  tabs: Array<{ id: string; name: string; count: number }>;
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+}
+
+const TabNavigation = ({
+  tabs,
+  activeTab,
+  onTabChange,
+}: TabNavigationProps) => (
+  <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto pb-2">
+    {tabs.map((tab) => (
+      <button
+        key={tab.id}
+        onClick={() => onTabChange(tab.id)}
+        className={`btn px-3 py-2 sm:px-4 sm:py-2 rounded-t-lg font-medium flex items-center gap-1 sm:gap-2 whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
+          activeTab === tab.id ? "btn-success shadow-md" : "btn-secondary"
+        }`}
+      >
+        <span className="truncate max-w-[100px] sm:max-w-none">{tab.name}</span>
+        <span
+          className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs rounded-full flex-shrink-0 ${
+            activeTab === tab.id
+              ? "bg-white text-success"
+              : "bg-secondary text-secondary"
+          }`}
+        >
+          {tab.count}
+        </span>
+      </button>
+    ))}
+  </div>
+);
+
+// Expense Item Component
+interface ExpenseItemProps {
+  expense: Expense;
+  users: User[];
+  userGroups: Group[];
+  onEdit: (expense: Expense) => void;
+  onDelete: (expenseId: string) => void;
+  isDeleting: boolean;
+}
+
+const ExpenseItem = ({
+  expense,
+  users,
+  userGroups,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: ExpenseItemProps) => (
+  <div
+    className={`p-3 sm:p-4 rounded-md flex flex-col sm:flex-row justify-between items-start gap-3 ${
+      expense.isSettlement
+        ? "bg-green-50 border-l-4 border-green-400"
+        : "bg-gray-50"
+    }`}
+  >
+    <div className="flex-1 min-w-0">
+      <div className="flex flex-wrap items-start gap-2 mb-2">
+        <h3 className="text-base sm:text-lg font-medium break-words flex-1 min-w-0">
+          {expense.description}
+        </h3>
+        <div className="flex flex-wrap gap-1 flex-shrink-0">
+          {expense.isSettlement && (
+            <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+              Settlement
+            </span>
+          )}
+          {expense.groupId && !expense.isSettlement && (
+            <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
+              {userGroups.find((g) => g.id === expense.groupId)?.name}
+            </span>
+          )}
+        </div>
+      </div>
+      <p className="text-sm sm:text-base text-gray-600 break-words">
+        Paid by {expense.paidByName} - ₹{expense.amount}
+      </p>
+      <p className="text-xs sm:text-sm text-gray-500 break-words">
+        Split with:{" "}
+        {expense.splitWith
+          .map(
+            (userId) => users.find((u) => u.id === userId)?.name || "Unknown"
+          )
+          .join(", ")}
+      </p>
+      <p className="text-xs text-gray-400">
+        {new Date(expense.date).toLocaleDateString()}
+      </p>
+    </div>
+    {!expense.isSettlement && (
+      //actions buttons for expense item
+      <div className="flex gap-1 sm:gap-2 flex-shrink-0">
+        <button
+          onClick={() => onEdit(expense)}
+          className="btn btn-ghost p-2 text-link hover:bg-primary/10 rounded-full"
+          title="Edit expense"
+        >
+          <EditIcon />
+        </button>
+        <button
+          onClick={() => onDelete(expense.id)}
+          disabled={isDeleting}
+          className="btn btn-ghost p-2 text-error hover:bg-error/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Remove expense"
+        >
+          {isDeleting ? <LoadingSpinner className="w-4 h-4" /> : <DeleteIcon />}
+        </button>
+      </div>
+    )}
+  </div>
+);
+
+// Expenses List Component
+interface ExpensesListProps {
+  expenses: Expense[];
+  users: User[];
+  userGroups: Group[];
+  activeTab: string;
+  onTabChange: (tabId: string) => void;
+  onEdit: (expense: Expense) => void;
+  onDelete: (expenseId: string) => void;
+  isDeleting: string | null;
+}
+
+const ExpensesList = ({
+  expenses,
+  users,
+  userGroups,
+  activeTab,
+  onTabChange,
+  onEdit,
+  onDelete,
+  isDeleting,
+}: ExpensesListProps) => {
+  // Filter expenses to only show those for groups the user is a member of
+  const userExpenses = expenses.filter((expense) => {
+    if (!expense.groupId) return false; // Skip ungrouped expenses
+    return userGroups.some((group) => group.id === expense.groupId);
+  });
+
+  const groupedExpenses = userExpenses.reduce((acc, expense) => {
+    const groupId = expense.groupId || "no-group";
+    if (!acc[groupId]) {
+      acc[groupId] = [];
+    }
+    acc[groupId].push(expense);
+    return acc;
+  }, {} as Record<string, Expense[]>);
+
+  const tabs = [
+    { id: "all", name: "All Expenses", count: userExpenses.length },
+    ...Object.entries(groupedExpenses).map(([groupId, groupExpenses]) => {
+      const group = userGroups.find((g) => g.id === groupId);
+      return {
+        id: groupId,
+        name: group ? group.name : "No Group",
+        count: groupExpenses.length,
+      };
+    }),
+  ];
+
+  const displayExpenses =
+    activeTab === "all" ? userExpenses : groupedExpenses[activeTab] || [];
+
+  return (
+    <div>
+      <TabNavigation
+        tabs={tabs}
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+      />
+
+      <motion.div
+        key={activeTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.2 }}
+        className="space-y-4"
+      >
+        {displayExpenses.map((expense) => (
+          <ExpenseItem
+            key={expense.id}
+            expense={expense}
+            users={users}
+            userGroups={userGroups}
+            onEdit={onEdit}
+            onDelete={onDelete}
+            isDeleting={isDeleting === expense.id}
+          />
+        ))}
+      </motion.div>
+    </div>
+  );
+};
+
 const Expenses = ({
   users,
   groups,
@@ -495,219 +695,16 @@ const Expenses = ({
       {expenses.length > 0 && (
         <div className="mt-8">
           <h3 className="text-xl font-semibold mb-4">Recent Expenses</h3>
-
-          {/* Tabs */}
-          {(() => {
-            // Filter expenses to only show those for groups the user is a member of
-            const userExpenses = expenses.filter((expense) => {
-              if (!expense.groupId) return false; // Skip ungrouped expenses
-              return userGroups.some((group) => group.id === expense.groupId);
-            });
-
-            const groupedExpenses = userExpenses.reduce((acc, expense) => {
-              const groupId = expense.groupId || "no-group";
-              if (!acc[groupId]) {
-                acc[groupId] = [];
-              }
-              acc[groupId].push(expense);
-              return acc;
-            }, {} as Record<string, Expense[]>);
-
-            const tabs = [
-              { id: "all", name: "All Expenses", count: userExpenses.length },
-              ...Object.entries(groupedExpenses).map(
-                ([groupId, groupExpenses]) => {
-                  const group = userGroups.find((g) => g.id === groupId);
-                  return {
-                    id: groupId,
-                    name: group ? group.name : "No Group",
-                    count: groupExpenses.length,
-                  };
-                }
-              ),
-            ];
-
-            return (
-              <div>
-                {/* Tab Navigation */}
-                <div className="flex gap-1 sm:gap-2 mb-4 sm:mb-6 border-b border-gray-200 overflow-x-auto pb-2">
-                  {tabs.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      className={`btn px-3 py-2 sm:px-4 sm:py-2 rounded-t-lg font-medium flex items-center gap-1 sm:gap-2 whitespace-nowrap flex-shrink-0 text-sm sm:text-base ${
-                        activeTab === tab.id
-                          ? "btn-success shadow-md"
-                          : "btn-secondary"
-                      }`}
-                    >
-                      <span className="truncate max-w-[100px] sm:max-w-none">
-                        {tab.name}
-                      </span>
-                      <span
-                        className={`px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs rounded-full flex-shrink-0 ${
-                          activeTab === tab.id
-                            ? "bg-white text-success"
-                            : "bg-secondary text-secondary"
-                        }`}
-                      >
-                        {tab.count}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Tab Content */}
-                <motion.div
-                  key={activeTab}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.2 }}
-                  className="space-y-4"
-                >
-                  {activeTab === "all"
-                    ? // Show all expenses
-                      userExpenses.map((expense) => (
-                        <div
-                          key={expense.id}
-                          className={`p-3 sm:p-4 rounded-md flex flex-col sm:flex-row justify-between items-start gap-3 ${
-                            expense.isSettlement
-                              ? "bg-green-50 border-l-4 border-green-400"
-                              : "bg-gray-50"
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-start gap-2 mb-2">
-                              <h3 className="text-base sm:text-lg font-medium break-words flex-1 min-w-0">
-                                {expense.description}
-                              </h3>
-                              <div className="flex flex-wrap gap-1 flex-shrink-0">
-                                {expense.isSettlement && (
-                                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                    Settlement
-                                  </span>
-                                )}
-                                {expense.groupId && !expense.isSettlement && (
-                                  <span className="px-2 py-1 text-xs font-medium bg-indigo-100 text-indigo-800 rounded-full">
-                                    {
-                                      userGroups.find(
-                                        (g) => g.id === expense.groupId
-                                      )?.name
-                                    }
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-sm sm:text-base text-gray-600 break-words">
-                              Paid by {expense.paidByName} - ₹{expense.amount}
-                            </p>
-                            <p className="text-xs sm:text-sm text-gray-500 break-words">
-                              Split with:{" "}
-                              {expense.splitWith
-                                .map(
-                                  (userId) =>
-                                    users.find((u) => u.id === userId)?.name ||
-                                    "Unknown"
-                                )
-                                .join(", ")}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {new Date(expense.date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          {!expense.isSettlement && (
-                            <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => startEditing(expense)}
-                                className="btn btn-ghost p-2 text-link hover:bg-primary/10 rounded-full"
-                                title="Edit expense"
-                              >
-                                <EditIcon />
-                              </button>
-                              <button
-                                onClick={() => removeExpense(expense.id)}
-                                disabled={isDeletingExpense === expense.id}
-                                className="btn btn-ghost p-2 text-error hover:bg-error/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Remove expense"
-                              >
-                                {isDeletingExpense === expense.id ? (
-                                  <LoadingSpinner className="w-4 h-4" />
-                                ) : (
-                                  <DeleteIcon />
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))
-                    : // Show expenses for specific group
-                      groupedExpenses[activeTab]?.map((expense) => (
-                        <div
-                          key={expense.id}
-                          className={`p-3 sm:p-4 rounded-md flex flex-col sm:flex-row justify-between items-start gap-3 ${
-                            expense.isSettlement
-                              ? "bg-green-50 border-l-4 border-green-400"
-                              : "bg-gray-50"
-                          }`}
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-start gap-2 mb-2">
-                              <h3 className="text-base sm:text-lg font-medium break-words flex-1 min-w-0">
-                                {expense.description}
-                              </h3>
-                              <div className="flex flex-wrap gap-1 flex-shrink-0">
-                                {expense.isSettlement && (
-                                  <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-                                    Settlement
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <p className="text-sm sm:text-base text-gray-600 break-words">
-                              Paid by {expense.paidByName} - ₹{expense.amount}
-                            </p>
-                            <p className="text-xs sm:text-sm text-gray-500 break-words">
-                              Split with:{" "}
-                              {expense.splitWith
-                                .map(
-                                  (userId) =>
-                                    users.find((u) => u.id === userId)?.name ||
-                                    "Unknown"
-                                )
-                                .join(", ")}
-                            </p>
-                            <p className="text-xs text-gray-400">
-                              {new Date(expense.date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          {!expense.isSettlement && (
-                            <div className="flex gap-1 sm:gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => startEditing(expense)}
-                                className="btn btn-ghost p-2 text-link hover:bg-primary/10 rounded-full"
-                                title="Edit expense"
-                              >
-                                <EditIcon />
-                              </button>
-                              <button
-                                onClick={() => removeExpense(expense.id)}
-                                className="btn btn-ghost p-2 text-error hover:bg-error/10 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
-                                title="Remove expense"
-                              >
-                                {isDeletingExpense === expense.id ? (
-                                  <LoadingSpinner className="w-4 h-4" />
-                                ) : (
-                                  <DeleteIcon />
-                                )}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                </motion.div>
-              </div>
-            );
-          })()}
+          <ExpensesList
+            expenses={expenses}
+            users={users}
+            userGroups={userGroups}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
+            onEdit={startEditing}
+            onDelete={removeExpense}
+            isDeleting={isDeletingExpense}
+          />
         </div>
       )}
     </motion.div>
