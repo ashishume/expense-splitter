@@ -685,30 +685,34 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       </motion.div>
 
       {/* Tabs - Sticky */}
-      <div className="sticky top-4 z-10 bg-gray-50 backdrop-blur-sm bg-opacity-95 py-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none">
-        <div className="flex gap-2">
-          <button
-            onClick={() => setActiveTab("expenses")}
-            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-              activeTab === "expenses"
-                ? "bg-white text-blue-600 shadow-md"
-                : "text-gray-600 hover:bg-white/50"
-            }`}
-          >
-            <DollarSign className="w-4 h-4 mr-2" />
-            Expenses
-          </button>
-          <button
-            onClick={() => setActiveTab("settlements")}
-            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-              activeTab === "settlements"
-                ? "bg-white text-blue-600 shadow-md"
-                : "text-gray-600 hover:bg-white/50"
-            }`}
-          >
-            <ArrowRightLeft className="w-4 h-4 mr-2" />
-            Settlements
-          </button>
+      <div className="sticky top-0 sm:top-4 z-10 -mx-2 sm:mx-0 mb-4">
+        <div className="bg-white/95 backdrop-blur-md shadow-sm sm:shadow-none border-b sm:border-b-0 border-gray-200 sm:bg-transparent sm:backdrop-blur-none">
+          <div className="px-4 py-3 sm:p-0">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setActiveTab("expenses")}
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  activeTab === "expenses"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                <DollarSign className="w-4 h-4 mr-2" />
+                Expenses
+              </button>
+              <button
+                onClick={() => setActiveTab("settlements")}
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                  activeTab === "settlements"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                <ArrowRightLeft className="w-4 h-4 mr-2" />
+                Settlements
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
