@@ -1,3 +1,4 @@
+import { BrowserRouter as Router } from "react-router-dom";
 import { AuthProvider } from "./components/AuthContext";
 import { useAuth } from "./components/useAuth";
 import { SignIn } from "./components/SignIn";
@@ -16,10 +17,12 @@ function AppContent() {
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-      <Toast />
-    </AuthProvider>
+    <Router>
+      <AuthProvider>
+        <AppContent />
+        <Toast />
+      </AuthProvider>
+    </Router>
   );
 }
 
