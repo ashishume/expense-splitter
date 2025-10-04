@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { Routes, Route } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   collection,
@@ -15,16 +16,11 @@ import Groups from "./components/Groups";
 import Expenses from "./components/Expenses";
 import Settlements from "./components/Settlements";
 import Logs from "./components/Logs";
+import GroupDetails from "./components/GroupDetails";
 import logo from "./assets/logo.jpg";
 import { logExpenseAction } from "./utils/logger";
 import toast from "react-hot-toast";
-import {
-  DollarSign,
-  ArrowRightLeft,
-  Users,
-  FileText,
-  LogOut,
-} from "lucide-react";
+import { ArrowRightLeft, Users, FileText, LogOut } from "lucide-react";
 
 import type { User, Group, Expense, Settlement } from "./types";
 
@@ -34,7 +30,7 @@ const ExpenseSplittingApp = () => {
   const [groups, setGroups] = useState<Group[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
-  const [activeTab, setActiveTab] = useState("expenses");
+  const [activeTab, setActiveTab] = useState("groups");
 
   // Set up real-time listeners for users, groups, and expenses
   useEffect(() => {
@@ -80,7 +76,6 @@ const ExpenseSplittingApp = () => {
     };
   }, []);
 
-  // Fixed calculateSettlements function for ExpenseSplittingApp.tsx
   const calculateSettlements = useCallback(
     (currentExpenses: Expense[]) => {
       const newSettlements: Settlement[] = [];
@@ -330,102 +325,122 @@ const ExpenseSplittingApp = () => {
   };
 
   const tabs = [
-    { id: "expenses", label: "Expenses", icon: DollarSign },
-    { id: "settlements", label: "Settlements", icon: ArrowRightLeft },
     { id: "groups", label: "Groups", icon: Users },
+    // { id: "expenses", label: "Expenses", icon: DollarSign },
+    { id: "settlements", label: "Settlements", icon: ArrowRightLeft },
     { id: "logs", label: "Activity", icon: FileText },
   ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-2 sm:p-4">
-      <div className="flex justify-between items-center mb-4 gap-3">
-        <motion.h1
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center"
-        >
-          <img
-            src={logo}
-            alt="Axpo splitter"
-            className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
-          />
-        </motion.h1>
-        <div className="flex items-end sm:items-center gap-2 sm:gap-4 w-auto">
-          <div className="text-right sm:text-left">
-            <div className="text-sm sm:text-base text-gray-700 font-medium truncate max-w-[150px] sm:max-w-none">
-              {user?.displayName}
-            </div>
-            <div className="text-xs sm:text-sm text-gray-600 truncate max-w-[150px] sm:max-w-none">
-              {user?.email}
-            </div>
-          </div>
+      <Routes>
+        {/* Group Details Route */}
+        <Route
+          path="/group/:groupId"
+          element={
+            <GroupDetails users={users} groups={groups} currentUser={user} />
+          }
+        />
 
-          <button
-            onClick={logout}
-            className="px-2 py-1 sm:px-4 sm:py-2 bg-red-200 text-black rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm w-auto justify-center"
-          >
-            <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-          </button>
-        </div>
-      </div>
+        {/* Main App Route */}
+        <Route
+          path="/"
+          element={
+            <>
+              <div className="flex justify-between items-center mb-4 gap-3">
+                <motion.h1
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600 flex items-center"
+                >
+                  <img
+                    src={logo}
+                    alt="Axpo splitter"
+                    className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
+                  />
+                </motion.h1>
+                <div className="flex items-end sm:items-center gap-2 sm:gap-4 w-auto">
+                  <div className="text-right sm:text-left">
+                    <div className="text-sm sm:text-base text-gray-700 font-medium truncate max-w-[150px] sm:max-w-none">
+                      {user?.displayName}
+                    </div>
+                    <div className="text-xs sm:text-sm text-gray-600 truncate max-w-[150px] sm:max-w-none">
+                      {user?.email}
+                    </div>
+                  </div>
 
-      {/* Tabs */}
-      <div className="flex space-x-1 sm:space-x-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide">
-        {tabs.map((tab) => {
-          const IconComponent = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
-                activeTab === tab.id
-                  ? "bg-white text-blue-600 shadow-md"
-                  : "text-gray-600 hover:bg-white/50"
-              }`}
-            >
-              <IconComponent className="w-4 h-4 mr-1 sm:mr-2" />
-              <span className="text-sm sm:text-base">{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+                  <button
+                    onClick={logout}
+                    className="px-2 py-1 sm:px-4 sm:py-2 bg-red-200 text-black rounded-lg hover:bg-gray-300 transition-colors flex items-center gap-1 sm:gap-2 text-xs sm:text-sm w-auto justify-center"
+                  >
+                    <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                  </button>
+                </div>
+              </div>
 
-      {/* Tab Content */}
-      <div className="space-y-4">
-        {activeTab === "expenses" && (
-          <Expenses
-            users={users}
-            groups={groups}
-            expenses={expenses}
-            onExpenseUpdate={() => {}}
-            currentUser={user}
-          />
-        )}
+              {/* Tabs */}
+              <div className="flex space-x-1 sm:space-x-2 mb-4 sm:mb-6 overflow-x-auto pb-2 scrollbar-hide">
+                {tabs.map((tab) => {
+                  const IconComponent = tab.icon;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex items-center px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap flex-shrink-0 ${
+                        activeTab === tab.id
+                          ? "bg-white text-blue-600 shadow-md"
+                          : "text-gray-600 hover:bg-white/50"
+                      }`}
+                    >
+                      <IconComponent className="w-4 h-4 mr-1 sm:mr-2" />
+                      <span className="text-sm sm:text-base">{tab.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
 
-        {activeTab === "settlements" && (
-          <Settlements
-            settlements={settlements}
-            groups={groups}
-            expenses={expenses}
-            users={users}
-            onSettle={handleSettle}
-            onDeleteSettledTransaction={handleDeleteSettledTransaction}
-            individualBalances={individualBalances}
-            currentUser={user}
-          />
-        )}
+              {/* Tab Content */}
+              <div className="space-y-4">
+                {activeTab === "expenses" && (
+                  <Expenses
+                    users={users}
+                    groups={groups}
+                    expenses={expenses}
+                    onExpenseUpdate={() => {}}
+                    currentUser={user}
+                  />
+                )}
 
-        {activeTab === "groups" && (
-          <Groups
-            users={users}
-            groups={groups}
-            onGroupUpdate={() => {}}
-            currentUser={user}
-          />
-        )}
+                {activeTab === "settlements" && (
+                  <Settlements
+                    settlements={settlements}
+                    groups={groups}
+                    expenses={expenses}
+                    users={users}
+                    onSettle={handleSettle}
+                    onDeleteSettledTransaction={handleDeleteSettledTransaction}
+                    individualBalances={individualBalances}
+                    currentUser={user}
+                  />
+                )}
 
-        {activeTab === "logs" && <Logs currentUser={user} groups={groups} />}
-      </div>
+                {activeTab === "groups" && (
+                  <Groups
+                    users={users}
+                    groups={groups}
+                    onGroupUpdate={() => {}}
+                    currentUser={user}
+                  />
+                )}
+
+                {activeTab === "logs" && (
+                  <Logs currentUser={user} groups={groups} />
+                )}
+              </div>
+            </>
+          }
+        />
+      </Routes>
     </div>
   );
 };

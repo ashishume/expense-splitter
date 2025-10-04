@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   addDoc,
@@ -33,6 +34,7 @@ interface GroupsProps {
 }
 
 const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
+  const navigate = useNavigate();
   const [newGroupName, setNewGroupName] = useState("");
   const [newUserName, setNewUserName] = useState("");
   const [newUserEmail, setNewUserEmail] = useState("");
@@ -43,9 +45,12 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   const [isRemovingUser, setIsRemovingUser] = useState<string | null>(null);
 
   // Filter groups to only show groups the current user is a member of
-  const userGroups = groups.filter((group) =>
-    group.members.includes(currentUser?.uid || "")
-  );
+  const userGroups = groups
+    .filter((group) => group.members.includes(currentUser?.uid || ""))
+    .sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
 
   // Get current user's app data
   const currentAppUser = users.find((user) => user.id === currentUser?.uid);
@@ -311,13 +316,19 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                 <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-indigo-400 to-indigo-600" />
                 <div className="p-4 ml-1">
                   <div className="flex justify-between items-start">
-                    <h3 className="pt-2 text-base sm:text-lg font-medium text-gray-800 truncate">
+                    <h3
+                      className="pt-2 text-base sm:text-lg font-medium text-gray-800 truncate cursor-pointer hover:text-indigo-600 transition-colors"
+                      onClick={() => navigate(`/group/${group.id}`)}
+                    >
                       {group.name}
                     </h3>
                     <motion.button
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
-                      onClick={() => deleteGroup(group.id)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteGroup(group.id);
+                      }}
                       disabled={isDeletingGroup === group.id}
                       className="p-2.5 mb-1 bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                       title="Delete group"
@@ -407,9 +418,10 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                             <motion.button
                               whileHover={{ scale: 1.1 }}
                               whileTap={{ scale: 0.95 }}
-                              onClick={() =>
-                                removeUserFromGroup(user.id, group.id)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeUserFromGroup(user.id, group.id);
+                              }}
                               disabled={
                                 isRemovingUser === `${user.id}-${group.id}`
                               }
@@ -426,6 +438,16 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
                         ))}
                       </div>
                     )}
+                  </div>
+
+                  {/* View Group Button */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <button
+                      onClick={() => navigate(`/group/${group.id}`)}
+                      className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors duration-200 font-medium text-sm"
+                    >
+                      View Group & Add Expenses
+                    </button>
                   </div>
                 </div>
               </motion.div>

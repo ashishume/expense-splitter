@@ -10,6 +10,7 @@ import {
   CheckCircle,
   DollarSign,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 
 interface IconProps {
@@ -60,4 +61,8 @@ export const CheckCircleIcon = ({ className = "w-4 h-4" }: IconProps) => (
 
 export const CurrencyIcon = ({ className = "w-4 h-4" }: IconProps) => (
   <DollarSign className={className} />
+);
+
+export const ArrowLeftIcon = ({ className = "w-4 h-4" }: IconProps) => (
+  <ArrowLeft className={className} />
 );
