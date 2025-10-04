@@ -20,7 +20,7 @@ import GroupDetails from "./components/GroupDetails";
 import logo from "./assets/logo.jpg";
 import { logExpenseAction } from "./utils/logger";
 import toast from "react-hot-toast";
-import { ArrowRightLeft, Users, FileText, LogOut } from "lucide-react";
+import { Users, FileText, LogOut } from "lucide-react";
 
 import type { User, Group, Expense, Settlement } from "./types";
 
@@ -327,7 +327,7 @@ const ExpenseSplittingApp = () => {
   const tabs = [
     { id: "groups", label: "Groups", icon: Users },
     // { id: "expenses", label: "Expenses", icon: DollarSign },
-    { id: "settlements", label: "Settlements", icon: ArrowRightLeft },
+    // { id: "settlements", label: "Settlements", icon: ArrowRightLeft },
     { id: "logs", label: "Activity", icon: FileText },
   ];
 
