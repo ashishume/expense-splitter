@@ -1,8 +1,9 @@
 import { createContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { signInWithPopup, signOut } from "firebase/auth";
+import { signInWithCredential, signOut } from "firebase/auth";
+import { GoogleAuthProvider } from "firebase/auth";
 import type { User } from "firebase/auth";
-import { auth, googleProvider, db } from "../firebase";
+import { auth, db } from "../firebase";
 import {
   doc,
   getDoc,
@@ -14,6 +15,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
+import { googleAuthService } from "../services/googleAuth";
 
 interface AuthContextType {
   user: User | null;
@@ -82,7 +84,6 @@ const addUserToDatabase = async (user: User) => {
           createdAt: new Date().toISOString(),
           lastLogin: new Date().toISOString(),
         });
-        console.log("New user added to database:", user.displayName);
         toast.success(
           `Welcome ${
             user.displayName || "User"
@@ -100,7 +101,6 @@ const addUserToDatabase = async (user: User) => {
         },
         { merge: true }
       );
-      console.log("Existing user login updated:", user.displayName);
     }
   } catch (error) {
     console.error("Error adding/updating user in database:", error);
@@ -112,6 +112,51 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Initialize Google Auth service
+    const initializeAuth = async () => {
+      try {
+        await googleAuthService.initialize();
+
+        // Set up event listeners for Google OAuth
+        const handleGoogleAuthSuccess = async (event: CustomEvent) => {
+          const { credential } = event.detail;
+          await handleGoogleSignIn(credential);
+        };
+
+        const handleGoogleAuthError = (event: CustomEvent) => {
+          console.error("Google Auth Error:", event.detail.error);
+          toast.error("Authentication failed. Please try again.");
+        };
+
+        window.addEventListener(
+          "googleAuthSuccess",
+          handleGoogleAuthSuccess as any
+        );
+        window.addEventListener(
+          "googleAuthError",
+          handleGoogleAuthError as EventListener
+        );
+
+        // Show One Tap prompt
+        await googleAuthService.showOneTap();
+
+        return () => {
+          window.removeEventListener(
+            "googleAuthSuccess",
+            handleGoogleAuthSuccess as any
+          );
+          window.removeEventListener(
+            "googleAuthError",
+            handleGoogleAuthError as EventListener
+          );
+        };
+      } catch (error) {
+        console.error("Error initializing Google Auth:", error);
+        setLoading(false);
+      }
+    };
+
+    // Set up Firebase auth state listener
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       setUser(user);
       setLoading(false);
@@ -122,21 +167,44 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     });
 
-    return () => unsubscribe();
+    // Initialize Google Auth
+    initializeAuth();
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
+
+  const handleGoogleSignIn = async (
+    credential: string
+    // googleUser?: GoogleUser
+  ) => {
+    try {
+      // Create Firebase credential from Google OAuth token
+      const googleCredential = GoogleAuthProvider.credential(credential);
+
+      // Sign in to Firebase with the Google credential
+      await signInWithCredential(auth, googleCredential);
+    } catch (error) {
+      console.error("Error signing in with Google OAuth:", error);
+      toast.error("Authentication failed. Please try again.");
+    }
+  };
 
   const signInWithGoogle = async () => {
     try {
-      await signInWithPopup(auth, googleProvider);
-      // User will be automatically added to database via onAuthStateChanged
+      // Show One Tap prompt if not already shown
+      await googleAuthService.showOneTap();
     } catch (error) {
-      console.error("Error signing in with Google:", error);
+      console.error("Error showing One Tap prompt:", error);
+      toast.error("Failed to show sign-in prompt. Please try again.");
     }
   };
 
   const logout = async () => {
     try {
       await signOut(auth);
+      googleAuthService.signOut();
     } catch (error) {
       console.error("Error signing out:", error);
     }
