@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/src/assets/logo.jpg" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Cache Control Headers -->
+    <meta
+      http-equiv="Cache-Control"
+      content="no-cache, no-store, must-revalidate"
+    />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Axpo expense splitter</title>
 
     <!-- Apple Touch Icons for Home Screen -->
@@ -68,81 +76,5 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
-    <script>
-      // Register Service Worker for PWA - Mobile Optimized
-      if ("serviceWorker" in navigator) {
-        window.addEventListener("load", () => {
-          // Register service worker with better mobile support
-          navigator.serviceWorker
-            .register("/sw.js", {
-              scope: "/",
-              updateViaCache: "none", // Always fetch the latest SW
-            })
-            .then((registration) => {
-              console.log("SW registered successfully: ", registration);
-
-              // Handle service worker updates
-              registration.addEventListener("updatefound", () => {
-                const newWorker = registration.installing;
-                console.log("Service Worker update found");
-
-                newWorker.addEventListener("statechange", () => {
-                  if (
-                    newWorker.state === "installed" &&
-                    navigator.serviceWorker.controller
-                  ) {
-                    // New service worker is ready, prompt user to update
-                    if (confirm("New version available! Reload to update?")) {
-                      newWorker.postMessage({ type: "SKIP_WAITING" });
-                      window.location.reload();
-                    }
-                  }
-                });
-              });
-
-              // Check if service worker is active
-              if (registration.active) {
-                console.log("Service Worker is active");
-              }
-            })
-            .catch((registrationError) => {
-              console.error("SW registration failed: ", registrationError);
-
-              // Log specific error details for debugging
-              if (registrationError.name === "SecurityError") {
-                console.error("HTTPS required for service worker");
-              } else if (registrationError.name === "InvalidStateError") {
-                console.error("Service worker already registered");
-              }
-            });
-        });
-      } else {
-        console.log("Service Worker not supported");
-      }
-
-      // Debug service worker state
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.addEventListener("message", (event) => {
-          console.log("Message from Service Worker:", event.data);
-        });
-
-        // Listen for service worker controller changes
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          console.log("Service Worker controller changed");
-        });
-      }
-
-      // Add mobile-specific meta tags for better PWA support
-      if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
-        // Force viewport settings for mobile
-        const viewport = document.querySelector('meta[name="viewport"]');
-        if (viewport) {
-          viewport.setAttribute(
-            "content",
-            "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-          );
-        }
-      }
-    </script>
   </body>
 </html>

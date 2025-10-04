@@ -1,19 +1,20 @@
-// Service Worker for Axpo PWA - Mobile Optimized
-const CACHE_NAME = "axpo-v2";
-const STATIC_CACHE = "axpo-static-v2";
-const DYNAMIC_CACHE = "axpo-dynamic-v2";
+// Service Worker for Axpo PWA - Mobile Optimized with Cache Busting
+// IMPORTANT: Increment this version number on every deployment to force cache update
+const VERSION = "v3.0.2";
+const CACHE_NAME = `axpo-${VERSION}`;
+const STATIC_CACHE = `axpo-static-${VERSION}`;
+const DYNAMIC_CACHE = `axpo-dynamic-${VERSION}`;
 
-// Core assets to cache
-const STATIC_ASSETS = [
-  "/",
-  "/logo.jpg",
-  "/manifest.json",
-  "/src/assets/logo.jpg",
-];
+// Cache duration in milliseconds (1 hour for HTML, 24 hours for assets)
+const HTML_CACHE_DURATION = 60 * 60 * 1000; // 1 hour
+const ASSET_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
+
+// Core assets to cache (only essential static assets)
+const STATIC_ASSETS = ["/logo.jpg", "/manifest.json"];
 
 // Install event - Mobile optimized
 self.addEventListener("install", (event) => {
-  console.log("Service Worker installing...");
+  console.log(`Service Worker ${VERSION} installing...`);
 
   event.waitUntil(
     caches
@@ -34,7 +35,18 @@ self.addEventListener("install", (event) => {
   );
 });
 
-// Fetch event - Mobile optimized with better error handling
+// Helper function to check if cached response is still fresh
+function isCacheFresh(response, maxAge) {
+  if (!response) return false;
+
+  const cachedDate = response.headers.get("sw-cache-date");
+  if (!cachedDate) return false;
+
+  const age = Date.now() - parseInt(cachedDate);
+  return age < maxAge;
+}
+
+// Fetch event - Network-first strategy with smart caching
 self.addEventListener("fetch", (event) => {
   const { request } = event;
 
@@ -47,54 +59,127 @@ self.addEventListener("fetch", (event) => {
   if (
     request.url.includes("chrome-extension") ||
     request.url.includes("chrome-devtools") ||
-    request.url.includes("safari-extension")
+    request.url.includes("safari-extension") ||
+    request.url.includes("google.com/gsi") ||
+    request.url.includes("accounts.google.com") ||
+    request.url.includes("firebase")
   ) {
     return;
   }
 
+  const url = new URL(request.url);
+  const isHTMLRequest =
+    request.destination === "document" ||
+    url.pathname === "/" ||
+    url.pathname.endsWith(".html");
+  const isJSOrCSS =
+    url.pathname.endsWith(".js") ||
+    url.pathname.endsWith(".css") ||
+    url.pathname.includes("/assets/");
+
+  // For HTML files: Always try network first (with short cache fallback)
+  if (isHTMLRequest) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          // Clone and cache the response with timestamp
+          const responseToCache = response.clone();
+          const headers = new Headers(responseToCache.headers);
+          headers.append("sw-cache-date", Date.now().toString());
+
+          const cachedResponse = new Response(responseToCache.body, {
+            status: responseToCache.status,
+            statusText: responseToCache.statusText,
+            headers: headers,
+          });
+
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(request, cachedResponse);
+          });
+
+          return response;
+        })
+        .catch(() => {
+          // Network failed, try cache
+          return caches.match(request).then((cachedResponse) => {
+            if (
+              cachedResponse &&
+              isCacheFresh(cachedResponse, HTML_CACHE_DURATION)
+            ) {
+              return cachedResponse;
+            }
+            // Return a basic offline page
+            return new Response("Offline - Please check your connection", {
+              status: 503,
+              statusText: "Service Unavailable",
+              headers: { "Content-Type": "text/plain" },
+            });
+          });
+        })
+    );
+    return;
+  }
+
+  // For JS/CSS/Assets: Network first with longer cache fallback
+  if (isJSOrCSS) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            const headers = new Headers(responseToCache.headers);
+            headers.append("sw-cache-date", Date.now().toString());
+
+            const cachedResponse = new Response(responseToCache.body, {
+              status: responseToCache.status,
+              statusText: responseToCache.statusText,
+              headers: headers,
+            });
+
+            caches.open(DYNAMIC_CACHE).then((cache) => {
+              cache.put(request, cachedResponse);
+            });
+          }
+          return response;
+        })
+        .catch(() => {
+          // Network failed, try cache
+          return caches.match(request).then((cachedResponse) => {
+            if (
+              cachedResponse &&
+              isCacheFresh(cachedResponse, ASSET_CACHE_DURATION)
+            ) {
+              return cachedResponse;
+            }
+            return new Response("Asset unavailable", {
+              status: 503,
+              statusText: "Service Unavailable",
+            });
+          });
+        })
+    );
+    return;
+  }
+
+  // For other requests: Cache-first with network fallback
   event.respondWith(
     caches.match(request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Return cached version
         return cachedResponse;
       }
 
-      // Fetch from network
       return fetch(request)
         .then((response) => {
-          // Don't cache non-successful responses
-          if (
-            !response ||
-            response.status !== 200 ||
-            response.type !== "basic"
-          ) {
-            return response;
-          }
-
-          // Clone the response before caching
-          const responseToCache = response.clone();
-
-          // Cache successful responses in dynamic cache
-          caches
-            .open(DYNAMIC_CACHE)
-            .then((cache) => {
+          if (response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(DYNAMIC_CACHE).then((cache) => {
               cache.put(request, responseToCache);
-            })
-            .catch((error) => {
-              console.warn("Failed to cache response:", error);
             });
-
+          }
           return response;
         })
         .catch((error) => {
           console.warn("Fetch failed:", error);
-
-          // Return fallback for navigation requests
-          if (request.destination === "document") {
-            return caches.match("/");
-          }
-
-          // Return offline fallback for other requests
           return new Response("Offline", {
             status: 503,
             statusText: "Service Unavailable",
