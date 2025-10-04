@@ -666,48 +666,50 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-4 p-4 bg-white rounded-xl shadow-lg"
+        className="flex items-center gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-lg"
       >
         <button
           onClick={() => navigate("/")}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
         >
-          <ArrowLeftIcon className="w-6 h-6 text-gray-600" />
+          <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
         </button>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 truncate">
             {group.name}
           </h1>
-          <p className="text-sm text-gray-600">
+          <p className="text-xs sm:text-sm text-gray-600">
             {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
           </p>
         </div>
       </motion.div>
 
-      {/* Tabs */}
-      <div className="flex gap-2 mb-4">
-        <button
-          onClick={() => setActiveTab("expenses")}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-            activeTab === "expenses"
-              ? "bg-white text-blue-600 shadow-md"
-              : "text-gray-600 hover:bg-white/50"
-          }`}
-        >
-          <DollarSign className="w-4 h-4 mr-2" />
-          Expenses
-        </button>
-        <button
-          onClick={() => setActiveTab("settlements")}
-          className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-            activeTab === "settlements"
-              ? "bg-white text-blue-600 shadow-md"
-              : "text-gray-600 hover:bg-white/50"
-          }`}
-        >
-          <ArrowRightLeft className="w-4 h-4 mr-2" />
-          Settlements
-        </button>
+      {/* Tabs - Sticky */}
+      <div className="sticky top-4 z-10 bg-gray-50 backdrop-blur-sm bg-opacity-95 py-2 -mx-4 px-4 sm:mx-0 sm:px-0 sm:bg-transparent sm:backdrop-blur-none">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveTab("expenses")}
+            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === "expenses"
+                ? "bg-white text-blue-600 shadow-md"
+                : "text-gray-600 hover:bg-white/50"
+            }`}
+          >
+            <DollarSign className="w-4 h-4 mr-2" />
+            Expenses
+          </button>
+          <button
+            onClick={() => setActiveTab("settlements")}
+            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+              activeTab === "settlements"
+                ? "bg-white text-blue-600 shadow-md"
+                : "text-gray-600 hover:bg-white/50"
+            }`}
+          >
+            <ArrowRightLeft className="w-4 h-4 mr-2" />
+            Settlements
+          </button>
+        </div>
       </div>
 
       {/* Expenses Tab */}
