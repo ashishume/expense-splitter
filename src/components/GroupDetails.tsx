@@ -26,9 +26,17 @@ import {
   ArrowsIcon,
   CheckCircleIcon,
 } from "./icons/index";
-import { DollarSign, ArrowRightLeft } from "lucide-react";
+import {
+  DollarSign,
+  ArrowRightLeft,
+  FileText,
+  Plus,
+  Edit,
+  Trash2,
+} from "lucide-react";
 
 import type { User, Group, Expense, Settlement } from "../types";
+import type { LogEntry } from "../utils/logger";
 
 interface GroupDetailsProps {
   users: User[];
@@ -214,15 +222,20 @@ const ExpenseItem = ({
   );
 };
 
+interface ExtendedLogEntry extends LogEntry {
+  id: string;
+}
+
 const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
+  const [logs, setLogs] = useState<ExtendedLogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"expenses" | "settlements">(
-    "expenses"
-  );
+  const [activeTab, setActiveTab] = useState<
+    "expenses" | "settlements" | "logs"
+  >("expenses");
   const [newExpense, setNewExpense] = useState({
     paidBy: "",
     amount: "",
@@ -306,6 +319,56 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             );
             console.log(`Loaded ${expensesData.length} expenses (manual sort)`);
             setExpenses(expensesData);
+          });
+        }
+      }
+    );
+
+    return () => unsubscribe();
+  }, [groupId, isLoading, group]);
+
+  // Set up real-time listener for logs in this group
+  useEffect(() => {
+    if (!groupId || isLoading || !group) return;
+
+    const logsQuery = query(
+      collection(db, "logs"),
+      where("groupId", "==", groupId),
+      orderBy("timestamp", "desc")
+    );
+
+    const unsubscribe = onSnapshot(
+      logsQuery,
+      (snapshot) => {
+        const logsData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as ExtendedLogEntry[];
+        console.log(`Loaded ${logsData.length} logs for group ${groupId}`);
+        setLogs(logsData);
+      },
+      (error) => {
+        console.error("Error listening to logs:", error);
+        // If there's an index error, try without orderBy
+        if (error.code === "failed-precondition") {
+          console.log("Retrying logs without orderBy due to missing index");
+          const simpleQuery = query(
+            collection(db, "logs"),
+            where("groupId", "==", groupId)
+          );
+          return onSnapshot(simpleQuery, (snapshot) => {
+            const logsData = snapshot.docs.map((doc) => ({
+              id: doc.id,
+              ...doc.data(),
+            })) as ExtendedLogEntry[];
+            // Sort manually
+            logsData.sort(
+              (a, b) =>
+                new Date(b.timestamp).getTime() -
+                new Date(a.timestamp).getTime()
+            );
+            console.log(`Loaded ${logsData.length} logs (manual sort)`);
+            setLogs(logsData);
           });
         }
       }
@@ -688,10 +751,10 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       <div className="sticky top-0 sm:top-4 z-10 -mx-2 sm:mx-0 mb-4">
         <div className="bg-white/95 backdrop-blur-md shadow-sm sm:shadow-none border-b sm:border-b-0 border-gray-200 sm:bg-transparent sm:backdrop-blur-none">
           <div className="px-4 py-3 sm:p-0">
-            <div className="flex gap-2">
+            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
               <button
                 onClick={() => setActiveTab("expenses")}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                   activeTab === "expenses"
                     ? "bg-blue-600 text-white shadow-md"
                     : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
@@ -702,7 +765,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
               </button>
               <button
                 onClick={() => setActiveTab("settlements")}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                   activeTab === "settlements"
                     ? "bg-blue-600 text-white shadow-md"
                     : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
@@ -710,6 +773,17 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
               >
                 <ArrowRightLeft className="w-4 h-4 mr-2" />
                 Settlements
+              </button>
+              <button
+                onClick={() => setActiveTab("logs")}
+                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  activeTab === "logs"
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+                }`}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Activity
               </button>
             </div>
           </div>
@@ -1248,6 +1322,112 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             )}
           </motion.div>
         </>
+      )}
+
+      {/* Logs Tab */}
+      {activeTab === "logs" && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-4 sm:p-6 bg-white rounded-xl shadow-lg"
+        >
+          <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
+            <FileText className="w-5 h-5 mr-2 text-blue-600" />
+            Activity Log
+          </h3>
+
+          {logs.length === 0 ? (
+            <div className="text-center py-12">
+              <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">
+                No Activity Yet
+              </p>
+              <p className="text-gray-500 text-sm">
+                Activity in this group will appear here
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {logs.map((log, index) => {
+                const getActionColor = (action: string) => {
+                  switch (action) {
+                    case "EXPENSE_CREATE":
+                      return "bg-green-100 text-green-800 border-green-200";
+                    case "EXPENSE_UPDATE":
+                      return "bg-blue-100 text-blue-800 border-blue-200";
+                    case "EXPENSE_DELETE":
+                      return "bg-red-100 text-red-800 border-red-200";
+                    default:
+                      return "bg-gray-100 text-gray-800 border-gray-200";
+                  }
+                };
+
+                const getActionIcon = (action: string) => {
+                  switch (action) {
+                    case "EXPENSE_CREATE":
+                      return Plus;
+                    case "EXPENSE_UPDATE":
+                      return Edit;
+                    case "EXPENSE_DELETE":
+                      return Trash2;
+                    default:
+                      return FileText;
+                  }
+                };
+
+                const IconComponent = getActionIcon(log.action);
+
+                return (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
+                  >
+                    <div className="flex items-start gap-2 sm:gap-3">
+                      <div className="flex-shrink-0">
+                        <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm border border-gray-200">
+                          <IconComponent className="w-4 h-4 text-gray-600" />
+                        </div>
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1.5">
+                          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                            <span
+                              className={`px-2 py-0.5 text-xs font-semibold rounded border ${getActionColor(
+                                log.action
+                              )}`}
+                            >
+                              {log.action
+                                .replace("EXPENSE_", "")
+                                .replace("_", " ")}
+                            </span>
+                          </div>
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            {formatTimestamp(log.timestamp)}
+                          </span>
+                        </div>
+
+                        <p className="text-sm text-gray-800 leading-snug mb-1">
+                          {log.details}
+                        </p>
+
+                        {log.userName && (
+                          <span className="text-xs text-gray-600">
+                            by{" "}
+                            <span className="font-medium">{log.userName}</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </motion.div>
       )}
     </div>
   );

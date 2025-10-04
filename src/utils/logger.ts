@@ -23,7 +23,7 @@ export const logAction = async (entry: LogEntry) => {
 
 export const logExpenseAction = async (
   action: "create" | "update" | "delete",
-  expenseId: string,
+  _expenseId: string, // Kept for backward compatibility, not displayed to users
   details: string,
   userId?: string,
   userName?: string,
@@ -31,7 +31,7 @@ export const logExpenseAction = async (
 ) => {
   await logAction({
     action: `EXPENSE_${action.toUpperCase()}`,
-    details: `Expense ID: ${expenseId} - ${details}`,
+    details: details, // Just the meaningful details, without expense ID
     timestamp: new Date().toISOString(),
     userId,
     userName,
