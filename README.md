@@ -67,8 +67,49 @@ A modern, real-time expense splitting application built with React, TypeScript, 
 
 - **Type Checking**: `npx tsc --noEmit`
 - **Linting**: `npm run lint`
-- **Build**: `npm run build`
+- **Build**: `npm run build` (automatically bumps service worker version)
+- **Build (Manual)**: `npm run build:manual` (skips version bump)
+- **Bump Service Worker Version**: `npm run bump-sw`
 - **Preview Production Build**: `npm run preview`
+
+---
+
+## Deployment & Cache Management
+
+This app includes an advanced **automatic update system** to ensure mobile browsers always get the latest updates **without user confirmation**.
+
+### Quick Deployment Steps:
+
+1. **Build the app** (this automatically bumps the service worker version):
+
+   ```bash
+   npm run build
+   ```
+
+2. **Deploy the `dist/` folder** to your web server
+
+3. **Done!** Users will automatically receive the update within 60 seconds
+
+### How Auto-Update Works:
+
+When you deploy a new version:
+
+1. User visits the app (or app checks for updates every 60 seconds)
+2. Brief toast notification: "Updating to latest version... 🔄"
+3. Page automatically reloads with new version (1.5 seconds later)
+4. User is now on the latest version - no action needed!
+
+### Key Features:
+
+- ✅ **Automatic version bumping** on every build
+- ✅ **Automatic updates** - no user confirmation needed
+- ✅ **Network-first caching** for HTML/JS/CSS
+- ✅ **Content-hash based filenames** for asset cache busting
+- ✅ **Seamless user experience** with brief notification
+- ✅ **Mobile-optimized** service worker
+- ✅ **Updates within 60 seconds** of deployment
+
+For customization options and troubleshooting, see [AUTO_UPDATE_GUIDE.md](./AUTO_UPDATE_GUIDE.md).
 
 ---
 

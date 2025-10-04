@@ -9,10 +9,27 @@ export default defineConfig({
     // Optimize for mobile performance
     target: "es2015",
     minify: "terser",
+    // Enable cache busting with content hashing
+    rollupOptions: {
+      output: {
+        // Add hash to filenames for cache busting
+        entryFileNames: "assets/[name]-[hash].js",
+        chunkFileNames: "assets/[name]-[hash].js",
+        assetFileNames: "assets/[name]-[hash].[ext]",
+      },
+    },
+    // Generate manifest for better cache control
+    manifest: true,
+    // Ensure source maps are generated for debugging
+    sourcemap: false,
   },
   server: {
     // Enable HTTPS for local development (helps with service worker testing)
     // https: true, // Uncomment if you have SSL certificates
+    headers: {
+      // Disable caching in development
+      "Cache-Control": "no-store",
+    },
   },
   // Ensure service worker and manifest are copied to build output
   publicDir: "public",
