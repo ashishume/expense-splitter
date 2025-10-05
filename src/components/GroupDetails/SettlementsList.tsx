@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { ArrowRightLeft } from "lucide-react";
 import { formatTimestamp } from "../../utils/dateUtils";
 import { ArrowsIcon, CheckCircleIcon, LoadingSpinner } from "../icons/index";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import type { Settlement, Expense } from "../../types";
 
 interface SettlementsListProps {
@@ -23,6 +25,23 @@ const SettlementsList = ({
   isSettling,
   onSettle,
 }: SettlementsListProps) => {
+  const [showSettleConfirm, setShowSettleConfirm] = useState(false);
+  const [selectedSettlement, setSelectedSettlement] =
+    useState<Settlement | null>(null);
+
+  const handleSettleClick = (settlement: Settlement) => {
+    setSelectedSettlement(settlement);
+    setShowSettleConfirm(true);
+  };
+
+  const handleConfirmSettle = () => {
+    if (selectedSettlement) {
+      onSettle(selectedSettlement);
+      setShowSettleConfirm(false);
+      setSelectedSettlement(null);
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -105,7 +124,7 @@ const SettlementsList = ({
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => onSettle(settlement)}
+                    onClick={() => handleSettleClick(settlement)}
                     disabled={isSettling === settlement.id}
                     className="px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-lg font-medium transition-all duration-200 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 flex-shrink-0"
                   >
@@ -163,6 +182,30 @@ const SettlementsList = ({
           </div>
         </div>
       )}
+
+      {/* Settlement Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showSettleConfirm}
+        onClose={() => {
+          setShowSettleConfirm(false);
+          setSelectedSettlement(null);
+        }}
+        onConfirm={handleConfirmSettle}
+        title="Confirm Settlement"
+        message={
+          selectedSettlement
+            ? `Are you sure ${
+                selectedSettlement.fromName
+              } has paid ₹${selectedSettlement.amount.toLocaleString()} to ${
+                selectedSettlement.toName
+              }? This will be recorded as a settlement transaction.`
+            : ""
+        }
+        confirmText="Mark as Settled"
+        cancelText="Cancel"
+        isLoading={isSettling === selectedSettlement?.id}
+        variant="info"
+      />
     </motion.div>
   );
 };

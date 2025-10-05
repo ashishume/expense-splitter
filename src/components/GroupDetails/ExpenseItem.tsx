@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { formatTimestamp } from "../../utils/dateUtils";
 import { EditIcon, DeleteIcon, LoadingSpinner } from "../icons/index";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import type { User, Expense } from "../../types";
 
 interface ExpenseItemProps {
@@ -24,6 +26,8 @@ const ExpenseItem = ({
   onDelete,
   isDeleting,
 }: ExpenseItemProps) => {
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   /**
    * Formats the list of users who are splitting the expense
    * Shows up to 2 names, or first name + count for more
@@ -178,7 +182,7 @@ const ExpenseItem = ({
               <motion.button
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => onDelete(expense.id)}
+                onClick={() => setShowDeleteConfirm(true)}
                 disabled={isDeleting}
                 className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 title="Remove expense"
@@ -193,6 +197,22 @@ const ExpenseItem = ({
           )}
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        onConfirm={() => {
+          onDelete(expense.id);
+          setShowDeleteConfirm(false);
+        }}
+        title="Delete Expense?"
+        message={`Are you sure you want to delete "${expense.description}" (₹${expense.amount})? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isLoading={isDeleting}
+        variant="danger"
+      />
     </motion.div>
   );
 };

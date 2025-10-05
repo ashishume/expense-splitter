@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -51,6 +51,7 @@ interface ExtendedLogEntry extends LogEntry {
 const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   const { groupId } = useParams<{ groupId: string }>();
   const navigate = useNavigate();
+  const expenseFormRef = useRef<HTMLDivElement>(null);
 
   // State management
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -445,6 +446,14 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       description: expense.description,
       splitWith: expense.splitWith,
     });
+
+    // Scroll to the form with smooth behavior
+    setTimeout(() => {
+      expenseFormRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 100);
   };
 
   /**
@@ -656,6 +665,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       {activeTab === "expenses" && (
         <>
           <ExpenseForm
+            ref={expenseFormRef}
             newExpense={newExpense}
             setNewExpense={setNewExpense}
             groupMembers={groupMembers}

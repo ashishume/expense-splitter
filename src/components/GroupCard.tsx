@@ -15,6 +15,7 @@ import {
 import { db } from "../firebase";
 import toast from "react-hot-toast";
 import { LoadingSpinner, DeleteIcon } from "./icons/index";
+import ConfirmDialog from "./ui/ConfirmDialog";
 import type { User as AppUser, Group } from "../types";
 
 interface GroupCardProps {
@@ -32,6 +33,9 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [isDeletingGroup, setIsDeletingGroup] = useState(false);
   const [isRemovingUser, setIsRemovingUser] = useState<string | null>(null);
+  const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
+  const [showRemoveUserConfirm, setShowRemoveUserConfirm] = useState(false);
+  const [userToRemove, setUserToRemove] = useState<AppUser | null>(null);
 
   // Get only the members that are actually in this group
   const groupMembers = users.filter((user) => group.members.includes(user.id));
@@ -125,25 +129,34 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
     }
   };
 
-  const removeUserFromGroup = async (userId: string, e: React.MouseEvent) => {
+  const handleRemoveUserClick = (user: AppUser, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isRemovingUser === userId) return;
+    setUserToRemove(user);
+    setShowRemoveUserConfirm(true);
+  };
 
-    setIsRemovingUser(userId);
+  const removeUserFromGroup = async () => {
+    if (!userToRemove || isRemovingUser === userToRemove.id) return;
+
+    setIsRemovingUser(userToRemove.id);
     try {
       const groupRef = doc(db, "groups", group.id);
-      const updatedMembers = group.members.filter((id) => id !== userId);
+      const updatedMembers = group.members.filter(
+        (id) => id !== userToRemove.id
+      );
       await updateDoc(groupRef, { members: updatedMembers });
 
       // Update user's groups array
-      const userRef = doc(db, "users", userId);
-      const user = users.find((u) => u.id === userId);
+      const userRef = doc(db, "users", userToRemove.id);
+      const user = users.find((u) => u.id === userToRemove.id);
       const updatedGroups = (user?.groups || []).filter(
         (id) => id !== group.id
       );
       await updateDoc(userRef, { groups: updatedGroups });
       onGroupUpdate();
       toast.success("User removed from group successfully!");
+      setShowRemoveUserConfirm(false);
+      setUserToRemove(null);
     } catch (error) {
       console.error("Error removing user from group: ", error);
       toast.error("Error removing user from group. Please try again.");
@@ -152,8 +165,12 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
     }
   };
 
-  const deleteGroup = async (e: React.MouseEvent) => {
+  const handleDeleteGroupClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setShowDeleteGroupConfirm(true);
+  };
+
+  const deleteGroup = async () => {
     if (isDeletingGroup) return;
 
     setIsDeletingGroup(true);
@@ -172,6 +189,7 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
       await batch.commit();
       onGroupUpdate();
       toast.success("Group deleted successfully!");
+      setShowDeleteGroupConfirm(false);
     } catch (error) {
       console.error("Error deleting group: ", error);
       toast.error("Error deleting group. Please try again.");
@@ -288,7 +306,7 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
             <motion.button
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.92 }}
-              onClick={deleteGroup}
+              onClick={handleDeleteGroupClick}
               disabled={isDeletingGroup}
               className="p-2.5 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-xl transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ml-4 shadow-sm hover:shadow-md"
               title="Delete group"
@@ -465,7 +483,7 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                         <motion.button
                           whileHover={{ scale: 1.1 }}
                           whileTap={{ scale: 0.9 }}
-                          onClick={(e) => removeUserFromGroup(user.id, e)}
+                          onClick={(e) => handleRemoveUserClick(user, e)}
                           disabled={isRemovingUser === user.id}
                           className="p-2 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-lg transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-sm hover:shadow-md"
                           title="Remove user"
@@ -645,6 +663,39 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
           )}
         </AnimatePresence>
       </div>
+
+      {/* Delete Group Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showDeleteGroupConfirm}
+        onClose={() => setShowDeleteGroupConfirm(false)}
+        onConfirm={deleteGroup}
+        title="Delete Group?"
+        message={`Are you sure you want to delete "${group.name}"? This will remove all expenses and data associated with this group. This action cannot be undone.`}
+        confirmText="Delete Group"
+        cancelText="Cancel"
+        isLoading={isDeletingGroup}
+        variant="danger"
+      />
+
+      {/* Remove User Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={showRemoveUserConfirm}
+        onClose={() => {
+          setShowRemoveUserConfirm(false);
+          setUserToRemove(null);
+        }}
+        onConfirm={removeUserFromGroup}
+        title="Remove Member?"
+        message={
+          userToRemove
+            ? `Are you sure you want to remove ${userToRemove.name} from "${group.name}"? They will lose access to this group.`
+            : ""
+        }
+        confirmText="Remove Member"
+        cancelText="Cancel"
+        isLoading={isRemovingUser === userToRemove?.id}
+        variant="warning"
+      />
     </motion.div>
   );
 };
