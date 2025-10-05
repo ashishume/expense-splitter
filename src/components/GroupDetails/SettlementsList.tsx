@@ -53,12 +53,12 @@ const SettlementsList = ({
           {settlements.map((settlement) => (
             <motion.div
               key={settlement.id}
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -20, scale: 0.95 }}
+              // initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              // animate={{ opacity: 1, y: 0, scale: 1 }}
+              // exit={{ opacity: 0, y: -20, scale: 0.95 }}
               transition={{ duration: 0.3, ease: "easeOut" }}
               whileHover={{
-                scale: 1.02,
+                // scale: 1.02,
                 boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
               }}
               className="relative overflow-hidden rounded-xl border border-amber-200 shadow-sm hover:shadow-md transition-all duration-300 bg-gradient-to-r from-amber-50 to-orange-50"

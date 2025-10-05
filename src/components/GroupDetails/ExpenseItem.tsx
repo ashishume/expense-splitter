@@ -44,12 +44,12 @@ const ExpenseItem = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      // initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      // animate={{ opacity: 1, y: 0, scale: 1 }}
+      // exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       whileHover={{
-        scale: 1.02,
+        // scale: 1.02,
         boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
       }}
       className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${
@@ -79,9 +79,9 @@ const ExpenseItem = ({
               <div className="flex flex-wrap gap-2 flex-shrink-0">
                 {expense.isSettlement && (
                   <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+                    // initial={{ scale: 0 }}
+                    // animate={{ scale: 1 }}
+                    // transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
                     className="inline-flex items-center px-3 py-1 text-xs font-semibold bg-green-100 text-green-800 rounded-full border border-green-200"
                   >
                     <span className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse" />
@@ -119,8 +119,8 @@ const ExpenseItem = ({
                   return (
                     <motion.div
                       key={userId}
-                      initial={{ scale: 0, x: -10 }}
-                      animate={{ scale: 1, x: 0 }}
+                      // initial={{ scale: 0, x: -10 }}
+                      // animate={{ scale: 1, x: 0 }}
                       transition={{
                         delay: 0.1 * index,
                         type: "spring",
@@ -167,8 +167,8 @@ const ExpenseItem = ({
               className="flex gap-2 flex-shrink-0"
             >
               <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
+                // whileHover={{ scale: 1.1 }}
+                // whileTap={{ scale: 0.95 }}
                 onClick={() => onEdit(expense)}
                 className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors duration-200 border border-blue-200"
                 title="Edit expense"

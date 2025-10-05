@@ -210,9 +210,9 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.95 }}
+      // initial={{ opacity: 0, y: 20, scale: 0.95 }}
+      // animate={{ opacity: 1, y: 0, scale: 1 }}
+      // exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="relative overflow-hidden rounded-2xl border border-gray-200/60 shadow-lg hover:shadow-2xl transition-all duration-500 bg-white group/card"
     >
@@ -435,12 +435,12 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
-                    {groupMembers.map((user, index) => (
+                    {groupMembers.map((user) => (
                       <motion.div
                         key={user.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: index * 0.05 }}
+                        // initial={{ opacity: 0, x: -20 }}
+                        // animate={{ opacity: 1, x: 0 }}
+                        // transition={{ delay: index * 0.05 }}
                         className="flex items-center justify-between gap-3 p-3.5 rounded-xl border bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 group/member"
                       >
                         <div className="flex items-center gap-3 min-w-0 flex-1">
