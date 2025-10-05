@@ -180,39 +180,117 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
     }
   };
 
+  // Get initials for avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Generate color for avatar based on name
+  const getAvatarColor = (name: string) => {
+    const colors = [
+      "bg-gradient-to-br from-indigo-500 to-purple-600",
+      "bg-gradient-to-br from-pink-500 to-rose-600",
+      "bg-gradient-to-br from-teal-500 to-cyan-600",
+      "bg-gradient-to-br from-orange-500 to-amber-600",
+      "bg-gradient-to-br from-emerald-500 to-green-600",
+      "bg-gradient-to-br from-violet-500 to-purple-600",
+      "bg-gradient-to-br from-blue-500 to-indigo-600",
+      "bg-gradient-to-br from-fuchsia-500 to-pink-600",
+    ];
+    const index =
+      name.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) %
+      colors.length;
+    return colors[index];
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20, scale: 0.95 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       exit={{ opacity: 0, y: -20, scale: 0.95 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="relative overflow-hidden rounded-xl border border-gray-200 shadow-md hover:shadow-xl transition-all duration-300 bg-white"
+      className="relative overflow-hidden rounded-2xl border border-gray-200/60 shadow-lg hover:shadow-2xl transition-all duration-500 bg-white group/card"
     >
+      {/* Animated gradient background overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-purple-50/30 to-pink-50/50 opacity-0 group-hover/card:opacity-100 transition-opacity duration-500" />
+
       {/* Clickable main card area */}
-      <div onClick={handleCardClick} className="cursor-pointer group">
-        {/* Top accent bar */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+      <div onClick={handleCardClick} className="cursor-pointer relative">
+        {/* Top accent bar with animation */}
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 group-hover/card:h-2 transition-all duration-300" />
 
         {/* Main content */}
-        <div className="p-6">
-          <div className="flex items-start justify-between mb-3">
+        <div className="p-7 pt-8">
+          <div className="flex items-start justify-between mb-5">
             <div className="flex-1 min-w-0">
-              <h3 className="text-xl font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors truncate">
-                {group.name}
-              </h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {groupMembers.length}{" "}
-                {groupMembers.length === 1 ? "member" : "members"}
-              </p>
+              {/* Group name with icon */}
+              <div className="flex items-center gap-3 mb-3">
+                <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md group-hover/card:shadow-lg group-hover/card:scale-110 transition-all duration-300">
+                  <svg
+                    className="w-5 h-5 text-white"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                    />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 group-hover/card:text-indigo-600 transition-colors truncate">
+                  {group.name}
+                </h3>
+              </div>
+
+              {/* Member count and avatars */}
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-2">
+                  {groupMembers.slice(0, 3).map((member, index) => (
+                    <div
+                      key={member.id}
+                      className={`w-8 h-8 rounded-full ${getAvatarColor(
+                        member.name
+                      )} flex items-center justify-center text-white text-xs font-semibold border-2 border-white shadow-md transition-transform hover:scale-110 hover:z-10`}
+                      style={{ zIndex: 3 - index }}
+                      title={member.name}
+                    >
+                      {getInitials(member.name)}
+                    </div>
+                  ))}
+                  {groupMembers.length > 3 && (
+                    <div
+                      className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white text-xs font-semibold border-2 border-white shadow-md"
+                      style={{ zIndex: 0 }}
+                    >
+                      +{groupMembers.length - 3}
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-sm font-semibold text-gray-700">
+                    {groupMembers.length}{" "}
+                    {groupMembers.length === 1 ? "Member" : "Members"}
+                  </span>
+                  <span className="text-xs text-gray-500">Active group</span>
+                </div>
+              </div>
             </div>
 
             {/* Delete button */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.08 }}
+              whileTap={{ scale: 0.92 }}
               onClick={deleteGroup}
               disabled={isDeletingGroup}
-              className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ml-3"
+              className="p-2.5 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-xl transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ml-4 shadow-sm hover:shadow-md"
               title="Delete group"
             >
               {isDeletingGroup ? (
@@ -223,53 +301,100 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
             </motion.button>
           </div>
 
-          {/* Primary action hint */}
-          <div className="flex items-center text-sm text-indigo-600 font-medium mt-4">
+          {/* Primary action hint with enhanced styling */}
+          <div className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 group-hover/card:border-indigo-200 group-hover/card:shadow-md transition-all duration-300">
+            <div className="flex items-center text-sm text-indigo-700 font-semibold">
+              <svg
+                className="w-5 h-5 mr-2 group-hover/card:translate-x-1 transition-transform duration-300"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M13 7l5 5m0 0l-5 5m5-5H6"
+                />
+              </svg>
+              View expenses & settlements
+            </div>
             <svg
-              className="w-4 h-4 mr-2 group-hover:translate-x-1 transition-transform"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
+              className="w-5 h-5 text-indigo-400 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300"
+              fill="currentColor"
+              viewBox="0 0 20 20"
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 7l5 5m0 0l-5 5m5-5H6"
+                fillRule="evenodd"
+                d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
+                clipRule="evenodd"
               />
             </svg>
-            Click to view expenses and settlements
           </div>
         </div>
       </div>
 
       {/* Secondary actions - Low priority section */}
-      <div className="border-t border-gray-200 bg-gray-50">
-        <div className="px-6 py-3">
-          <div className="flex flex-wrap gap-2">
+      <div className="border-t border-gray-200/60 bg-gradient-to-br from-gray-50 to-gray-100/50 relative">
+        <div className="px-7 py-4">
+          <div className="flex flex-wrap gap-3">
             {/* Toggle Members */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowMembers(!showMembers);
                 setShowAddUser(false);
               }}
-              className="text-xs px-3 py-1.5 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors text-gray-700 font-medium"
+              className="flex items-center gap-2 text-sm px-4 py-2.5 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 text-gray-700 font-semibold shadow-sm hover:shadow-md"
             >
+              <svg
+                className={`w-4 h-4 transition-transform duration-300 ${
+                  showMembers ? "rotate-180" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
               {showMembers ? "Hide" : "View"} Members ({groupMembers.length})
-            </button>
+            </motion.button>
 
             {/* Toggle Add User */}
-            <button
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={(e) => {
                 e.stopPropagation();
                 setShowAddUser(!showAddUser);
                 setShowMembers(false);
               }}
-              className="text-xs px-3 py-1.5 bg-white border border-indigo-300 rounded-md hover:bg-indigo-50 transition-colors text-indigo-700 font-medium"
+              className="flex items-center gap-2 text-sm px-4 py-2.5 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 border border-indigo-600 rounded-xl transition-all duration-200 text-white font-semibold shadow-md hover:shadow-lg"
             >
+              <svg
+                className={`w-4 h-4 transition-transform duration-300 ${
+                  showAddUser ? "rotate-45" : ""
+                }`}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2.5}
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
               {showAddUser ? "Cancel" : "Add Member"}
-            </button>
+            </motion.button>
           </div>
         </div>
 
@@ -280,44 +405,78 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <div className="px-6 pb-4">
+              <div className="px-7 pb-5">
                 {groupMembers.length === 0 ? (
-                  <p className="text-sm text-gray-500 italic">No members yet</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-60 overflow-y-auto">
-                    {groupMembers.map((user) => (
-                      <div
-                        key={user.id}
-                        className="flex items-center justify-between gap-2 p-2.5 rounded-lg border bg-white border-gray-200 hover:border-indigo-300 transition-colors"
+                  <div className="flex flex-col items-center justify-center py-8 text-center">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center mb-3">
+                      <svg
+                        className="w-8 h-8 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
                       >
-                        <div className="flex flex-col min-w-0 flex-1">
-                          <span className="text-sm font-medium truncate text-gray-800">
-                            {user.name}
-                          </span>
-                          {user.email && (
-                            <span className="text-xs text-gray-500 truncate">
-                              {user.email}
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-500 font-medium">
+                      No members yet
+                    </p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Add members to get started
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
+                    {groupMembers.map((user, index) => (
+                      <motion.div
+                        key={user.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="flex items-center justify-between gap-3 p-3.5 rounded-xl border bg-white border-gray-200 hover:border-indigo-300 hover:shadow-md transition-all duration-200 group/member"
+                      >
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div
+                            className={`w-10 h-10 rounded-full ${getAvatarColor(
+                              user.name
+                            )} flex items-center justify-center text-white text-sm font-bold shadow-md group-hover/member:scale-110 transition-transform duration-200`}
+                          >
+                            {getInitials(user.name)}
+                          </div>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-sm font-semibold truncate text-gray-800">
+                              {user.name}
                             </span>
-                          )}
+                            {user.email && (
+                              <span className="text-xs text-gray-500 truncate">
+                                {user.email}
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <motion.button
                           whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.95 }}
+                          whileTap={{ scale: 0.9 }}
                           onClick={(e) => removeUserFromGroup(user.id, e)}
                           disabled={isRemovingUser === user.id}
-                          className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded transition-colors border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                          className="p-2 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-lg transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-sm hover:shadow-md"
                           title="Remove user"
                         >
                           {isRemovingUser === user.id ? (
-                            <LoadingSpinner className="w-3 h-3" />
+                            <LoadingSpinner className="w-4 h-4" />
                           ) : (
-                            <DeleteIcon className="w-3 h-3" />
+                            <DeleteIcon className="w-4 h-4" />
                           )}
                         </motion.button>
-                      </div>
+                      </motion.div>
                     ))}
                   </div>
                 )}
@@ -333,48 +492,152 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
               className="overflow-hidden"
             >
-              <div className="px-6 pb-4">
-                <div className="bg-white p-4 rounded-lg border border-indigo-200">
-                  <div className="space-y-3">
-                    <input
-                      type="text"
-                      value={newUserName}
-                      onChange={(e) => setNewUserName(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
-                      placeholder="Enter name"
-                    />
-                    <input
-                      type="email"
-                      value={newUserEmail}
-                      onChange={(e) => setNewUserEmail(e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm safari-form-fix"
-                      placeholder="Enter email"
-                    />
-                    <button
+              <div className="px-7 pb-5">
+                <div className="bg-gradient-to-br from-white to-indigo-50/30 p-6 rounded-2xl border-2 border-indigo-200 shadow-lg">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="p-2.5 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-md">
+                      <svg
+                        className="w-5 h-5 text-white"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                        />
+                      </svg>
+                    </div>
+                    <div>
+                      <h4 className="text-base font-bold text-gray-800">
+                        Add New Member
+                      </h4>
+                      <p className="text-xs text-gray-500">
+                        Enter member details below
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">
+                        Name <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg
+                            className="w-5 h-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                            />
+                          </svg>
+                        </div>
+                        <input
+                          type="text"
+                          value={newUserName}
+                          onChange={(e) => setNewUserName(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium transition-all duration-200 safari-form-fix"
+                          placeholder="John Doe"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-700 mb-2">
+                        Email <span className="text-red-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                          <svg
+                            className="w-5 h-5 text-gray-400"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"
+                            />
+                          </svg>
+                        </div>
+                        <input
+                          type="email"
+                          value={newUserEmail}
+                          onChange={(e) => setNewUserEmail(e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium transition-all duration-200 safari-form-fix"
+                          placeholder="john@example.com"
+                        />
+                      </div>
+                    </div>
+
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={(e) => {
                         e.stopPropagation();
                         addUser();
                       }}
                       disabled={isAddingUser}
-                      className="w-full btn btn-primary text-sm"
+                      className="w-full btn btn-primary text-sm py-3.5 rounded-xl shadow-lg hover:shadow-xl"
                     >
                       {isAddingUser ? (
                         <>
-                          <LoadingSpinner className="w-4 h-4 mr-2" />
-                          Adding...
+                          <LoadingSpinner className="w-5 h-5 mr-2" />
+                          Adding Member...
                         </>
                       ) : (
-                        "Add User to Group"
+                        <>
+                          <svg
+                            className="w-5 h-5 mr-2"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 4v16m8-8H4"
+                            />
+                          </svg>
+                          Add Member to Group
+                        </>
                       )}
-                    </button>
-                    <p className="text-xs text-gray-500 text-center">
-                      If email exists, will use existing user
-                    </p>
+                    </motion.button>
+
+                    <div className="flex items-start gap-2 p-3 bg-indigo-50 rounded-lg border border-indigo-200">
+                      <svg
+                        className="w-4 h-4 text-indigo-600 mt-0.5 flex-shrink-0"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <p className="text-xs text-indigo-700 font-medium">
+                        If the email already exists, we'll add the existing user
+                        to this group
+                      </p>
+                    </div>
                   </div>
                 </div>
               </div>
