@@ -595,65 +595,65 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 lg:space-y-6">
       {/* Header: Back button and group info */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 p-3 sm:p-4 bg-white rounded-xl shadow-lg"
+        className="flex items-center gap-3 lg:gap-4 p-3 sm:p-4 lg:p-6 bg-white rounded-xl shadow-lg"
       >
         <button
           onClick={() => navigate("/")}
-          className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+          className="p-1.5 sm:p-2 lg:p-3 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
         >
-          <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 text-gray-600" />
+          <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600" />
         </button>
         <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-2xl md:text-3xl font-bold text-gray-800 truncate">
+          <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 truncate">
             {group.name}
           </h1>
-          <p className="text-xs sm:text-sm text-gray-600">
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600">
             {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
           </p>
         </div>
       </motion.div>
 
       {/* Sticky Tabs Navigation */}
-      <div className="sticky top-0 sm:top-4 z-10 -mx-2 sm:mx-0 mb-4">
+      <div className="sticky top-0 sm:top-4 z-10 -mx-2 sm:mx-0 mb-4 lg:mb-6">
         <div className="bg-white/95 backdrop-blur-md shadow-sm sm:shadow-none border-b sm:border-b-0 border-gray-200 sm:bg-transparent sm:backdrop-blur-none">
-          <div className="px-4 py-3 sm:p-0">
-            <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+          <div className="px-4 py-3 sm:p-0 lg:py-1">
+            <div className="flex gap-2 lg:gap-3 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
               <button
                 onClick={() => setActiveTab("expenses")}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                className={`flex items-center px-4 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm lg:text-base ${
                   activeTab === "expenses"
                     ? "bg-blue-600 text-white shadow-md"
                     : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
                 }`}
               >
-                <DollarSign className="w-4 h-4 mr-2" />
+                <DollarSign className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
                 Expenses
               </button>
               <button
                 onClick={() => setActiveTab("settlements")}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                className={`flex items-center px-4 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm lg:text-base ${
                   activeTab === "settlements"
                     ? "bg-blue-600 text-white shadow-md"
                     : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
                 }`}
               >
-                <ArrowRightLeft className="w-4 h-4 mr-2" />
+                <ArrowRightLeft className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
                 Settlements
               </button>
               <button
                 onClick={() => setActiveTab("logs")}
-                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                className={`flex items-center px-4 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm lg:text-base ${
                   activeTab === "logs"
                     ? "bg-blue-600 text-white shadow-md"
                     : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
                 }`}
               >
-                <FileText className="w-4 h-4 mr-2" />
+                <FileText className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
                 Activity
               </button>
             </div>

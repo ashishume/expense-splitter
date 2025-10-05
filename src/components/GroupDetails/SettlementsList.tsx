@@ -47,24 +47,26 @@ const SettlementsList = ({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
-      className="p-4 sm:p-6 bg-white rounded-xl shadow-lg"
+      className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
     >
-      <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
-        <ArrowsIcon className="w-5 h-5 mr-2 text-indigo-600" />
+      <h3 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800 flex items-center">
+        <ArrowsIcon className="w-5 h-5 lg:w-6 lg:h-6 mr-2 lg:mr-3 text-indigo-600" />
         Pending Settlements
       </h3>
 
       {/* Pending Settlements */}
       {settlements.length === 0 ? (
-        <div className="text-center py-12">
-          <CheckCircleIcon className="w-16 h-16 mx-auto text-green-500 mb-4" />
-          <p className="text-lg font-semibold text-gray-700 mb-2">
+        <div className="text-center py-12 lg:py-16">
+          <CheckCircleIcon className="w-16 h-16 lg:w-20 lg:h-20 mx-auto text-green-500 mb-4 lg:mb-6" />
+          <p className="text-lg lg:text-xl font-semibold text-gray-700 mb-2">
             All Settled Up!
           </p>
-          <p className="text-gray-500">No pending settlements in this group.</p>
+          <p className="text-gray-500 text-base lg:text-lg">
+            No pending settlements in this group.
+          </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 lg:space-y-5">
           <p className="text-sm text-gray-600 mb-4">
             {settlements.length} pending settlement
             {settlements.length !== 1 ? "s" : ""}
@@ -152,11 +154,11 @@ const SettlementsList = ({
 
       {/* Settled Transactions History */}
       {expenses.filter((e) => e.isSettlement).length > 0 && (
-        <div className="mt-8 pt-6 border-t border-gray-200">
-          <h4 className="text-lg font-semibold mb-4 text-gray-800">
+        <div className="mt-8 lg:mt-10 pt-6 lg:pt-8 border-t border-gray-200">
+          <h4 className="text-lg lg:text-xl font-semibold mb-4 lg:mb-6 text-gray-800">
             Settled Transactions
           </h4>
-          <div className="space-y-3">
+          <div className="space-y-3 lg:space-y-4">
             {expenses
               .filter((e) => e.isSettlement)
               .map((expense) => (

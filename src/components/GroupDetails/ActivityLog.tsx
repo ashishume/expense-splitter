@@ -59,27 +59,27 @@ const ActivityLog = ({ logs }: ActivityLogProps) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 sm:p-6 bg-white rounded-xl shadow-lg"
+      className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
     >
-      <h3 className="text-xl font-semibold mb-4 text-gray-800 flex items-center">
-        <FileText className="w-5 h-5 mr-2 text-blue-600" />
+      <h3 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800 flex items-center">
+        <FileText className="w-5 h-5 lg:w-6 lg:h-6 mr-2 lg:mr-3 text-blue-600" />
         Activity Log
       </h3>
 
       {logs.length === 0 ? (
         // Empty state
-        <div className="text-center py-12">
-          <FileText className="w-16 h-16 mx-auto text-gray-300 mb-4" />
-          <p className="text-lg font-semibold text-gray-700 mb-2">
+        <div className="text-center py-12 lg:py-16">
+          <FileText className="w-16 h-16 lg:w-20 lg:h-20 mx-auto text-gray-300 mb-4 lg:mb-6" />
+          <p className="text-lg lg:text-xl font-semibold text-gray-700 mb-2">
             No Activity Yet
           </p>
-          <p className="text-gray-500 text-sm">
+          <p className="text-gray-500 text-sm lg:text-base">
             Activity in this group will appear here
           </p>
         </div>
       ) : (
         // Activity log entries
-        <div className="space-y-2">
+        <div className="space-y-2 lg:space-y-3">
           {logs.map((log, index) => {
             const IconComponent = getActionIcon(log.action);
 

@@ -61,42 +61,48 @@ const SpendingSummary = ({ expenses, groupMembers }: SpendingSummaryProps) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 sm:p-6 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-lg mb-4 border border-indigo-100"
+      className="p-4 sm:p-6 lg:p-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-xl shadow-lg mb-4 lg:mb-6 border border-indigo-100"
     >
-      <h3 className="text-lg font-semibold mb-4 text-gray-800 flex items-center">
-        <CurrencyIcon className="w-5 h-5 mr-2 text-indigo-600" />
+      <h3 className="text-lg lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800 flex items-center">
+        <CurrencyIcon className="w-5 h-5 lg:w-6 lg:h-6 mr-2 lg:mr-3 text-indigo-600" />
         Group Spending Summary
       </h3>
 
-      <div className="space-y-4">
+      <div className="space-y-4 lg:space-y-6">
         {/* Top Stats - Total Spend, Expenses Count, Average */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-100">
-            <p className="text-sm text-gray-600 mb-1">Total Group Spend</p>
-            <p className="text-2xl font-bold text-indigo-600">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-indigo-100">
+            <p className="text-sm lg:text-base text-gray-600 mb-1 lg:mb-2">
+              Total Group Spend
+            </p>
+            <p className="text-2xl lg:text-3xl font-bold text-indigo-600">
               ₹{totalSpend.toLocaleString()}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-purple-100">
-            <p className="text-sm text-gray-600 mb-1">Total Expenses</p>
-            <p className="text-2xl font-bold text-purple-600">
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-purple-100">
+            <p className="text-sm lg:text-base text-gray-600 mb-1 lg:mb-2">
+              Total Expenses
+            </p>
+            <p className="text-2xl lg:text-3xl font-bold text-purple-600">
               {totalExpenses}
             </p>
           </div>
-          <div className="bg-white p-4 rounded-lg shadow-sm border border-pink-100">
-            <p className="text-sm text-gray-600 mb-1">Avg per Expense</p>
-            <p className="text-2xl font-bold text-pink-600">
+          <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-pink-100">
+            <p className="text-sm lg:text-base text-gray-600 mb-1 lg:mb-2">
+              Avg per Expense
+            </p>
+            <p className="text-2xl lg:text-3xl font-bold text-pink-600">
               ₹{avgPerExpense.toFixed(0)}
             </p>
           </div>
         </div>
 
         {/* Per Person Balance Breakdown */}
-        <div className="bg-white p-4 rounded-lg shadow-sm border border-indigo-100">
-          <h4 className="text-sm font-semibold text-gray-700 mb-3">
+        <div className="bg-white p-4 lg:p-6 rounded-lg shadow-sm border border-indigo-100">
+          <h4 className="text-sm lg:text-base font-semibold text-gray-700 mb-3 lg:mb-4">
             Member Balances
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
             {groupMembers.map((member) => {
               const balance = balances[member.id] || 0;
               const isPositive = balance > 0.01; // Gets money back

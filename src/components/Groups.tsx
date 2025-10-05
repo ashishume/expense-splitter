@@ -83,29 +83,29 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 sm:p-6 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
+      className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg hover:shadow-xl transition-shadow duration-300"
     >
-      <h2 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 text-gray-800 flex items-center">
-        <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 mr-2 text-indigo-600" />
+      <h2 className="text-xl sm:text-2xl lg:text-3xl font-semibold mb-4 sm:mb-6 lg:mb-8 text-gray-800 flex items-center">
+        <UsersIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 mr-2 lg:mr-3 text-indigo-600" />
         My Groups
       </h2>
 
-      <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 gap-2">
+      <div className="flex flex-col sm:flex-row mb-4 sm:mb-6 lg:mb-8 gap-2 lg:gap-3">
         <input
           type="text"
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}
-          className="flex-grow px-4 py-3 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base safari-form-fix"
+          className="flex-grow px-4 py-3 lg:px-5 lg:py-4 border border-gray-300 rounded-lg sm:rounded-l-lg sm:rounded-r-none focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base lg:text-lg safari-form-fix"
           placeholder="Enter group name"
         />
         <button
           onClick={addGroup}
           disabled={isCreatingGroup}
-          className="btn btn-primary px-4 sm:px-6 py-3 sm:rounded-l-none sm:rounded-r-lg text-sm sm:text-base"
+          className="btn btn-primary px-4 sm:px-6 lg:px-8 py-3 lg:py-4 sm:rounded-l-none sm:rounded-r-lg text-sm sm:text-base lg:text-lg"
         >
           {isCreatingGroup ? (
             <>
-              <LoadingSpinner className="w-4 h-4 mr-2" />
+              <LoadingSpinner className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
               <span className="hidden sm:inline">Creating...</span>
               <span className="sm:hidden">Create...</span>
             </>
@@ -118,9 +118,9 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
         </button>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-4 lg:space-y-6">
         {userGroups.length === 0 ? (
-          <p className="text-gray-500 italic text-center py-4">
+          <p className="text-gray-500 italic text-center py-4 lg:py-8 text-base lg:text-lg">
             You are not a member of any groups yet. Create a group to get
             started!
           </p>

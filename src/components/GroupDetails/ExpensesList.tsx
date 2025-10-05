@@ -27,17 +27,17 @@ const ExpensesList = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="p-4 sm:p-6 bg-white rounded-xl shadow-lg"
+      className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
     >
-      <h3 className="text-xl font-semibold mb-4 text-gray-800">
+      <h3 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800">
         Expenses ({expenses.length})
       </h3>
       {expenses.length === 0 ? (
-        <p className="text-gray-500 italic text-center py-8">
+        <p className="text-gray-500 italic text-center py-8 lg:py-12 text-base lg:text-lg">
           No expenses yet. Add your first expense above!
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4 lg:space-y-5">
           {expenses.map((expense) => (
             <ExpenseItem
               key={expense.id}
