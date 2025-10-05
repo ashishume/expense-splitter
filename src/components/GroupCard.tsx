@@ -16,7 +16,7 @@ import { db } from "../firebase";
 import toast from "react-hot-toast";
 import { LoadingSpinner, DeleteIcon } from "./icons/index";
 import ConfirmDialog from "./ui/ConfirmDialog";
-import type { User as AppUser, Group } from "../types";
+import type { User as AppUser, Group, Expense } from "../types";
 
 interface GroupCardProps {
   group: Group;
@@ -39,6 +39,128 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
 
   // Get only the members that are actually in this group
   const groupMembers = users.filter((user) => group.members.includes(user.id));
+
+  /**
+   * Check if a user has unsettled balance in the group
+   */
+  const checkUserHasUnsettledBalance = async (
+    userId: string,
+    groupId: string
+  ): Promise<boolean> => {
+    try {
+      // Fetch all expenses for this group
+      const expensesQuery = query(
+        collection(db, "expenses"),
+        where("groupId", "==", groupId)
+      );
+      const expensesSnapshot = await getDocs(expensesQuery);
+      const expenses: Expense[] = expensesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[];
+
+      // Calculate user's balance
+      let userBalance = 0;
+
+      expenses.forEach((expense) => {
+        if (expense.isSettlement) {
+          // Settlement transaction
+          if (expense.paidBy === userId) {
+            userBalance += expense.amount;
+          }
+          if (
+            expense.splitWith.length === 1 &&
+            expense.splitWith[0] === userId
+          ) {
+            userBalance -= expense.amount;
+          }
+        } else {
+          // Regular expense
+          const amountPerPerson =
+            expense.amount / (expense.splitWith.length + 1);
+          if (expense.paidBy === userId) {
+            userBalance += expense.amount;
+          }
+          if (expense.splitWith.includes(userId)) {
+            userBalance -= amountPerPerson;
+          }
+          if (expense.paidBy === userId) {
+            userBalance -= amountPerPerson;
+          }
+        }
+      });
+
+      // Check if balance is not settled (threshold of 0.01 to account for rounding)
+      return Math.abs(userBalance) > 0.01;
+    } catch (error) {
+      console.error("Error checking user balance:", error);
+      return false;
+    }
+  };
+
+  /**
+   * Check if group has any unsettled transactions
+   */
+  const checkGroupHasUnsettledTransactions = async (
+    groupId: string
+  ): Promise<boolean> => {
+    try {
+      // Fetch all expenses for this group
+      const expensesQuery = query(
+        collection(db, "expenses"),
+        where("groupId", "==", groupId)
+      );
+      const expensesSnapshot = await getDocs(expensesQuery);
+      const expenses: Expense[] = expensesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Expense[];
+
+      // Calculate balances for all members
+      const balances: Record<string, number> = {};
+      group.members.forEach((memberId) => {
+        balances[memberId] = 0;
+      });
+
+      expenses.forEach((expense) => {
+        if (expense.isSettlement) {
+          // Settlement transaction
+          if (balances[expense.paidBy] !== undefined) {
+            balances[expense.paidBy] += expense.amount;
+          }
+          if (
+            expense.splitWith.length === 1 &&
+            balances[expense.splitWith[0]] !== undefined
+          ) {
+            balances[expense.splitWith[0]] -= expense.amount;
+          }
+        } else {
+          // Regular expense
+          const amountPerPerson =
+            expense.amount / (expense.splitWith.length + 1);
+          if (balances[expense.paidBy] !== undefined) {
+            balances[expense.paidBy] += expense.amount;
+          }
+          expense.splitWith.forEach((userId) => {
+            if (balances[userId] !== undefined) {
+              balances[userId] -= amountPerPerson;
+            }
+          });
+          if (balances[expense.paidBy] !== undefined) {
+            balances[expense.paidBy] -= amountPerPerson;
+          }
+        }
+      });
+
+      // Check if any member has unsettled balance (threshold of 0.01)
+      return Object.values(balances).some(
+        (balance) => Math.abs(balance) > 0.01
+      );
+    } catch (error) {
+      console.error("Error checking group balances:", error);
+      return false;
+    }
+  };
 
   const handleCardClick = () => {
     navigate(`/group/${group.id}`);
@@ -140,6 +262,22 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
 
     setIsRemovingUser(userToRemove.id);
     try {
+      // Check if user has unsettled balances
+      const hasUnsettledBalance = await checkUserHasUnsettledBalance(
+        userToRemove.id,
+        group.id
+      );
+
+      if (hasUnsettledBalance) {
+        toast.error(
+          `Cannot remove ${userToRemove.name}. They have unsettled transactions in this group.`
+        );
+        setShowRemoveUserConfirm(false);
+        setUserToRemove(null);
+        setIsRemovingUser(null);
+        return;
+      }
+
       const groupRef = doc(db, "groups", group.id);
       const updatedMembers = group.members.filter(
         (id) => id !== userToRemove.id
@@ -175,6 +313,20 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
 
     setIsDeletingGroup(true);
     try {
+      // Check if group has unsettled transactions
+      const hasUnsettledTransactions = await checkGroupHasUnsettledTransactions(
+        group.id
+      );
+
+      if (hasUnsettledTransactions) {
+        toast.error(
+          "Cannot delete group. There are unsettled transactions. Please settle all balances first."
+        );
+        setShowDeleteGroupConfirm(false);
+        setIsDeletingGroup(false);
+        return;
+      }
+
       await deleteDoc(doc(db, "groups", group.id));
 
       // Remove group from all users' groups array
