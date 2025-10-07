@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import { UsersIcon, LoadingSpinner } from "./icons/index";
 import type { User } from "firebase/auth";
 import GroupCard from "./GroupCard";
+import { trackGroupAction } from "../config/googleAnalytics";
 
 import type { User as AppUser } from "../types";
 
@@ -71,6 +72,9 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
       setNewGroupName("");
       onGroupUpdate();
       toast.success("Group created successfully!");
+
+      // Track group creation
+      trackGroupAction("create", newGroupName);
     } catch (error) {
       console.error("Error adding group: ", error);
       toast.error("Error adding group. Please try again.");

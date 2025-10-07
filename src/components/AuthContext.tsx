@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { googleAuthService } from "../services/googleAuth";
+import { trackAuth } from "../config/googleAnalytics";
 
 interface AuthContextType {
   user: User | null;
@@ -164,6 +165,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Add user to database when they sign in
       if (user) {
         await addUserToDatabase(user);
+        // Track successful login
+        trackAuth("login");
       }
     });
 
@@ -203,6 +206,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async () => {
     try {
+      // Track logout before signing out
+      trackAuth("logout");
       await signOut(auth);
       googleAuthService.signOut();
     } catch (error) {

@@ -3,6 +3,10 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App.tsx";
 import { registerServiceWorker } from "./utils/swRegistration";
+import { initGA } from "./config/googleAnalytics";
+
+// Initialize Google Analytics
+initGA();
 
 // Register service worker with update detection
 registerServiceWorker();

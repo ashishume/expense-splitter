@@ -18,6 +18,7 @@ import { logExpenseAction } from "../../utils/logger";
 import toast from "react-hot-toast";
 import { DollarSign, ArrowRightLeft, FileText } from "lucide-react";
 import { LoadingSpinner, ArrowLeftIcon } from "../icons/index";
+import { trackExpenseAction } from "../../config/googleAnalytics";
 
 // Import modular components
 import ExpenseForm from "./ExpenseForm";
@@ -398,6 +399,9 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         splitWith: [],
       });
       toast.success("Expense added successfully!");
+
+      // Track expense creation
+      trackExpenseAction("create", `${newExpense.description} - ₹${amount}`);
     } catch (error) {
       console.error("Error adding expense: ", error);
       toast.error("Error adding expense. Please try again.");
@@ -427,6 +431,12 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         groupId
       );
       toast.success("Expense removed successfully!");
+
+      // Track expense deletion
+      trackExpenseAction(
+        "delete",
+        `${expense.description} - ₹${expense.amount}`
+      );
     } catch (error) {
       console.error("Error removing expense: ", error);
       toast.error("Error removing expense. Please try again.");
@@ -529,6 +539,9 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         splitWith: [],
       });
       toast.success("Expense updated successfully!");
+
+      // Track expense update
+      trackExpenseAction("update", `${newExpense.description} - ₹${amount}`);
     } catch (error) {
       console.error("Error updating expense: ", error);
       toast.error("Error updating expense. Please try again.");
@@ -573,6 +586,12 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
 
       toast.success(
         `Settlement completed! ${settlement.fromName} has paid ₹${settlement.amount} to ${settlement.toName}`
+      );
+
+      // Track settlement completion
+      trackExpenseAction(
+        "settle",
+        `${settlement.fromName} paid ₹${settlement.amount} to ${settlement.toName}`
       );
     } catch (error) {
       console.error("Error settling payment: ", error);
