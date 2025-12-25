@@ -67,10 +67,6 @@ const addUserToDatabase = async (user: User) => {
         // Delete the old user document to avoid duplicates
         await deleteDoc(doc(db, "users", existingUserData.id));
 
-        console.log(
-          "Existing user migrated to Google account:",
-          user.displayName
-        );
         toast.success(
           `Welcome back ${
             user.displayName || "User"

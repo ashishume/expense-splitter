@@ -125,16 +125,13 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
           id: doc.id,
           ...doc.data(),
         })) as Expense[];
-        console.log(
-          `Loaded ${expensesData.length} expenses for group ${groupId}`
-        );
+
         setExpenses(expensesData);
       },
       (error) => {
         console.error("Error listening to expenses:", error);
         // Fallback: try without orderBy if index is missing
         if (error.code === "failed-precondition") {
-          console.log("Retrying without orderBy due to missing index");
           const simpleQuery = query(
             collection(db, "expenses"),
             where("groupId", "==", groupId)
@@ -148,7 +145,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             expensesData.sort(
               (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
             );
-            console.log(`Loaded ${expensesData.length} expenses (manual sort)`);
+
             setExpenses(expensesData);
           });
         }
@@ -178,14 +175,12 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
           id: doc.id,
           ...doc.data(),
         })) as ExtendedLogEntry[];
-        console.log(`Loaded ${logsData.length} logs for group ${groupId}`);
         setLogs(logsData);
       },
       (error) => {
         console.error("Error listening to logs:", error);
         // Fallback: try without orderBy if index is missing
         if (error.code === "failed-precondition") {
-          console.log("Retrying logs without orderBy due to missing index");
           const simpleQuery = query(
             collection(db, "logs"),
             where("groupId", "==", groupId)
@@ -201,7 +196,6 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
                 new Date(b.timestamp).getTime() -
                 new Date(a.timestamp).getTime()
             );
-            console.log(`Loaded ${logsData.length} logs (manual sort)`);
             setLogs(logsData);
           });
         }
