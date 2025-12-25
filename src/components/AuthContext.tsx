@@ -138,9 +138,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           handleGoogleAuthError as EventListener
         );
 
-        // Show One Tap prompt
-        await googleAuthService.showOneTap();
-
         return () => {
           window.removeEventListener(
             "googleAuthSuccess",
@@ -162,11 +159,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(user);
       setLoading(false);
 
-      // Add user to database when they sign in
       if (user) {
+        // User is authenticated - cancel One Tap and add to database
+        googleAuthService.cancelOneTap();
         await addUserToDatabase(user);
         // Track successful login
         trackAuth("login");
+      } else {
+        // User is not authenticated - show One Tap prompt
+        try {
+          await googleAuthService.showOneTap();
+        } catch (error) {
+          console.error("Error showing One Tap prompt:", error);
+        }
       }
     });
 
@@ -196,8 +201,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const signInWithGoogle = async () => {
     try {
-      // Show One Tap prompt if not already shown
-      await googleAuthService.showOneTap();
+      // Only show One Tap if user is not already authenticated
+      if (!user) {
+        await googleAuthService.showOneTap();
+      }
     } catch (error) {
       console.error("Error showing One Tap prompt:", error);
       toast.error("Failed to show sign-in prompt. Please try again.");

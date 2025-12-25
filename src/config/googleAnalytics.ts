@@ -1,5 +1,6 @@
 // Google Analytics configuration
-export const GA_TRACKING_ID = process.env.VITE_GA_TRACKING_ID || "G-B50G4LYHSH";
+export const GA_TRACKING_ID =
+  import.meta.env.VITE_GA_TRACKING_ID || "G-B50G4LYHSH";
 
 // Initialize Google Analytics
 export const initGA = () => {
