@@ -272,3 +272,25 @@ button:disabled {
     rgba(168, 85, 247, 0.5)
   );
 }
+
+/* Prevent iOS from auto-detecting and styling emails as links */
+/* iOS Safari auto-detects emails and wraps them in <a> tags with mailto: */
+/* We override the default link styling to prevent underlines and link behavior */
+a[href^="mailto:"] {
+  text-decoration: none !important;
+  color: inherit !important;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+  cursor: default;
+}
+
+/* Class for email display elements - ensures emails are not styled as links */
+.email-display {
+  text-decoration: none !important;
+  color: inherit !important;
+  -webkit-touch-callout: none;
+  pointer-events: none;
+  cursor: default;
+  -webkit-user-select: text;
+  user-select: text;
+}
