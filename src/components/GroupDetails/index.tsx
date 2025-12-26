@@ -16,7 +16,7 @@ import { db } from "../../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
 import { logExpenseAction } from "../../utils/logger";
 import toast from "react-hot-toast";
-import { DollarSign, ArrowRightLeft, FileText } from "lucide-react";
+import { DollarSign, ArrowRightLeft, FileText, Share2 } from "lucide-react";
 import { LoadingSpinner, ArrowLeftIcon } from "../icons/index";
 import { trackExpenseAction } from "../../config/googleAnalytics";
 
@@ -545,6 +545,41 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   };
 
   /**
+   * Share the group link
+   * Copies the current URL to clipboard or uses Web Share API if available
+   */
+  const handleShare = async () => {
+    const groupUrl = window.location.href;
+
+    // Try Web Share API first (mobile-friendly)
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Join ${group?.name} on Axpo Expense`,
+          text: `Check out this expense group: ${group?.name}`,
+          url: groupUrl,
+        });
+        toast.success("Link shared successfully!");
+        return;
+      } catch (error: any) {
+        // User cancelled or error occurred, fall back to clipboard
+        if (error.name !== "AbortError") {
+          console.error("Error sharing:", error);
+        }
+      }
+    }
+
+    // Fallback to clipboard
+    try {
+      await navigator.clipboard.writeText(groupUrl);
+      toast.success("Group link copied to clipboard!");
+    } catch (error) {
+      console.error("Error copying to clipboard:", error);
+      toast.error("Failed to copy link. Please try again.");
+    }
+  };
+
+  /**
    * Mark a settlement as completed
    * Creates a settlement transaction in the expenses
    */
@@ -629,6 +664,13 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
           </p>
         </div>
+        <button
+          onClick={handleShare}
+          className="p-2 sm:p-2.5 lg:p-3 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0 group"
+          title="Share group link"
+        >
+          <Share2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600 group-hover:text-blue-600 transition-colors" />
+        </button>
       </motion.div>
 
       {/* Sticky Tabs Navigation */}
