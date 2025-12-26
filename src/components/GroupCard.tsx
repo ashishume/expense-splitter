@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -36,9 +36,76 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
   const [showDeleteGroupConfirm, setShowDeleteGroupConfirm] = useState(false);
   const [showRemoveUserConfirm, setShowRemoveUserConfirm] = useState(false);
   const [userToRemove, setUserToRemove] = useState<AppUser | null>(null);
+  const [showNameSuggestions, setShowNameSuggestions] = useState(false);
+  const [filteredUsers, setFilteredUsers] = useState<AppUser[]>([]);
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Get only the members that are actually in this group
   const groupMembers = users.filter((user) => group.members.includes(user.id));
+
+  // Filter users for suggestions (exclude users already in group)
+  useEffect(() => {
+    if (newUserName.trim() === "") {
+      setFilteredUsers([]);
+      setShowNameSuggestions(false);
+      return;
+    }
+
+    const filtered = users
+      .filter(
+        (user) =>
+          !group.members.includes(user.id) &&
+          (user.name.toLowerCase().includes(newUserName.toLowerCase()) ||
+            (user.email &&
+              user.email.toLowerCase().includes(newUserName.toLowerCase())))
+      )
+      .slice(0, 5); // Limit to 5 suggestions
+
+    setFilteredUsers(filtered);
+    setShowNameSuggestions(filtered.length > 0);
+  }, [newUserName, users, group.members]);
+
+  // Handle click outside to close suggestions (works for both mouse and touch)
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (
+        nameInputRef.current &&
+        !nameInputRef.current.contains(event.target as Node) &&
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node)
+      ) {
+        setShowNameSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, []);
+
+  // Handle user selection from suggestions
+  const handleUserSelect = (user: AppUser, e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    setNewUserName(user.name);
+    setNewUserEmail(user.email || "");
+    setShowNameSuggestions(false);
+    // Focus on email field after selection
+    setTimeout(() => {
+      const emailInput = document.querySelector(
+        'input[type="email"]'
+      ) as HTMLInputElement;
+      if (emailInput) {
+        emailInput.focus();
+      }
+    }, 100);
+  };
 
   /**
    * Check if a user has unsettled balance in the group
@@ -698,7 +765,7 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                       <label className="block text-xs font-semibold text-gray-700 mb-2">
                         Name <span className="text-red-500">*</span>
                       </label>
-                      <div className="relative">
+                      <div className="relative" ref={nameInputRef}>
                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                           <svg
                             className="w-5 h-5 text-gray-400"
@@ -717,11 +784,75 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                         <input
                           type="text"
                           value={newUserName}
-                          onChange={(e) => setNewUserName(e.target.value)}
-                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => {
+                            setNewUserName(e.target.value);
+                            setShowNameSuggestions(true);
+                          }}
+                          onFocus={() => {
+                            if (filteredUsers.length > 0) {
+                              setShowNameSuggestions(true);
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (filteredUsers.length > 0) {
+                              setShowNameSuggestions(true);
+                            }
+                          }}
                           className="w-full pl-10 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm font-medium transition-all duration-200 safari-form-fix"
                           placeholder="John Doe"
                         />
+                        {/* Suggestions Dropdown */}
+                        <AnimatePresence>
+                          {showNameSuggestions && filteredUsers.length > 0 && (
+                            <motion.div
+                              ref={suggestionsRef}
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              transition={{ duration: 0.2 }}
+                              className="absolute z-50 w-full mt-1 bg-white border-2 border-indigo-200 rounded-xl shadow-xl max-h-60 overflow-y-auto custom-scrollbar"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              {filteredUsers.map((user) => (
+                                <motion.div
+                                  key={user.id}
+                                  whileHover={{ backgroundColor: "#f3f4f6" }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUserSelect(user, e);
+                                  }}
+                                  onTouchEnd={(e) => {
+                                    e.stopPropagation();
+                                    handleUserSelect(user);
+                                  }}
+                                  className="px-3 sm:px-4 py-2.5 sm:py-3 cursor-pointer border-b border-gray-100 last:border-b-0 hover:bg-indigo-50 transition-colors"
+                                >
+                                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                                    <div
+                                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full ${getAvatarColor(
+                                        user.name
+                                      )} flex items-center justify-center text-white text-xs font-semibold flex-shrink-0`}
+                                    >
+                                      {getInitials(user.name)}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs sm:text-sm font-semibold text-gray-800 truncate">
+                                        {user.name}
+                                        {user.email && (
+                                          <span className="text-gray-500 font-normal">
+                                            {" "}
+                                            ({user.email})
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </motion.div>
+                              ))}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     </div>
 
