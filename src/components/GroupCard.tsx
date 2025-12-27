@@ -32,7 +32,12 @@ interface GroupCardProps {
   currentUser: FirebaseUser | null;
 }
 
-const GroupCard = ({ group, users, onGroupUpdate, currentUser }: GroupCardProps) => {
+const GroupCard = ({
+  group,
+  users,
+  onGroupUpdate,
+  currentUser,
+}: GroupCardProps) => {
   const navigate = useNavigate();
   const [showMembers, setShowMembers] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -362,7 +367,9 @@ const GroupCard = ({ group, users, onGroupUpdate, currentUser }: GroupCardProps)
 
     // Prevent owner from removing themselves
     if (userToRemove.id === currentUser?.uid) {
-      toast.error("You cannot remove yourself from the group. Transfer ownership first or delete the group.");
+      toast.error(
+        "You cannot remove yourself from the group. Transfer ownership first or delete the group."
+      );
       setShowRemoveUserConfirm(false);
       setUserToRemove(null);
       return;
