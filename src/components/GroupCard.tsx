@@ -14,7 +14,13 @@ import {
 } from "firebase/firestore";
 import { db } from "../firebase";
 import toast from "react-hot-toast";
-import { LoadingSpinner, DeleteIcon } from "./icons/index";
+import {
+  LoadingSpinner,
+  DeleteIcon,
+  EditIcon,
+  CheckIcon,
+  CloseIcon,
+} from "./icons/index";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import type { User as AppUser, Group, Expense } from "../types";
 
@@ -40,6 +46,10 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
   const [filteredUsers, setFilteredUsers] = useState<AppUser[]>([]);
   const nameInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  const [isRenaming, setIsRenaming] = useState(false);
+  const [newGroupName, setNewGroupName] = useState(group.name);
+  const [isRenamingGroup, setIsRenamingGroup] = useState(false);
+  const renameInputRef = useRef<HTMLInputElement>(null);
 
   // Get only the members that are actually in this group
   const groupMembers = users.filter((user) => group.members.includes(user.id));
@@ -86,6 +96,13 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
       document.removeEventListener("touchstart", handleClickOutside);
     };
   }, []);
+
+  // Sync group name when group prop changes
+  useEffect(() => {
+    if (!isRenaming) {
+      setNewGroupName(group.name);
+    }
+  }, [group.name, isRenaming]);
 
   // Handle user selection from suggestions
   const handleUserSelect = (user: AppUser, e?: React.MouseEvent) => {
@@ -370,6 +387,75 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
     }
   };
 
+  const handleRenameGroupClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsRenaming(true);
+    setNewGroupName(group.name);
+    // Focus the input after a short delay to ensure it's rendered
+    setTimeout(() => {
+      renameInputRef.current?.focus();
+      renameInputRef.current?.select();
+    }, 100);
+  };
+
+  const handleCancelRename = (e?: React.MouseEvent) => {
+    if (e) {
+      e.stopPropagation();
+    }
+    setIsRenaming(false);
+    setNewGroupName(group.name);
+  };
+
+  const renameGroup = async () => {
+    if (newGroupName.trim() === "") {
+      toast.error("Group name cannot be empty!");
+      return;
+    }
+
+    if (newGroupName.trim() === group.name) {
+      setIsRenaming(false);
+      return;
+    }
+
+    if (isRenamingGroup) return;
+
+    setIsRenamingGroup(true);
+    try {
+      // Check for duplicate group names (excluding current group)
+      const groupsQuery = query(collection(db, "groups"));
+      const groupsSnapshot = await getDocs(groupsQuery);
+      const allGroups = groupsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as Group[];
+
+      const groupExists = allGroups.some(
+        (g) =>
+          g.id !== group.id &&
+          g.name.toLowerCase() === newGroupName.trim().toLowerCase()
+      );
+
+      if (groupExists) {
+        toast.error("A group with this name already exists!");
+        setIsRenamingGroup(false);
+        return;
+      }
+
+      // Update group name
+      const groupRef = doc(db, "groups", group.id);
+      await updateDoc(groupRef, { name: newGroupName.trim() });
+
+      setIsRenaming(false);
+      onGroupUpdate();
+      toast.success("Group renamed successfully!");
+    } catch (error) {
+      console.error("Error renaming group: ", error);
+      toast.error("Error renaming group. Please try again.");
+    } finally {
+      setIsRenamingGroup(false);
+    }
+  };
+
   const handleDeleteGroupClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowDeleteGroupConfirm(true);
@@ -482,9 +568,61 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                     />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-bold text-gray-800 group-hover/card:text-indigo-600 transition-colors truncate">
-                  {group.name}
-                </h3>
+                {isRenaming ? (
+                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                    <input
+                      ref={renameInputRef}
+                      type="text"
+                      value={newGroupName}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        setNewGroupName(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        e.stopPropagation();
+                        if (e.key === "Enter") {
+                          renameGroup();
+                        } else if (e.key === "Escape") {
+                          handleCancelRename();
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 px-3 py-2 text-2xl font-bold text-gray-800 border-2 border-indigo-500 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 min-w-0"
+                      disabled={isRenamingGroup}
+                    />
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        renameGroup();
+                      }}
+                      disabled={isRenamingGroup}
+                      className="p-2 bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 text-green-600 rounded-lg transition-all duration-200 border border-green-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-sm hover:shadow-md"
+                      title="Save"
+                    >
+                      {isRenamingGroup ? (
+                        <LoadingSpinner className="w-4 h-4" />
+                      ) : (
+                        <CheckIcon className="w-4 h-4" />
+                      )}
+                    </motion.button>
+                    <motion.button
+                      whileHover={{ scale: 1.1 }}
+                      whileTap={{ scale: 0.9 }}
+                      onClick={(e) => handleCancelRename(e)}
+                      disabled={isRenamingGroup}
+                      className="p-2 bg-gradient-to-br from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 text-gray-600 rounded-lg transition-all duration-200 border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-sm hover:shadow-md"
+                      title="Cancel"
+                    >
+                      <CloseIcon className="w-4 h-4" />
+                    </motion.button>
+                  </div>
+                ) : (
+                  <h3 className="text-2xl font-bold text-gray-800 group-hover/card:text-indigo-600 transition-colors truncate">
+                    {group.name}
+                  </h3>
+                )}
               </div>
 
               {/* Member count and avatars */}
@@ -521,21 +659,35 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
               </div>
             </div>
 
-            {/* Delete button */}
-            <motion.button
-              whileHover={{ scale: 1.08 }}
-              whileTap={{ scale: 0.92 }}
-              onClick={handleDeleteGroupClick}
-              disabled={isDeletingGroup}
-              className="p-2.5 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-xl transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 ml-4 shadow-sm hover:shadow-md"
-              title="Delete group"
-            >
-              {isDeletingGroup ? (
-                <LoadingSpinner className="w-4 h-4" />
-              ) : (
-                <DeleteIcon className="w-4 h-4" />
+            {/* Action buttons */}
+            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              {!isRenaming && (
+                <motion.button
+                  whileHover={{ scale: 1.08 }}
+                  whileTap={{ scale: 0.92 }}
+                  onClick={handleRenameGroupClick}
+                  disabled={isDeletingGroup}
+                  className="p-2.5 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 text-blue-600 rounded-xl transition-all duration-200 border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                  title="Rename group"
+                >
+                  <EditIcon className="w-4 h-4" />
+                </motion.button>
               )}
-            </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                onClick={handleDeleteGroupClick}
+                disabled={isDeletingGroup || isRenaming}
+                className="p-2.5 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-xl transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                title="Delete group"
+              >
+                {isDeletingGroup ? (
+                  <LoadingSpinner className="w-4 h-4" />
+                ) : (
+                  <DeleteIcon className="w-4 h-4" />
+                )}
+              </motion.button>
+            </div>
           </div>
 
           {/* Primary action hint with enhanced styling */}
