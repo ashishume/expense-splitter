@@ -13,7 +13,6 @@ import {
   getDocs,
   collection,
   deleteDoc,
-  updateDoc,
   writeBatch,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
