@@ -26,6 +26,7 @@ import ExpensesList from "./ExpensesList";
 import SpendingSummary from "./SpendingSummary";
 import SettlementsList from "./SettlementsList";
 import ActivityLog from "./ActivityLog";
+import EditExpenseModal from "./EditExpenseModal";
 
 import type { User, Group, Expense, Settlement } from "../../types";
 import type { LogEntry } from "../../utils/logger";
@@ -450,14 +451,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       description: expense.description,
       splitWith: expense.splitWith,
     });
-
-    // Scroll to the form with smooth behavior
-    setTimeout(() => {
-      expenseFormRef.current?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 100);
+    // No scrolling - modal will handle the UX
   };
 
   /**
@@ -471,6 +465,15 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       description: "",
       splitWith: [],
     });
+  };
+
+  /**
+   * Handle modal close
+   */
+  const handleModalClose = () => {
+    if (!isUpdatingExpense) {
+      cancelEditing();
+    }
   };
 
   /**
@@ -724,9 +727,9 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             newExpense={newExpense}
             setNewExpense={setNewExpense}
             groupMembers={groupMembers}
-            editingExpense={editingExpense}
+            editingExpense={null}
             isAddingExpense={isAddingExpense}
-            isUpdatingExpense={isUpdatingExpense}
+            isUpdatingExpense={false}
             onAddExpense={addExpense}
             onUpdateExpense={updateExpense}
             onCancelEditing={cancelEditing}
@@ -738,6 +741,18 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             onEdit={startEditing}
             onDelete={removeExpense}
             isDeletingExpense={isDeletingExpense}
+          />
+          {/* Edit Expense Modal */}
+          <EditExpenseModal
+            isOpen={editingExpense !== null}
+            onClose={handleModalClose}
+            expense={editingExpense}
+            newExpense={newExpense}
+            setNewExpense={setNewExpense}
+            groupMembers={groupMembers}
+            isUpdatingExpense={isUpdatingExpense}
+            onUpdateExpense={updateExpense}
+            onToggleUser={toggleUserForExpense}
           />
         </>
       )}
