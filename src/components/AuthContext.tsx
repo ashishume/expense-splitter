@@ -13,6 +13,8 @@ import {
   getDocs,
   collection,
   deleteDoc,
+  updateDoc,
+  writeBatch,
 } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { googleAuthService } from "../services/googleAuth";
@@ -26,6 +28,132 @@ interface AuthContextType {
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
+
+/**
+ * Migrate all references from old user ID to new user ID
+ * This updates groups, expenses, and other references when a user logs in with Gmail
+ * Handles Firestore batch limit of 500 operations by splitting into multiple batches
+ */
+const migrateUserReferences = async (
+  oldUserId: string,
+  newUserId: string,
+  userName: string
+) => {
+  try {
+    const BATCH_LIMIT = 500;
+    let totalUpdateCount = 0;
+    const updates: Array<{ ref: any; data: any }> = [];
+
+    // 1. Collect all group updates
+    const groupsQuery = query(collection(db, "groups"));
+    const groupsSnapshot = await getDocs(groupsQuery);
+
+    groupsSnapshot.forEach((groupDoc) => {
+      const groupData = groupDoc.data();
+      const members = groupData.members || [];
+      const owner = groupData.owner;
+
+      let needsUpdate = false;
+      const updatedMembers = [...members];
+      const updateData: any = {};
+
+      // Update members array
+      const memberIndex = updatedMembers.indexOf(oldUserId);
+      if (memberIndex !== -1) {
+        updatedMembers[memberIndex] = newUserId;
+        updateData.members = updatedMembers;
+        needsUpdate = true;
+      }
+
+      // Update owner if it's the old user ID
+      if (owner === oldUserId) {
+        updateData.owner = newUserId;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        updates.push({
+          ref: doc(db, "groups", groupDoc.id),
+          data: updateData,
+        });
+      }
+    });
+
+    // 2. Collect all expense updates
+    const expensesQuery = query(collection(db, "expenses"));
+    const expensesSnapshot = await getDocs(expensesQuery);
+
+    expensesSnapshot.forEach((expenseDoc) => {
+      const expenseData = expenseDoc.data();
+      let needsUpdate = false;
+      const updateData: any = {};
+
+      // Update paidBy if it's the old user ID
+      if (expenseData.paidBy === oldUserId) {
+        updateData.paidBy = newUserId;
+        updateData.paidByName = userName; // Update name as well
+        needsUpdate = true;
+      }
+
+      // Update splitWith array
+      const splitWith = expenseData.splitWith || [];
+      const splitIndex = splitWith.indexOf(oldUserId);
+      if (splitIndex !== -1) {
+        const updatedSplitWith = [...splitWith];
+        updatedSplitWith[splitIndex] = newUserId;
+        updateData.splitWith = updatedSplitWith;
+        needsUpdate = true;
+      }
+
+      if (needsUpdate) {
+        updates.push({
+          ref: doc(db, "expenses", expenseDoc.id),
+          data: updateData,
+        });
+      }
+    });
+
+    // 3. Collect all log updates
+    const logsQuery = query(collection(db, "logs"));
+    const logsSnapshot = await getDocs(logsQuery);
+
+    logsSnapshot.forEach((logDoc) => {
+      const logData = logDoc.data();
+
+      if (logData.userId === oldUserId) {
+        updates.push({
+          ref: doc(db, "logs", logDoc.id),
+          data: {
+            userId: newUserId,
+            userName: userName,
+          },
+        });
+      }
+    });
+
+    // Process updates in batches to respect Firestore limit
+    for (let i = 0; i < updates.length; i += BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      const batchUpdates = updates.slice(i, i + BATCH_LIMIT);
+
+      batchUpdates.forEach(({ ref, data }) => {
+        batch.update(ref, data);
+      });
+
+      await batch.commit();
+      totalUpdateCount += batchUpdates.length;
+    }
+
+    if (totalUpdateCount > 0) {
+      console.log(
+        `Migrated ${totalUpdateCount} references from ${oldUserId} to ${newUserId}`
+      );
+    }
+  } catch (error) {
+    console.error("Error migrating user references:", error);
+    throw error;
+  }
+};
 
 // Function to add or update user in the database
 const addUserToDatabase = async (user: User) => {
@@ -55,22 +183,35 @@ const addUserToDatabase = async (user: User) => {
       }
 
       if (existingUserData) {
+        const oldUserId = existingUserData.id;
+        const newUserId = user.uid;
+        const userName = user.displayName || existingUserData.name;
+
+        // Migrate all references from old ID to new ID BEFORE deleting old user
+        try {
+          await migrateUserReferences(oldUserId, newUserId, userName);
+        } catch (migrationError) {
+          console.error("Migration error:", migrationError);
+          toast.error(
+            "Error migrating your data. Please contact support if issues persist."
+          );
+          // Continue with user creation even if migration fails partially
+        }
+
         // User exists by email, update their data with Google info and migrate to new ID
         await setDoc(userRef, {
-          name: user.displayName || existingUserData.name,
+          name: userName,
           email: user.email || existingUserData.email,
           groups: existingUserData.groups || [],
           createdAt: existingUserData.createdAt || new Date().toISOString(),
           lastLogin: new Date().toISOString(),
         });
 
-        // Delete the old user document to avoid duplicates
-        await deleteDoc(doc(db, "users", existingUserData.id));
+        // Delete the old user document to avoid duplicates (after migration)
+        await deleteDoc(doc(db, "users", oldUserId));
 
         toast.success(
-          `Welcome back ${
-            user.displayName || "User"
-          }! Your existing data has been linked to your Google account.`
+          `Welcome back ${userName}! Your existing data has been linked to your Google account.`
         );
       } else {
         // User doesn't exist, create new user
