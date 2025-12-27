@@ -23,14 +23,16 @@ import {
 } from "./icons/index";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import type { User as AppUser, Group, Expense } from "../types";
+import type { User as FirebaseUser } from "firebase/auth";
 
 interface GroupCardProps {
   group: Group;
   users: AppUser[];
   onGroupUpdate: () => void;
+  currentUser: FirebaseUser | null;
 }
 
-const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
+const GroupCard = ({ group, users, onGroupUpdate, currentUser }: GroupCardProps) => {
   const navigate = useNavigate();
   const [showMembers, setShowMembers] = useState(false);
   const [showAddUser, setShowAddUser] = useState(false);
@@ -53,6 +55,12 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
 
   // Get only the members that are actually in this group
   const groupMembers = users.filter((user) => group.members.includes(user.id));
+
+  // Check if current user is the owner of the group
+  // For backward compatibility, if owner field doesn't exist, treat the first member as owner
+  const isOwner = group.owner
+    ? group.owner === currentUser?.uid
+    : group.members.length > 0 && group.members[0] === currentUser?.uid;
 
   // Filter users for suggestions (exclude users already in group)
   useEffect(() => {
@@ -344,6 +352,22 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
   const removeUserFromGroup = async () => {
     if (!userToRemove || isRemovingUser === userToRemove.id) return;
 
+    // Check if current user is the owner
+    if (!isOwner) {
+      toast.error("Only the group owner can remove members.");
+      setShowRemoveUserConfirm(false);
+      setUserToRemove(null);
+      return;
+    }
+
+    // Prevent owner from removing themselves
+    if (userToRemove.id === currentUser?.uid) {
+      toast.error("You cannot remove yourself from the group. Transfer ownership first or delete the group.");
+      setShowRemoveUserConfirm(false);
+      setUserToRemove(null);
+      return;
+    }
+
     setIsRemovingUser(userToRemove.id);
     try {
       // Check if user has unsettled balances
@@ -417,6 +441,13 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
       return;
     }
 
+    // Check if current user is the owner
+    if (!isOwner) {
+      toast.error("Only the group owner can rename the group.");
+      setIsRenaming(false);
+      return;
+    }
+
     if (isRenamingGroup) return;
 
     setIsRenamingGroup(true);
@@ -463,6 +494,13 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
 
   const deleteGroup = async () => {
     if (isDeletingGroup) return;
+
+    // Check if current user is the owner
+    if (!isOwner) {
+      toast.error("Only the group owner can delete the group.");
+      setShowDeleteGroupConfirm(false);
+      return;
+    }
 
     setIsDeletingGroup(true);
     try {
@@ -659,35 +697,37 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
               </div>
             </div>
 
-            {/* Action buttons */}
-            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
-              {!isRenaming && (
+            {/* Action buttons - Only show for owner */}
+            {isOwner && (
+              <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                {!isRenaming && (
+                  <motion.button
+                    whileHover={{ scale: 1.08 }}
+                    whileTap={{ scale: 0.92 }}
+                    onClick={handleRenameGroupClick}
+                    disabled={isDeletingGroup}
+                    className="p-2.5 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 text-blue-600 rounded-xl transition-all duration-200 border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                    title="Rename group"
+                  >
+                    <EditIcon className="w-4 h-4" />
+                  </motion.button>
+                )}
                 <motion.button
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.92 }}
-                  onClick={handleRenameGroupClick}
-                  disabled={isDeletingGroup}
-                  className="p-2.5 bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 text-blue-600 rounded-xl transition-all duration-200 border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
-                  title="Rename group"
+                  onClick={handleDeleteGroupClick}
+                  disabled={isDeletingGroup || isRenaming}
+                  className="p-2.5 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-xl transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
+                  title="Delete group"
                 >
-                  <EditIcon className="w-4 h-4" />
+                  {isDeletingGroup ? (
+                    <LoadingSpinner className="w-4 h-4" />
+                  ) : (
+                    <DeleteIcon className="w-4 h-4" />
+                  )}
                 </motion.button>
-              )}
-              <motion.button
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.92 }}
-                onClick={handleDeleteGroupClick}
-                disabled={isDeletingGroup || isRenaming}
-                className="p-2.5 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-xl transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow-md"
-                title="Delete group"
-              >
-                {isDeletingGroup ? (
-                  <LoadingSpinner className="w-4 h-4" />
-                ) : (
-                  <DeleteIcon className="w-4 h-4" />
-                )}
-              </motion.button>
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Primary action hint with enhanced styling */}
@@ -841,9 +881,20 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                             {getInitials(user.name)}
                           </div>
                           <div className="flex flex-col min-w-0 flex-1">
-                            <span className="text-sm font-semibold truncate text-gray-800">
-                              {user.name}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-semibold truncate text-gray-800">
+                                {user.name}
+                              </span>
+                              {/* Owner badge */}
+                              {(group.owner === user.id ||
+                                (!group.owner &&
+                                  group.members.length > 0 &&
+                                  group.members[0] === user.id)) && (
+                                <span className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-gradient-to-r from-yellow-400 to-orange-500 text-white rounded-full">
+                                  Owner
+                                </span>
+                              )}
+                            </div>
                             {user.email && (
                               <span className="text-xs text-gray-500 truncate">
                                 {user.email}
@@ -851,20 +902,30 @@ const GroupCard = ({ group, users, onGroupUpdate }: GroupCardProps) => {
                             )}
                           </div>
                         </div>
-                        <motion.button
-                          whileHover={{ scale: 1.1 }}
-                          whileTap={{ scale: 0.9 }}
-                          onClick={(e) => handleRemoveUserClick(user, e)}
-                          disabled={isRemovingUser === user.id}
-                          className="p-2 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-lg transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-sm hover:shadow-md"
-                          title="Remove user"
-                        >
-                          {isRemovingUser === user.id ? (
-                            <LoadingSpinner className="w-4 h-4" />
-                          ) : (
-                            <DeleteIcon className="w-4 h-4" />
+                        {/* Only show remove button if current user is owner and user is not the owner themselves */}
+                        {isOwner &&
+                          user.id !== currentUser?.uid &&
+                          (group.owner !== user.id ||
+                            (!group.owner &&
+                              !(
+                                group.members.length > 0 &&
+                                group.members[0] === user.id
+                              ))) && (
+                            <motion.button
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                              onClick={(e) => handleRemoveUserClick(user, e)}
+                              disabled={isRemovingUser === user.id}
+                              className="p-2 bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 text-red-600 rounded-lg transition-all duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-sm hover:shadow-md"
+                              title="Remove user"
+                            >
+                              {isRemovingUser === user.id ? (
+                                <LoadingSpinner className="w-4 h-4" />
+                              ) : (
+                                <DeleteIcon className="w-4 h-4" />
+                              )}
+                            </motion.button>
                           )}
-                        </motion.button>
                       </motion.div>
                     ))}
                   </div>

@@ -12,6 +12,7 @@ export interface Group {
   name: string;
   members: string[];
   createdAt: string;
+  owner?: string; // User ID of the group creator/owner
 }
 
 export interface Expense {

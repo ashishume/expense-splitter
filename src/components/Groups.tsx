@@ -55,11 +55,12 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
 
     setIsCreatingGroup(true);
     try {
-      // Create group and automatically add the current user as a member
+      // Create group and automatically add the current user as a member and owner
       const groupRef = await addDoc(collection(db, "groups"), {
         name: newGroupName,
         members: [currentUser?.uid || ""],
         createdAt: new Date().toISOString(),
+        owner: currentUser?.uid || "", // Set the creator as the owner
       });
 
       // Update current user's groups array
@@ -135,6 +136,7 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
               group={group}
               users={users}
               onGroupUpdate={onGroupUpdate}
+              currentUser={currentUser}
             />
           ))
         )}
