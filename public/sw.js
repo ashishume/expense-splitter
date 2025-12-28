@@ -1,6 +1,6 @@
 // Service Worker for Axpo PWA - Mobile Optimized with Cache Busting
 // IMPORTANT: Increment this version number on every deployment to force cache update
-const VERSION = "v3.0.12";
+const VERSION = "v3.0.13";
 const CACHE_NAME = `axpo-${VERSION}`;
 const STATIC_CACHE = `axpo-static-${VERSION}`;
 const DYNAMIC_CACHE = `axpo-dynamic-${VERSION}`;
