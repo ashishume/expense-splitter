@@ -8,13 +8,8 @@
  * The Client ID is derived from the Firebase project configuration
  */
 export const getFirebaseOAuthClientId = (): string => {
-  // Firebase project number from your config
-
-  // This is a placeholder - you need to get the actual Client ID from Firebase Console
-  // The format should be: {projectNumber}-{randomString}.apps.googleusercontent.com
-  const placeholderClientId = `641959779564-upqttek7msqkfmfoi6taa7d5uatjljvf.apps.googleusercontent.com`;
-
-  return placeholderClientId;
+  // Get OAuth Client ID from environment variable or fallback to default
+  return import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID;
 };
 
 /**

@@ -3,8 +3,7 @@
 export const GOOGLE_OAUTH_CONFIG = {
   // Get the OAuth Client ID from Firebase project
   // This will use the correct Client ID for your Firebase project (641959779564)
-  CLIENT_ID:
-    "641959779564-upqttek7msqkfmfoi6taa7d5uatjljvf.apps.googleusercontent.com",
+  CLIENT_ID: import.meta.env.VITE_GOOGLE_OAUTH_CLIENT_ID,
 
   // Optional: Configure One Tap settings
   ONE_TAP_CONFIG: {

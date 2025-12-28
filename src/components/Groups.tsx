@@ -42,8 +42,6 @@ const Groups = ({ users, groups, onGroupUpdate, currentUser }: GroupsProps) => {
   const addGroup = async () => {
     if (newGroupName.trim() === "") return;
 
-    console.log("currentUser", currentUser);
-    console.log("groups", groups);
     const groupExists = groups.some(
       (group) =>
         group.name.toLowerCase() === newGroupName.toLowerCase() &&
