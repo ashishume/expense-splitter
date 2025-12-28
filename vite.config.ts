@@ -28,7 +28,9 @@ export default defineConfig({
     // https: true, // Uncomment if you have SSL certificates
     headers: {
       // Disable caching in development
-      "Cache-Control": "no-store",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     },
   },
   // Ensure service worker and manifest are copied to build output

@@ -23,6 +23,7 @@ interface EditExpenseModalProps {
   isUpdatingExpense: boolean;
   onUpdateExpense: () => void;
   onToggleUser: (userId: string) => void;
+  onSelectAll: () => void;
 }
 
 /**
@@ -41,6 +42,7 @@ const EditExpenseModal = ({
   isUpdatingExpense,
   onUpdateExpense,
   onToggleUser,
+  onSelectAll,
 }: EditExpenseModalProps) => {
   if (!expense) return null;
 
@@ -175,14 +177,35 @@ const EditExpenseModal = ({
 
                   {/* Split With Selection */}
                   <div>
-                    <label className="block text-sm sm:text-base font-medium text-gray-700 mb-2 sm:mb-3">
-                      Split with
-                    </label>
+                    <div className="flex items-center justify-between mb-2 sm:mb-3">
+                      <label className="block text-sm sm:text-base font-medium text-gray-700">
+                        Split with
+                      </label>
+                      <button
+                        type="button"
+                        onClick={onSelectAll}
+                        disabled={isUpdatingExpense || !newExpense.paidBy}
+                        className="text-sm sm:text-base text-green-600 hover:text-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400"
+                      >
+                        {(() => {
+                          const eligibleMembers = groupMembers.filter(
+                            (user) => user.id !== newExpense.paidBy
+                          );
+                          const allSelected = eligibleMembers.every((user) =>
+                            newExpense.splitWith.includes(user.id)
+                          );
+                          return allSelected ? "Deselect All" : "Select All";
+                        })()}
+                      </button>
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {groupMembers.map((user) => {
                         const isPayer = user.id === newExpense.paidBy;
-                        const isSelected = newExpense.splitWith.includes(user.id);
-                        const isDisabled = isPayer || isUpdatingExpense;
+                        const isSelected = newExpense.splitWith.includes(
+                          user.id
+                        );
+                        const isDisabled =
+                          isPayer || isUpdatingExpense || !newExpense.paidBy;
 
                         return (
                           <div
@@ -200,7 +223,9 @@ const EditExpenseModal = ({
                               type="checkbox"
                               id={`edit-split-${user.id}`}
                               checked={isSelected}
-                              onChange={() => !isDisabled && onToggleUser(user.id)}
+                              onChange={() =>
+                                !isDisabled && onToggleUser(user.id)
+                              }
                               disabled={isDisabled}
                               className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 cursor-pointer"
                             />
@@ -208,7 +233,9 @@ const EditExpenseModal = ({
                               <div className="flex flex-col">
                                 <span
                                   className={`font-medium ${
-                                    isSelected ? "text-green-800" : "text-gray-800"
+                                    isSelected
+                                      ? "text-green-800"
+                                      : "text-gray-800"
                                   }`}
                                 >
                                   {user.name}
@@ -269,4 +296,3 @@ const EditExpenseModal = ({
 };
 
 export default EditExpenseModal;
-

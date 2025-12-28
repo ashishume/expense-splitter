@@ -336,6 +336,40 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   };
 
   /**
+   * Select or deselect all eligible members (excluding payer)
+   */
+  const toggleSelectAll = () => {
+    // Get all eligible members (excluding payer)
+    const eligibleMembers = groupMembers.filter(
+      (user) => user.id !== newExpense.paidBy
+    );
+
+    // Check if all eligible members are selected
+    const allSelected = eligibleMembers.every((user) =>
+      newExpense.splitWith.includes(user.id)
+    );
+
+    if (allSelected) {
+      // Deselect all eligible members (keep only non-eligible members, if any)
+      const newSelection = newExpense.splitWith.filter(
+        (userId) => !eligibleMembers.some((m) => m.id === userId)
+      );
+      setNewExpense({
+        ...newExpense,
+        splitWith: newSelection,
+      });
+    } else {
+      // Select all eligible members
+      const eligibleIds = eligibleMembers.map((user) => user.id);
+      const newSelection = [...new Set([...newExpense.splitWith, ...eligibleIds])];
+      setNewExpense({
+        ...newExpense,
+        splitWith: newSelection,
+      });
+    }
+  };
+
+  /**
    * Add a new expense to the group
    */
   const addExpense = async () => {
@@ -734,6 +768,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             onUpdateExpense={updateExpense}
             onCancelEditing={cancelEditing}
             onToggleUser={toggleUserForExpense}
+            onSelectAll={toggleSelectAll}
           />
           <ExpensesList
             expenses={expenses}
@@ -753,6 +788,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             isUpdatingExpense={isUpdatingExpense}
             onUpdateExpense={updateExpense}
             onToggleUser={toggleUserForExpense}
+            onSelectAll={toggleSelectAll}
           />
         </>
       )}

@@ -12,6 +12,12 @@ const SW_CONFIG = {
 };
 
 export const registerServiceWorker = () => {
+  // Skip service worker registration in development mode
+  if (import.meta.env.DEV) {
+    console.log("Service Worker registration skipped in development mode");
+    return;
+  }
+
   if ("serviceWorker" in navigator) {
     window.addEventListener("load", () => {
       navigator.serviceWorker

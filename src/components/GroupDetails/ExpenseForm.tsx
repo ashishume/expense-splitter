@@ -24,6 +24,7 @@ interface ExpenseFormProps {
   onUpdateExpense: () => void;
   onCancelEditing: () => void;
   onToggleUser: (userId: string) => void;
+  onSelectAll: () => void;
 }
 
 /**
@@ -45,6 +46,7 @@ const ExpenseForm = forwardRef<HTMLDivElement, ExpenseFormProps>(
       onUpdateExpense,
       onCancelEditing,
       onToggleUser,
+      onSelectAll,
     },
     ref
   ) => {
@@ -127,14 +129,32 @@ const ExpenseForm = forwardRef<HTMLDivElement, ExpenseFormProps>(
 
           {/* Split With Selection */}
           <div>
-            <label className="block text-sm lg:text-base font-medium text-gray-700 mb-2 lg:mb-3">
-              Split with
-            </label>
+            <div className="flex items-center justify-between mb-2 lg:mb-3">
+              <label className="block text-sm lg:text-base font-medium text-gray-700">
+                Split with
+              </label>
+              <button
+                type="button"
+                onClick={onSelectAll}
+                disabled={!newExpense.paidBy}
+                className="text-sm lg:text-base text-green-600 hover:text-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400"
+              >
+                {(() => {
+                  const eligibleMembers = groupMembers.filter(
+                    (user) => user.id !== newExpense.paidBy
+                  );
+                  const allSelected = eligibleMembers.every((user) =>
+                    newExpense.splitWith.includes(user.id)
+                  );
+                  return allSelected ? "Deselect All" : "Select All";
+                })()}
+              </button>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 sm:gap-3 lg:gap-4">
               {groupMembers.map((user) => {
                 const isPayer = user.id === newExpense.paidBy;
                 const isSelected = newExpense.splitWith.includes(user.id);
-                const isDisabled = isPayer;
+                const isDisabled = isPayer || !newExpense.paidBy;
 
                 return (
                   <div
