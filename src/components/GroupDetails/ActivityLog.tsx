@@ -243,8 +243,8 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
+      // initial={{ opacity: 0, y: 20 }}
+      // animate={{ opacity: 1, y: 0 }}
       className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
     >
       <h3 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800 flex items-center">
@@ -272,8 +272,8 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
             return (
               <motion.div
                 key={log.id}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                // initial={{ opacity: 0, x: -20 }}
+                // animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className="bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
               >

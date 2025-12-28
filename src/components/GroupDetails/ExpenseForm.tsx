@@ -204,7 +204,13 @@ const ExpenseForm = forwardRef<HTMLDivElement, ExpenseFormProps>(
                       </div>
                       {isPayer && (
                         <span className="text-blue-600 text-xs sm:text-sm font-medium">
-                          (Payer - {isSelected ? "Included" : "Not included"} in split)
+                          (Payer -{" "}
+                          {isSelected ? (
+                            <span className="text-green-600">included</span>
+                          ) : (
+                            <span className="text-red-600">not included</span>
+                          )}{" "}
+                          in split)
                         </span>
                       )}
                     </div>
