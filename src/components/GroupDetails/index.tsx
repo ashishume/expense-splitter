@@ -398,7 +398,14 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         `Deleted expense: ${expense.description} - ₹${expense.amount}`,
         currentUser?.uid,
         currentUser?.displayName || undefined,
-        groupId
+        groupId,
+        {
+          amount: expense.amount,
+          description: expense.description,
+          paidBy: expense.paidBy,
+          paidByName: expense.paidByName,
+          splitWith: expense.splitWith,
+        }
       );
       toast.success("Expense removed successfully!");
 

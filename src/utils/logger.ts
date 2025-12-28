@@ -20,6 +20,12 @@ export interface LogEntry {
     newPaidByName?: string;
     oldSplitWith?: string[];
     newSplitWith?: string[];
+    // For expense deletes
+    deletedAmount?: number;
+    deletedDescription?: string;
+    deletedPaidBy?: string;
+    deletedPaidByName?: string;
+    deletedSplitWith?: string[];
     // For member actions
     oldMemberCount?: number;
     newMemberCount?: number;
@@ -61,21 +67,29 @@ export const logExpenseAction = async (
     splitWith?: string[];
   }
 ) => {
-  const changes =
-    action === "update" && oldExpense && newExpense
-      ? {
-          oldAmount: oldExpense.amount,
-          newAmount: newExpense.amount,
-          oldDescription: oldExpense.description,
-          newDescription: newExpense.description,
-          oldPaidBy: oldExpense.paidBy,
-          oldPaidByName: oldExpense.paidByName,
-          newPaidBy: newExpense.paidBy,
-          newPaidByName: newExpense.paidByName,
-          oldSplitWith: oldExpense.splitWith,
-          newSplitWith: newExpense.splitWith,
-        }
-      : undefined;
+  let changes;
+  if (action === "update" && oldExpense && newExpense) {
+    changes = {
+      oldAmount: oldExpense.amount,
+      newAmount: newExpense.amount,
+      oldDescription: oldExpense.description,
+      newDescription: newExpense.description,
+      oldPaidBy: oldExpense.paidBy,
+      oldPaidByName: oldExpense.paidByName,
+      newPaidBy: newExpense.paidBy,
+      newPaidByName: newExpense.paidByName,
+      oldSplitWith: oldExpense.splitWith,
+      newSplitWith: newExpense.splitWith,
+    };
+  } else if (action === "delete" && oldExpense) {
+    changes = {
+      deletedAmount: oldExpense.amount,
+      deletedDescription: oldExpense.description,
+      deletedPaidBy: oldExpense.paidBy,
+      deletedPaidByName: oldExpense.paidByName,
+      deletedSplitWith: oldExpense.splitWith,
+    };
+  }
 
   await logAction({
     action: `EXPENSE_${action.toUpperCase()}`,

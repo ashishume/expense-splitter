@@ -142,6 +142,73 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
   };
 
   /**
+   * Format deleted expense details for display
+   */
+  const formatDeletedExpenseDetails = (log: ExtendedLogEntry) => {
+    if (!log.changes) return null;
+
+    const changes = log.changes;
+    const detailItems: React.ReactElement[] = [];
+
+    // Deleted amount
+    if (changes.deletedAmount !== undefined) {
+      detailItems.push(
+        <div key="amount" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Amount:</span>
+          <span className="font-semibold text-red-600">
+            ₹{changes.deletedAmount}
+          </span>
+        </div>
+      );
+    }
+
+    // Deleted description
+    if (changes.deletedDescription) {
+      detailItems.push(
+        <div key="description" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Description:</span>
+          <span className="font-semibold text-red-600 truncate max-w-[200px]">
+            {changes.deletedDescription}
+          </span>
+        </div>
+      );
+    }
+
+    // Deleted paid by
+    if (changes.deletedPaidBy) {
+      detailItems.push(
+        <div key="paidBy" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Paid by:</span>
+          <span className="font-semibold text-red-600">
+            {changes.deletedPaidByName || getUserName(changes.deletedPaidBy)}
+          </span>
+        </div>
+      );
+    }
+
+    // Deleted split with
+    if (changes.deletedSplitWith && changes.deletedSplitWith.length > 0) {
+      const splitNames = changes.deletedSplitWith
+        .map((id: string) => getUserName(id))
+        .join(", ");
+      detailItems.push(
+        <div key="splitWith" className="text-xs">
+          <span className="text-gray-600">Split with:</span>
+          <span className="ml-2 font-semibold text-red-600">
+            {splitNames}
+          </span>
+        </div>
+      );
+    }
+
+    return detailItems.length > 0 ? (
+      <div className="mt-2 pt-2 border-t border-gray-200 space-y-1.5">
+        {detailItems}
+      </div>
+    ) : null;
+  };
+
+  /**
    * Format member changes for display
    */
   const formatMemberChanges = (log: ExtendedLogEntry) => {
@@ -315,6 +382,10 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
                     {/* Detailed changes for expense updates */}
                     {log.action === "EXPENSE_UPDATE" &&
                       formatExpenseChanges(log)}
+
+                    {/* Detailed information for deleted expenses */}
+                    {log.action === "EXPENSE_DELETE" &&
+                      formatDeletedExpenseDetails(log)}
 
                     {/* Detailed changes for member actions */}
                     {(log.action === "MEMBER_ADD" ||
