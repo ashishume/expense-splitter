@@ -15,6 +15,10 @@ import {
 import { db } from "../../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
 import { logExpenseAction } from "../../utils/logger";
+import {
+  calculateGroupBalances,
+  generateSettlements,
+} from "../../utils/expenseCalculations";
 import toast from "react-hot-toast";
 import { DollarSign, ArrowRightLeft, FileText, Share2 } from "lucide-react";
 import { LoadingSpinner, ArrowLeftIcon } from "../icons/index";
@@ -222,91 +226,16 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       return;
     }
 
-    const groupBalances: Record<string, number> = {};
-    const roundTo2Decimals = (num: number) => Math.round(num * 100) / 100;
+    // Calculate balances for all group members
+    const memberIds = groupMembers.map((user) => user.id);
+    const groupBalances = calculateGroupBalances(expenses, memberIds);
 
-    // Initialize all member balances to 0
-    groupMembers.forEach((user) => {
-      groupBalances[user.id] = 0;
-    });
-
-    // Calculate balances based on expenses
-    expenses.forEach((expense) => {
-      if (expense.isSettlement) {
-        // Settlement transaction: adjust balances accordingly
-        if (groupBalances[expense.paidBy] !== undefined) {
-          groupBalances[expense.paidBy] += expense.amount;
-        }
-        if (
-          expense.splitWith.length === 1 &&
-          groupBalances[expense.splitWith[0]] !== undefined
-        ) {
-          groupBalances[expense.splitWith[0]] -= expense.amount;
-        }
-      } else {
-        // Regular expense: split among participants
-        const paidBy = expense.paidBy;
-        const totalAmount = expense.amount;
-        const splitWith = expense.splitWith;
-        const amountPerPerson = totalAmount / (splitWith.length + 1);
-
-        // Payer gets credited full amount
-        if (groupBalances[paidBy] !== undefined) {
-          groupBalances[paidBy] += totalAmount;
-        }
-
-        // Everyone (including payer) owes their share
-        splitWith.forEach((userId) => {
-          if (groupBalances[userId] !== undefined) {
-            groupBalances[userId] -= amountPerPerson;
-          }
-        });
-        if (groupBalances[paidBy] !== undefined) {
-          groupBalances[paidBy] -= amountPerPerson;
-        }
-      }
-    });
-
-    // Create settlement suggestions
-    const newSettlements: Settlement[] = [];
-    const creditors = groupMembers.filter(
-      (user) => groupBalances[user.id] > 0.01
+    // Generate settlement suggestions based on balances
+    const newSettlements = generateSettlements(
+      groupBalances,
+      groupMembers,
+      groupId || ""
     );
-    const debtors = groupMembers.filter(
-      (user) => groupBalances[user.id] < -0.01
-    );
-
-    // Match debtors with creditors
-    debtors.forEach((debtor) => {
-      creditors.forEach((creditor) => {
-        if (
-          groupBalances[creditor.id] > 0.01 &&
-          groupBalances[debtor.id] < -0.01
-        ) {
-          const amountToSettle = Math.min(
-            Math.abs(groupBalances[debtor.id]),
-            groupBalances[creditor.id]
-          );
-
-          if (amountToSettle > 0.01) {
-            newSettlements.push({
-              id: `${debtor.id}-${creditor.id}-${groupId}-${Date.now()}`,
-              from: debtor.id,
-              fromName: debtor.name,
-              to: creditor.id,
-              toName: creditor.name,
-              amount: roundTo2Decimals(amountToSettle),
-              groupId: groupId,
-              date: new Date().toISOString(),
-            });
-
-            // Update balances to reflect this settlement
-            groupBalances[debtor.id] += amountToSettle;
-            groupBalances[creditor.id] -= amountToSettle;
-          }
-        }
-      });
-    });
 
     setSettlements(newSettlements);
   }, [expenses, group, groupId, groupMembers]);
@@ -315,6 +244,17 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   useEffect(() => {
     calculateSettlements();
   }, [calculateSettlements]);
+
+  /**
+   * Handle payer change - keep existing splitWith selection
+   */
+  const handlePayerChange = (newPayerId: string) => {
+    setNewExpense({
+      ...newExpense,
+      paidBy: newPayerId,
+      // Keep splitWith as is - payer can be included or excluded
+    });
+  };
 
   /**
    * Toggle user selection for expense splitting
@@ -336,37 +276,26 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   };
 
   /**
-   * Select or deselect all eligible members (excluding payer)
+   * Select or deselect all members (including payer if they want to be included)
    */
   const toggleSelectAll = () => {
-    // Get all eligible members (excluding payer)
-    const eligibleMembers = groupMembers.filter(
-      (user) => user.id !== newExpense.paidBy
-    );
-
-    // Check if all eligible members are selected
-    const allSelected = eligibleMembers.every((user) =>
+    // Check if all members are selected
+    const allSelected = groupMembers.every((user) =>
       newExpense.splitWith.includes(user.id)
     );
 
     if (allSelected) {
-      // Deselect all eligible members (keep only non-eligible members, if any)
-      const newSelection = newExpense.splitWith.filter(
-        (userId) => !eligibleMembers.some((m) => m.id === userId)
-      );
+      // Deselect all members
       setNewExpense({
         ...newExpense,
-        splitWith: newSelection,
+        splitWith: [],
       });
     } else {
-      // Select all eligible members
-      const eligibleIds = eligibleMembers.map((user) => user.id);
-      const newSelection = [
-        ...new Set([...newExpense.splitWith, ...eligibleIds]),
-      ];
+      // Select all members
+      const allMemberIds = groupMembers.map((user) => user.id);
       setNewExpense({
         ...newExpense,
-        splitWith: newSelection,
+        splitWith: allMemberIds,
       });
     }
   };
@@ -781,6 +710,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             setNewExpense={setNewExpense}
             groupMembers={groupMembers}
             editingExpense={null}
+            onPayerChange={handlePayerChange}
             isAddingExpense={isAddingExpense}
             isUpdatingExpense={false}
             onAddExpense={addExpense}
@@ -808,6 +738,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             onUpdateExpense={updateExpense}
             onToggleUser={toggleUserForExpense}
             onSelectAll={toggleSelectAll}
+            onPayerChange={handlePayerChange}
           />
         </>
       )}

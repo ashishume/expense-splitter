@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { CurrencyIcon } from "../icons/index";
+import { calculateGroupBalances } from "../../utils/expenseCalculations";
 import type { User, Expense } from "../../types";
 
 interface SpendingSummaryProps {
@@ -19,40 +20,9 @@ const SpendingSummary = ({ expenses, groupMembers }: SpendingSummaryProps) => {
     .filter((e) => !e.isSettlement)
     .reduce((sum, expense) => sum + expense.amount, 0);
 
-  // Calculate per person balances
-  const balances: Record<string, number> = {};
-  groupMembers.forEach((user) => {
-    balances[user.id] = 0;
-  });
-
-  expenses.forEach((expense) => {
-    if (expense.isSettlement) {
-      // Handle settlement transactions
-      if (balances[expense.paidBy] !== undefined) {
-        balances[expense.paidBy] += expense.amount;
-      }
-      if (
-        expense.splitWith.length === 1 &&
-        balances[expense.splitWith[0]] !== undefined
-      ) {
-        balances[expense.splitWith[0]] -= expense.amount;
-      }
-    } else {
-      // Handle regular expenses
-      const amountPerPerson = expense.amount / (expense.splitWith.length + 1);
-      if (balances[expense.paidBy] !== undefined) {
-        balances[expense.paidBy] += expense.amount;
-      }
-      expense.splitWith.forEach((userId) => {
-        if (balances[userId] !== undefined) {
-          balances[userId] -= amountPerPerson;
-        }
-      });
-      if (balances[expense.paidBy] !== undefined) {
-        balances[expense.paidBy] -= amountPerPerson;
-      }
-    }
-  });
+  // Calculate per person balances using utility function
+  const memberIds = groupMembers.map((user) => user.id);
+  const balances = calculateGroupBalances(expenses, memberIds);
 
   const totalExpenses = expenses.filter((e) => !e.isSettlement).length;
   const avgPerExpense = totalExpenses > 0 ? totalSpend / totalExpenses : 0;

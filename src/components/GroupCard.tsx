@@ -23,6 +23,10 @@ import {
 } from "./icons/index";
 import ConfirmDialog from "./ui/ConfirmDialog";
 import { logMemberAction } from "../utils/logger";
+import {
+  calculateUserBalance,
+  calculateGroupBalances,
+} from "../utils/expenseCalculations";
 import type { User as AppUser, Group, Expense } from "../types";
 import type { User as FirebaseUser } from "firebase/auth";
 
@@ -157,36 +161,8 @@ const GroupCard = ({
         ...doc.data(),
       })) as Expense[];
 
-      // Calculate user's balance
-      let userBalance = 0;
-
-      expenses.forEach((expense) => {
-        if (expense.isSettlement) {
-          // Settlement transaction
-          if (expense.paidBy === userId) {
-            userBalance += expense.amount;
-          }
-          if (
-            expense.splitWith.length === 1 &&
-            expense.splitWith[0] === userId
-          ) {
-            userBalance -= expense.amount;
-          }
-        } else {
-          // Regular expense
-          const amountPerPerson =
-            expense.amount / (expense.splitWith.length + 1);
-          if (expense.paidBy === userId) {
-            userBalance += expense.amount;
-          }
-          if (expense.splitWith.includes(userId)) {
-            userBalance -= amountPerPerson;
-          }
-          if (expense.paidBy === userId) {
-            userBalance -= amountPerPerson;
-          }
-        }
-      });
+      // Calculate user's balance using utility function
+      const userBalance = calculateUserBalance(expenses, userId);
 
       // Check if balance is not settled (threshold of 0.01 to account for rounding)
       return Math.abs(userBalance) > 0.01;
@@ -214,41 +190,8 @@ const GroupCard = ({
         ...doc.data(),
       })) as Expense[];
 
-      // Calculate balances for all members
-      const balances: Record<string, number> = {};
-      group.members.forEach((memberId) => {
-        balances[memberId] = 0;
-      });
-
-      expenses.forEach((expense) => {
-        if (expense.isSettlement) {
-          // Settlement transaction
-          if (balances[expense.paidBy] !== undefined) {
-            balances[expense.paidBy] += expense.amount;
-          }
-          if (
-            expense.splitWith.length === 1 &&
-            balances[expense.splitWith[0]] !== undefined
-          ) {
-            balances[expense.splitWith[0]] -= expense.amount;
-          }
-        } else {
-          // Regular expense
-          const amountPerPerson =
-            expense.amount / (expense.splitWith.length + 1);
-          if (balances[expense.paidBy] !== undefined) {
-            balances[expense.paidBy] += expense.amount;
-          }
-          expense.splitWith.forEach((userId) => {
-            if (balances[userId] !== undefined) {
-              balances[userId] -= amountPerPerson;
-            }
-          });
-          if (balances[expense.paidBy] !== undefined) {
-            balances[expense.paidBy] -= amountPerPerson;
-          }
-        }
-      });
+      // Calculate balances for all members using utility function
+      const balances = calculateGroupBalances(expenses, group.members);
 
       // Check if any member has unsettled balance (threshold of 0.01)
       return Object.values(balances).some(

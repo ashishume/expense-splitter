@@ -24,6 +24,7 @@ interface EditExpenseModalProps {
   onUpdateExpense: () => void;
   onToggleUser: (userId: string) => void;
   onSelectAll: () => void;
+  onPayerChange?: (payerId: string) => void;
 }
 
 /**
@@ -43,6 +44,7 @@ const EditExpenseModal = ({
   onUpdateExpense,
   onToggleUser,
   onSelectAll,
+  onPayerChange,
 }: EditExpenseModalProps) => {
   if (!expense) return null;
 
@@ -112,9 +114,14 @@ const EditExpenseModal = ({
                     </label>
                     <select
                       value={newExpense.paidBy}
-                      onChange={(e) =>
-                        setNewExpense({ ...newExpense, paidBy: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const newPayerId = e.target.value;
+                        if (onPayerChange) {
+                          onPayerChange(newPayerId);
+                        } else {
+                          setNewExpense({ ...newExpense, paidBy: newPayerId });
+                        }
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 safari-form-fix text-sm sm:text-base"
                       disabled={isUpdatingExpense}
                     >
@@ -178,9 +185,17 @@ const EditExpenseModal = ({
                   {/* Split With Selection */}
                   <div>
                     <div className="flex items-center justify-between mb-2 sm:mb-3">
-                      <label className="block text-sm sm:text-base font-medium text-gray-700">
-                        Split with
-                      </label>
+                      <div className="flex flex-col">
+                        <label className="block text-sm sm:text-base font-medium text-gray-700">
+                          Split with
+                        </label>
+                        {newExpense.paidBy && (
+                          <span className="text-xs text-gray-500 mt-0.5">
+                            Select who should split this expense (payer can be
+                            included)
+                          </span>
+                        )}
+                      </div>
                       <button
                         type="button"
                         onClick={onSelectAll}
@@ -188,10 +203,7 @@ const EditExpenseModal = ({
                         className="text-sm sm:text-base text-green-600 hover:text-green-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed disabled:text-gray-400"
                       >
                         {(() => {
-                          const eligibleMembers = groupMembers.filter(
-                            (user) => user.id !== newExpense.paidBy
-                          );
-                          const allSelected = eligibleMembers.every((user) =>
+                          const allSelected = groupMembers.every((user) =>
                             newExpense.splitWith.includes(user.id)
                           );
                           return allSelected ? "Deselect All" : "Select All";
@@ -205,7 +217,7 @@ const EditExpenseModal = ({
                           user.id
                         );
                         const isDisabled =
-                          isPayer || isUpdatingExpense || !newExpense.paidBy;
+                          isUpdatingExpense || !newExpense.paidBy;
 
                         return (
                           <div
@@ -247,8 +259,18 @@ const EditExpenseModal = ({
                                 )}
                               </div>
                               {isPayer && (
-                                <span className="text-green-600 text-xs sm:text-sm font-medium">
-                                  (Payer)
+                                <span className="text-blue-600 text-xs sm:text-sm font-medium">
+                                  (Payer -{" "}
+                                  {isSelected ? (
+                                    <span className="text-green-600">
+                                      included
+                                    </span>
+                                  ) : (
+                                    <span className="text-red-600">
+                                      not included
+                                    </span>
+                                  )}{" "}
+                                  in split)
                                 </span>
                               )}
                             </div>
