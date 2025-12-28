@@ -361,7 +361,9 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
     } else {
       // Select all eligible members
       const eligibleIds = eligibleMembers.map((user) => user.id);
-      const newSelection = [...new Set([...newExpense.splitWith, ...eligibleIds])];
+      const newSelection = [
+        ...new Set([...newExpense.splitWith, ...eligibleIds]),
+      ];
       setNewExpense({
         ...newExpense,
         splitWith: newSelection,
@@ -554,7 +556,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       });
 
       // Get old paid by user name
-      const oldPaidByUser = users.find((user) => user.id === editingExpense.paidBy);
+      users.find((user) => user.id === editingExpense.paidBy);
 
       await logExpenseAction(
         "update",
