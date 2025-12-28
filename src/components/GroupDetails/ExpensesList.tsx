@@ -11,6 +11,7 @@ interface ExpensesListProps {
   onEdit: (expense: Expense) => void;
   onDelete: (expenseId: string) => void;
   isDeletingExpense: string | null;
+  currentUserId?: string | null; // User ID of the current user
 }
 
 type SettlementFilter = "all" | "expenses" | "settlements";
@@ -27,6 +28,7 @@ const ExpensesList = ({
   onEdit,
   onDelete,
   isDeletingExpense,
+  currentUserId,
 }: ExpensesListProps) => {
   const [selectedPayer, setSelectedPayer] = useState<string>("all");
   const [settlementFilter, setSettlementFilter] =
@@ -335,6 +337,7 @@ const ExpensesList = ({
                 onEdit={onEdit}
                 onDelete={onDelete}
                 isDeleting={isDeletingExpense === expense.id}
+                currentUserId={currentUserId}
               />
             ))}
           </div>

@@ -25,6 +25,7 @@ export interface Expense {
   date: string;
   groupId?: string;
   isSettlement?: boolean;
+  addedBy?: string; // User ID of the person who added this expense
 }
 
 export interface Settlement {

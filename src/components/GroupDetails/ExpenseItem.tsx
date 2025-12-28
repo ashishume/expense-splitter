@@ -12,6 +12,7 @@ interface ExpenseItemProps {
   onEdit: (expense: Expense) => void;
   onDelete: (expenseId: string) => void;
   isDeleting: boolean;
+  currentUserId?: string | null; // User ID of the current user
 }
 
 /**
@@ -26,9 +27,18 @@ const ExpenseItem = ({
   onEdit,
   onDelete,
   isDeleting,
+  currentUserId,
 }: ExpenseItemProps) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
+
+  /**
+   * Check if current user can delete this expense
+   * User can delete if they added it, or if addedBy is not set (backward compatibility)
+   */
+  const canDelete = !expense.isSettlement && (
+    !expense.addedBy || expense.addedBy === currentUserId
+  );
 
   /**
    * Gets all users who are splitting the expense
@@ -198,20 +208,22 @@ const ExpenseItem = ({
               >
                 <EditIcon />
               </motion.button>
-              <motion.button
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={isDeleting}
-                className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Remove expense"
-              >
-                {isDeleting ? (
-                  <LoadingSpinner className="w-4 h-4" />
-                ) : (
-                  <DeleteIcon />
-                )}
-              </motion.button>
+              {canDelete && (
+                <motion.button
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={isDeleting}
+                  className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Remove expense"
+                >
+                  {isDeleting ? (
+                    <LoadingSpinner className="w-4 h-4" />
+                  ) : (
+                    <DeleteIcon />
+                  )}
+                </motion.button>
+              )}
             </motion.div>
           )}
         </div>

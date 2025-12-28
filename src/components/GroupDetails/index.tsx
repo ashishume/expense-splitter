@@ -339,6 +339,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         splitWith: newExpense.splitWith,
         date: new Date().toISOString(),
         groupId: groupId,
+        addedBy: currentUser?.uid || null,
       };
 
       const expenseRef = await addDoc(collection(db, "expenses"), expenseData);
@@ -372,6 +373,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
 
   /**
    * Delete an expense from the group
+   * Only the person who added the expense can delete it
    */
   const removeExpense = async (expenseId: string) => {
     if (isDeletingExpense === expenseId) return;
@@ -380,6 +382,14 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
     try {
       const expense = expenses.find((e) => e.id === expenseId);
       if (!expense) return;
+
+      // Check if current user is the one who added this expense
+      // For backward compatibility, if addedBy is not set, allow deletion (old expenses)
+      if (expense.addedBy && expense.addedBy !== currentUser?.uid) {
+        toast.error("You can only delete expenses that you added");
+        setIsDeletingExpense(null);
+        return;
+      }
 
       await deleteDoc(doc(db, "expenses", expenseId));
       await logExpenseAction(
@@ -582,6 +592,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         date: new Date().toISOString(),
         groupId: groupId,
         isSettlement: true,
+        addedBy: currentUser?.uid || null,
       };
 
       const expenseRef = await addDoc(
@@ -725,6 +736,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
             onEdit={startEditing}
             onDelete={removeExpense}
             isDeletingExpense={isDeletingExpense}
+            currentUserId={currentUser?.uid}
           />
           {/* Edit Expense Modal */}
           <EditExpenseModal
