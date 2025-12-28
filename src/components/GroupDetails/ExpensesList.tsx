@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
+import { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { Filter, X, Search } from "lucide-react";
 import ExpenseItem from "./ExpenseItem";
 import type { User, Expense } from "../../types";
@@ -90,163 +91,259 @@ const ExpensesList = ({
     setSearchQuery("");
   };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
-    >
-      {/* Header with title and filter toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 lg:mb-6">
-        <h3 className="text-xl lg:text-2xl font-semibold text-gray-800">
-          Expenses ({filteredExpenses.length}
-          {hasActiveFilters && (
-            <span className="text-base text-gray-500 font-normal">
-              {" "}
-              of {expenses.length}
-            </span>
-          )}
-          )
-        </h3>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-            showFilters || hasActiveFilters
-              ? "bg-blue-600 text-white hover:bg-blue-700"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-          }`}
-        >
-          <Filter className="w-4 h-4" />
-          Filters
-          {hasActiveFilters && (
-            <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-xs">
-              {[
-                selectedPayer !== "all" && 1,
-                settlementFilter !== "all" && 1,
-                searchQuery.trim() && 1,
-              ]
-                .filter(Boolean)
-                .reduce((a, b) => (a || 0) + (b || 0), 0)}
-            </span>
-          )}
-        </button>
-      </div>
+  /**
+   * Close filter modal
+   */
+  const closeFilters = () => {
+    setShowFilters(false);
+  };
 
-      {/* Filter Panel */}
+  // Prevent body scroll when modal is open
+  useEffect(() => {
+    if (showFilters) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [showFilters]);
+
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && showFilters) {
+        closeFilters();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [showFilters]);
+
+  if (typeof window === "undefined") return null;
+
+  const filterModalContent = (
+    <AnimatePresence>
       {showFilters && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4"
-        >
-          {/* Search Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Search Description
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search expenses by description..."
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-            </div>
-          </div>
+        <>
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeFilters}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999]"
+          />
 
-          {/* Payer Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Filter by Payer
-            </label>
-            <select
-              value={selectedPayer}
-              onChange={(e) => setSelectedPayer(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white"
+          {/* Modal - Bottom sheet on mobile, centered on desktop */}
+          <div className="fixed inset-0 z-[9999] flex items-end sm:items-center justify-center p-0 sm:p-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, y: "100%", scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: "100%", scale: 0.95 }}
+              transition={{
+                type: "spring",
+                damping: 25,
+                stiffness: 300,
+              }}
+              className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-lg sm:w-full max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col pointer-events-auto"
+              onClick={(e) => e.stopPropagation()}
             >
-              <option value="all">All Payers</option>
-              {uniquePayers.map((user) => (
-                <option key={user.id} value={user.id}>
-                  {user.name}
-                </option>
-              ))}
-            </select>
-          </div>
+              {/* Mobile drag handle indicator */}
+              <div className="sm:hidden pt-3 pb-2 flex justify-center">
+                <div className="w-12 h-1.5 bg-gray-300 rounded-full" />
+              </div>
 
-          {/* Settlement Type Filter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Expense Type
-            </label>
-            <div className="flex gap-2 flex-wrap">
-              {(
-                [
-                  { value: "all", label: "All" },
-                  { value: "expenses", label: "Regular Expenses" },
-                  { value: "settlements", label: "Settlements" },
-                ] as { value: SettlementFilter; label: string }[]
-              ).map((option) => (
+              {/* Header */}
+              <div className="border-b border-gray-200 p-4 sm:p-6 relative flex-shrink-0">
                 <button
-                  key={option.value}
-                  onClick={() => setSettlementFilter(option.value)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
-                    settlementFilter === option.value
-                      ? "bg-blue-600 text-white"
-                      : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-                  }`}
+                  onClick={closeFilters}
+                  className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition-colors"
                 >
-                  {option.label}
+                  <X className="w-5 h-5 text-gray-500" />
                 </button>
-              ))}
-            </div>
-          </div>
+                <div className="flex items-center gap-3 pr-10">
+                  <div className="p-2.5 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 shadow-md">
+                    <Filter className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+                      Filter Expenses
+                    </h2>
+                    <p className="text-sm text-gray-500 mt-0.5">
+                      {hasActiveFilters
+                        ? `${filteredExpenses.length} of ${expenses.length} expenses`
+                        : `${expenses.length} total expenses`}
+                    </p>
+                  </div>
+                </div>
+              </div>
 
-          {/* Clear Filters Button */}
-          {hasActiveFilters && (
-            <button
-              onClick={clearFilters}
-              className="w-full px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
-            >
-              <X className="w-4 h-4" />
-              Clear All Filters
-            </button>
-          )}
-        </motion.div>
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <div className="space-y-6">
+                  {/* Search Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Search Description
+                    </label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search expenses by description..."
+                        className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                        autoFocus
+                      />
+                      {searchQuery && (
+                        <button
+                          onClick={() => setSearchQuery("")}
+                          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Payer Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Filter by Payer
+                    </label>
+                    <select
+                      value={selectedPayer}
+                      onChange={(e) => setSelectedPayer(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm bg-white"
+                    >
+                      <option value="all">All Payers</option>
+                      {uniquePayers.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Settlement Type Filter */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Expense Type
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {(
+                        [
+                          { value: "all", label: "All" },
+                          { value: "expenses", label: "Regular Expenses" },
+                          { value: "settlements", label: "Settlements" },
+                        ] as { value: SettlementFilter; label: string }[]
+                      ).map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => setSettlementFilter(option.value)}
+                          className={`px-4 py-2.5 rounded-lg font-medium transition-colors text-sm ${
+                            settlementFilter === option.value
+                              ? "bg-blue-600 text-white shadow-md"
+                              : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Clear Filters Button */}
+                  {hasActiveFilters && (
+                    <button
+                      onClick={clearFilters}
+                      className="w-full px-4 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg font-medium transition-colors text-sm flex items-center justify-center gap-2"
+                    >
+                      <X className="w-4 h-4" />
+                      Clear All Filters
+                    </button>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </>
       )}
+    </AnimatePresence>
+  );
 
-      {/* Expenses List */}
-      {filteredExpenses.length === 0 ? (
-        <p className="text-gray-500 italic text-center py-8 lg:py-12 text-base lg:text-lg">
-          {hasActiveFilters
-            ? "No expenses match your filters. Try adjusting your search criteria."
-            : "No expenses yet. Add your first expense above!"}
-        </p>
-      ) : (
-        <div className="space-y-4 lg:space-y-5">
-          {filteredExpenses.map((expense) => (
-            <ExpenseItem
-              key={expense.id}
-              expense={expense}
-              users={users}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              isDeleting={isDeletingExpense === expense.id}
-            />
-          ))}
+  return (
+    <>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
+      >
+        {/* Header with title and filter toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4 lg:mb-6">
+          <h3 className="text-xl lg:text-2xl font-semibold text-gray-800">
+            Expenses ({filteredExpenses.length}
+            {hasActiveFilters && (
+              <span className="text-base text-gray-500 font-normal">
+                {" "}
+                of {expenses.length}
+              </span>
+            )}
+            )
+          </h3>
+          <button
+            onClick={() => setShowFilters(true)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
+              hasActiveFilters
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            }`}
+          >
+            <Filter className="w-4 h-4" />
+            Filters
+            {hasActiveFilters && (
+              <span className="ml-1 px-1.5 py-0.5 bg-white/20 rounded-full text-xs">
+                {[
+                  selectedPayer !== "all" && 1,
+                  settlementFilter !== "all" && 1,
+                  searchQuery.trim() && 1,
+                ]
+                  .filter(Boolean)
+                  .reduce((a, b) => (a || 0) + (b || 0), 0)}
+              </span>
+            )}
+          </button>
         </div>
-      )}
-    </motion.div>
+
+        {/* Expenses List */}
+        {filteredExpenses.length === 0 ? (
+          <p className="text-gray-500 italic text-center py-8 lg:py-12 text-base lg:text-lg">
+            {hasActiveFilters
+              ? "No expenses match your filters. Try adjusting your search criteria."
+              : "No expenses yet. Add your first expense above!"}
+          </p>
+        ) : (
+          <div className="space-y-4 lg:space-y-5">
+            {filteredExpenses.map((expense) => (
+              <ExpenseItem
+                key={expense.id}
+                expense={expense}
+                users={users}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                isDeleting={isDeletingExpense === expense.id}
+              />
+            ))}
+          </div>
+        )}
+      </motion.div>
+
+      {/* Filter Modal */}
+      {createPortal(filterModalContent, document.body)}
+    </>
   );
 };
 

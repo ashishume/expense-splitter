@@ -166,7 +166,7 @@ const ExpenseItem = ({
                     onClick={() => setShowMembersModal(true)}
                     className="text-sm text-blue-600 hover:text-blue-700 font-medium underline ml-1 transition-colors"
                   >
-                    (see all members)
+                    (all)
                   </button>
                 )}
               </div>
