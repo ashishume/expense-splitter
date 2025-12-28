@@ -1,5 +1,13 @@
 import { db } from "../firebase";
-import { addDoc, collection } from "firebase/firestore";
+import {
+  addDoc,
+  collection,
+  getDocs,
+  query,
+  where,
+  writeBatch,
+  doc,
+} from "firebase/firestore";
 
 export interface LogEntry {
   action: string;
@@ -131,4 +139,57 @@ export const logMemberAction = async (
       removedMembers,
     },
   });
+};
+
+/**
+ * Clean up logs older than 2 months
+ * Deletes logs that are older than 60 days from the current date
+ * Processes deletions in batches to respect Firestore's 500 operation limit
+ */
+export const cleanupOldLogs = async (): Promise<number> => {
+  try {
+    // Calculate the cutoff date (2 months ago)
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+    // Query logs older than 2 months
+    // Note: We query by timestamp as ISO string, which is lexicographically sortable
+    const cutoffDateString = twoMonthsAgo.toISOString();
+    const logsQuery = query(
+      collection(db, "logs"),
+      where("timestamp", "<", cutoffDateString)
+    );
+
+    const snapshot = await getDocs(logsQuery);
+    const logsToDelete = snapshot.docs;
+
+    if (logsToDelete.length === 0) {
+      return 0;
+    }
+
+    // Firestore batch limit is 500 operations
+    const BATCH_LIMIT = 500;
+    let totalDeleted = 0;
+
+    // Process deletions in batches
+    for (let i = 0; i < logsToDelete.length; i += BATCH_LIMIT) {
+      const batch = writeBatch(db);
+      const batchLogs = logsToDelete.slice(i, i + BATCH_LIMIT);
+
+      batchLogs.forEach((logDoc) => {
+        const logRef = doc(db, "logs", logDoc.id);
+        batch.delete(logRef);
+      });
+
+      await batch.commit();
+      totalDeleted += batchLogs.length;
+    }
+
+    console.log(`Cleaned up ${totalDeleted} log entries older than 2 months`);
+    return totalDeleted;
+  } catch (error) {
+    console.error("Error cleaning up old logs:", error);
+    // Don't throw - cleanup failures shouldn't break the app
+    return 0;
+  }
 };

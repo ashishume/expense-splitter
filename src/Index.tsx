@@ -8,6 +8,7 @@ import Groups from "./components/Groups";
 import GroupDetails from "./components/GroupDetails";
 import logo from "./assets/logo.jpg";
 import { LogOut } from "lucide-react";
+import { cleanupOldLogs } from "./utils/logger";
 
 import type { User, Group } from "./types";
 
@@ -45,6 +46,28 @@ const ExpenseSplittingApp = () => {
       groupsUnsubscribe();
     };
   }, []);
+
+  // Clean up old logs (older than 2 months) on app startup and periodically
+  useEffect(() => {
+    if (!user) return; // Only run cleanup when user is authenticated
+
+    // Run cleanup on app startup
+    cleanupOldLogs().catch((error) => {
+      console.error("Error during initial log cleanup:", error);
+    });
+
+    // Set up periodic cleanup (once per day)
+    const cleanupInterval = setInterval(() => {
+      cleanupOldLogs().catch((error) => {
+        console.error("Error during periodic log cleanup:", error);
+      });
+    }, 24 * 60 * 60 * 1000); // 24 hours in milliseconds
+
+    // Cleanup interval on component unmount
+    return () => {
+      clearInterval(cleanupInterval);
+    };
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-100 to-purple-100 p-2 sm:p-4 lg:p-6">

@@ -194,9 +194,7 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
       detailItems.push(
         <div key="splitWith" className="text-xs">
           <span className="text-gray-600">Split with:</span>
-          <span className="ml-2 font-semibold text-red-600">
-            {splitNames}
-          </span>
+          <span className="ml-2 font-semibold text-red-600">{splitNames}</span>
         </div>
       );
     }
@@ -316,7 +314,7 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
     >
       <h3 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800 flex items-center">
         <FileText className="w-5 h-5 lg:w-6 lg:h-6 mr-2 lg:mr-3 text-blue-600" />
-        Activity Log
+        Activity Log (Logs past 2 months will be deleted)
       </h3>
 
       {logs.length === 0 ? (
