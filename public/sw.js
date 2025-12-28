@@ -1,6 +1,6 @@
 // Service Worker for Axpo PWA - Mobile Optimized with Cache Busting
 // IMPORTANT: Increment this version number on every deployment to force cache update
-const VERSION = "v3.0.11";
+const VERSION = "v3.0.12";
 const CACHE_NAME = `axpo-${VERSION}`;
 const STATIC_CACHE = `axpo-static-${VERSION}`;
 const DYNAMIC_CACHE = `axpo-dynamic-${VERSION}`;
@@ -9,8 +9,54 @@ const DYNAMIC_CACHE = `axpo-dynamic-${VERSION}`;
 const HTML_CACHE_DURATION = 60 * 60 * 1000; // 1 hour
 const ASSET_CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
+// Mobile optimization: Limit cache size to prevent storage issues
+const MAX_CACHE_SIZE = 50 * 1024 * 1024; // 50MB max cache size
+
 // Core assets to cache (only essential static assets)
 const STATIC_ASSETS = ["/logo.jpg", "/manifest.json"];
+
+// Helper to estimate cache size (mobile optimization)
+async function getCacheSize(cacheName) {
+  try {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    let totalSize = 0;
+    
+    for (const key of keys) {
+      const response = await cache.match(key);
+      if (response) {
+        const blob = await response.blob();
+        totalSize += blob.size;
+      }
+    }
+    return totalSize;
+  } catch (error) {
+    console.error("Error calculating cache size:", error);
+    return 0;
+  }
+}
+
+// Clean old cache entries when size limit is reached (mobile optimization)
+async function cleanOldCacheEntries(cacheName) {
+  try {
+    const cache = await caches.open(cacheName);
+    const keys = await cache.keys();
+    
+    // Sort by access time (if available) or remove oldest
+    // For simplicity, remove entries if cache is too large
+    const currentSize = await getCacheSize(cacheName);
+    
+    if (currentSize > MAX_CACHE_SIZE) {
+      // Remove oldest 20% of entries
+      const entriesToRemove = Math.floor(keys.length * 0.2);
+      for (let i = 0; i < entriesToRemove; i++) {
+        await cache.delete(keys[i]);
+      }
+    }
+  } catch (error) {
+    console.error("Error cleaning cache:", error);
+  }
+}
 
 // Install event - Mobile optimized
 self.addEventListener("install", (event) => {
@@ -76,6 +122,13 @@ self.addEventListener("fetch", (event) => {
     url.pathname.endsWith(".js") ||
     url.pathname.endsWith(".css") ||
     url.pathname.includes("/assets/");
+  const isImage =
+    url.pathname.endsWith(".jpg") ||
+    url.pathname.endsWith(".jpeg") ||
+    url.pathname.endsWith(".png") ||
+    url.pathname.endsWith(".webp") ||
+    url.pathname.endsWith(".svg") ||
+    url.pathname.endsWith(".gif");
 
   // For HTML files: Always try network first (with short cache fallback)
   if (isHTMLRequest) {
@@ -138,6 +191,8 @@ self.addEventListener("fetch", (event) => {
 
             caches.open(DYNAMIC_CACHE).then((cache) => {
               cache.put(request, cachedResponse);
+              // Clean cache if too large (mobile optimization)
+              cleanOldCacheEntries(DYNAMIC_CACHE);
             });
           }
           return response;
@@ -157,6 +212,47 @@ self.addEventListener("fetch", (event) => {
             });
           });
         })
+    );
+    return;
+  }
+
+  // For images: Cache-first strategy (mobile optimization - images are expensive to download)
+  if (isImage) {
+    event.respondWith(
+      caches.match(request).then((cachedResponse) => {
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+
+        return fetch(request)
+          .then((response) => {
+            if (response && response.status === 200) {
+              const responseToCache = response.clone();
+              const headers = new Headers(responseToCache.headers);
+              headers.append("sw-cache-date", Date.now().toString());
+
+              const cachedResponse = new Response(responseToCache.body, {
+                status: responseToCache.status,
+                statusText: responseToCache.statusText,
+                headers: headers,
+              });
+
+              caches.open(DYNAMIC_CACHE).then((cache) => {
+                cache.put(request, cachedResponse);
+                // Clean cache if too large (mobile optimization)
+                cleanOldCacheEntries(DYNAMIC_CACHE);
+              });
+            }
+            return response;
+          })
+          .catch(() => {
+            // Return a placeholder or empty response for images
+            return new Response("", {
+              status: 404,
+              statusText: "Not Found",
+            });
+          });
+      })
     );
     return;
   }

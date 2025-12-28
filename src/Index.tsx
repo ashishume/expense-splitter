@@ -1,16 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import { Routes, Route } from "react-router-dom";
 import { motion } from "framer-motion";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { useAuth } from "./components/useAuth";
 import Groups from "./components/Groups";
-import GroupDetails from "./components/GroupDetails";
 import logo from "./assets/logo.jpg";
 import { LogOut } from "lucide-react";
 import { cleanupOldLogs } from "./utils/logger";
+import { LoadingSpinner } from "./components/icons";
 
 import type { User, Group } from "./types";
+
+// Lazy load GroupDetails for code splitting (mobile optimization)
+const GroupDetails = lazy(() => import("./components/GroupDetails"));
 
 const ExpenseSplittingApp = () => {
   const { user, logout } = useAuth();
@@ -74,11 +77,22 @@ const ExpenseSplittingApp = () => {
       {/* Desktop Container Wrapper */}
       <div className="max-w-7xl mx-auto">
         <Routes>
-          {/* Group Details Route */}
+          {/* Group Details Route - Lazy loaded for mobile optimization */}
           <Route
             path="/group/:groupId"
             element={
-              <GroupDetails users={users} groups={groups} currentUser={user} />
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                      <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
+                      <p className="text-gray-600">Loading group details...</p>
+                    </div>
+                  </div>
+                }
+              >
+                <GroupDetails users={users} groups={groups} currentUser={user} />
+              </Suspense>
             }
           />
 
@@ -96,6 +110,7 @@ const ExpenseSplittingApp = () => {
                     <img
                       src={logo}
                       alt="Axpo splitter"
+                      loading="lazy"
                       className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-white rounded-full brightness-110 contrast-125 saturate-150 transition-all duration-300"
                     />
                   </motion.h1>

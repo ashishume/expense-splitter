@@ -17,7 +17,7 @@
 }
 
 /* Mobile-specific improvements */
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   /* Ensure touch targets are at least 44px */
   button,
   select,
@@ -29,6 +29,36 @@
   body {
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+  }
+
+  /* Optimize scrolling performance on mobile */
+  * {
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+  }
+
+  /* Optimize animations for mobile (reduce motion) */
+  @media (prefers-reduced-motion: no-preference) {
+    /* Enable GPU acceleration for better performance */
+    .motion-optimized,
+    [class*="motion"] {
+      will-change: transform, opacity;
+      transform: translateZ(0);
+      -webkit-transform: translateZ(0);
+    }
+  }
+
+  /* Disable hover effects on touch devices */
+  @media (hover: none) {
+    *:hover {
+      /* Reset hover states on touch devices */
+    }
+  }
+
+  /* Optimize list rendering */
+  .list-item {
+    contain: layout style paint;
+    will-change: transform;
   }
 }
 

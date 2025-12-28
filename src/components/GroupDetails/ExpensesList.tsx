@@ -1,9 +1,10 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Filter, X, Search } from "lucide-react";
 import ExpenseItem from "./ExpenseItem";
 import type { User, Expense } from "../../types";
+import React from "react";
 
 interface ExpensesListProps {
   expenses: Expense[];
@@ -34,10 +35,33 @@ const ExpensesList = ({
   const [settlementFilter, setSettlementFilter] =
     useState<SettlementFilter>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("");
   const [showFilters, setShowFilters] = useState<boolean>(false);
+  const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Detect mobile for performance optimization
+  const isMobile = useMemo(() => {
+    return typeof window !== "undefined" && window.innerWidth < 768;
+  }, []);
+
+  // Debounce search query for mobile performance (300ms delay)
+  useEffect(() => {
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    debounceTimerRef.current = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, isMobile ? 300 : 150); // Longer delay on mobile
+
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, [searchQuery, isMobile]);
 
   /**
-   * Filter expenses based on selected criteria
+   * Filter expenses based on selected criteria (using debounced search)
    */
   const filteredExpenses = useMemo(() => {
     return expenses.filter((expense) => {
@@ -54,19 +78,19 @@ const ExpensesList = ({
         return false;
       }
 
-      // Filter by search query (description)
+      // Filter by search query (description) - using debounced value
       if (
-        searchQuery.trim() &&
+        debouncedSearchQuery.trim() &&
         !expense.description
           .toLowerCase()
-          .includes(searchQuery.toLowerCase().trim())
+          .includes(debouncedSearchQuery.toLowerCase().trim())
       ) {
         return false;
       }
 
       return true;
     });
-  }, [expenses, selectedPayer, settlementFilter, searchQuery]);
+  }, [expenses, selectedPayer, settlementFilter, debouncedSearchQuery]);
 
   /**
    * Get unique payers from expenses
@@ -82,16 +106,17 @@ const ExpensesList = ({
   const hasActiveFilters =
     selectedPayer !== "all" ||
     settlementFilter !== "all" ||
-    searchQuery.trim() !== "";
+    debouncedSearchQuery.trim() !== "";
 
   /**
    * Clear all filters
    */
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSelectedPayer("all");
     setSettlementFilter("all");
     setSearchQuery("");
-  };
+    setDebouncedSearchQuery("");
+  }, []);
 
   /**
    * Close filter modal
@@ -329,17 +354,25 @@ const ExpensesList = ({
           </p>
         ) : (
           <div className="space-y-4 lg:space-y-5">
-            {filteredExpenses.map((expense) => (
-              <ExpenseItem
-                key={expense.id}
-                expense={expense}
-                users={users}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                isDeleting={isDeletingExpense === expense.id}
-                currentUserId={currentUserId}
-              />
-            ))}
+            {/* Limit rendering on mobile for better performance */}
+            {(isMobile ? filteredExpenses.slice(0, 30) : filteredExpenses).map(
+              (expense) => (
+                <ExpenseItem
+                  key={expense.id}
+                  expense={expense}
+                  users={users}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  isDeleting={isDeletingExpense === expense.id}
+                  currentUserId={currentUserId}
+                />
+              )
+            )}
+            {isMobile && filteredExpenses.length > 30 && (
+              <div className="text-center py-4 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
+                Showing 30 of {filteredExpenses.length} expenses. Use filters to narrow down.
+              </div>
+            )}
           </div>
         )}
       </motion.div>
@@ -350,4 +383,5 @@ const ExpensesList = ({
   );
 };
 
-export default ExpensesList;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(ExpensesList);

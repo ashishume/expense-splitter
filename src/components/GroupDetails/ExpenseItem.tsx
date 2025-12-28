@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { formatTimestamp } from "../../utils/dateUtils";
 import { EditIcon, DeleteIcon, LoadingSpinner } from "../icons/index";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import MembersModal from "./MembersModal";
 import type { User, Expense } from "../../types";
+import React from "react";
 
 interface ExpenseItemProps {
   expense: Expense;
@@ -32,30 +33,27 @@ const ExpenseItem = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showMembersModal, setShowMembersModal] = useState(false);
 
+  // Detect mobile for performance optimization
+  const isMobile = useMemo(() => {
+    return typeof window !== "undefined" && window.innerWidth < 768;
+  }, []);
+
   /**
    * Check if current user can delete this expense
    * User can delete if they added it, or if addedBy is not set (backward compatibility)
    */
-  const canDelete = !expense.isSettlement && (
-    !expense.addedBy || expense.addedBy === currentUserId
-  );
+  const canDelete =
+    !expense.isSettlement &&
+    (!expense.addedBy || expense.addedBy === currentUserId);
 
-  /**
-   * Gets all users who are splitting the expense
-   */
-  const getSplitUsers = () => {
+  // Memoize split users to avoid recalculation
+  const splitUsers = useMemo(() => {
     return expense.splitWith
       .map((userId) => users.find((u) => u.id === userId))
       .filter((user): user is User => Boolean(user));
-  };
+  }, [expense.splitWith, users]);
 
-  /**
-   * Formats the list of users who are splitting the expense
-   * Shows up to 2 names, or first name + count for more
-   */
-  const getSplitWithDisplay = () => {
-    const splitUsers = getSplitUsers();
-
+  const splitWithDisplay = useMemo(() => {
     if (splitUsers.length <= 2) {
       return splitUsers.map((user) => user.name || "Unknown").join(" & ");
     } else {
@@ -63,18 +61,22 @@ const ExpenseItem = ({
         splitUsers.length - 1
       } others`;
     }
-  };
+  }, [splitUsers]);
+
+  // Use regular div on mobile, motion.div on desktop for better performance
+  const Container = isMobile ? "div" : motion.div;
+  const containerProps = isMobile
+    ? {}
+    : {
+        transition: { duration: 0.2, ease: "easeOut" },
+        whileHover: {
+          boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
+        },
+      };
 
   return (
-    <motion.div
-      // initial={{ opacity: 0, y: 20, scale: 0.95 }}
-      // animate={{ opacity: 1, y: 0, scale: 1 }}
-      // exit={{ opacity: 0, y: -20, scale: 0.95 }}
-      transition={{ duration: 0.3, ease: "easeOut" }}
-      whileHover={{
-        // scale: 1.02,
-        boxShadow: "0 10px 25px rgba(0, 0, 0, 0.1)",
-      }}
+    <Container
+      {...containerProps}
       className={`relative overflow-hidden rounded-xl border transition-all duration-300 ${
         expense.isSettlement
           ? "bg-gradient-to-r from-green-50 to-emerald-50 border-green-200 shadow-sm"
@@ -169,7 +171,7 @@ const ExpenseItem = ({
               <div className="flex items-center gap-1">
                 <p className="text-sm text-gray-600">
                   Split with{" "}
-                  <span className="font-medium">{getSplitWithDisplay()}</span>
+                  <span className="font-medium">{splitWithDisplay}</span>
                 </p>
                 {expense.splitWith.length > 0 && !expense.isSettlement && (
                   <button
@@ -193,25 +195,16 @@ const ExpenseItem = ({
 
           {/* Action buttons (only for non-settlement expenses) */}
           {!expense.isSettlement && (
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="flex gap-2 flex-shrink-0"
-            >
-              <motion.button
-                // whileHover={{ scale: 1.1 }}
-                // whileTap={{ scale: 0.95 }}
+            <div className="flex gap-2 flex-shrink-0">
+              <button
                 onClick={() => onEdit(expense)}
                 className="p-2.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors duration-200 border border-blue-200"
                 title="Edit expense"
               >
                 <EditIcon />
-              </motion.button>
+              </button>
               {canDelete && (
-                <motion.button
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
+                <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={isDeleting}
                   className="p-2.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-colors duration-200 border border-red-200 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -222,9 +215,9 @@ const ExpenseItem = ({
                   ) : (
                     <DeleteIcon />
                   )}
-                </motion.button>
+                </button>
               )}
-            </motion.div>
+            </div>
           )}
         </div>
       </div>
@@ -249,11 +242,12 @@ const ExpenseItem = ({
       <MembersModal
         isOpen={showMembersModal}
         onClose={() => setShowMembersModal(false)}
-        members={getSplitUsers()}
+        members={splitUsers}
         title="Split With"
       />
-    </motion.div>
+    </Container>
   );
 };
 
-export default ExpenseItem;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(ExpenseItem);

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import {
   FileText,
@@ -30,12 +30,20 @@ interface ActivityLogProps {
  * Displays detailed changes for updates including old vs new values.
  */
 const ActivityLog = ({ logs, users }: ActivityLogProps) => {
+  // Memoize user lookup map for O(1) access instead of O(n) find operations
+  const userMap = useMemo(() => {
+    const map = new Map<string, string>();
+    users.forEach((user) => {
+      map.set(user.id, user.name);
+    });
+    return map;
+  }, [users]);
+
   /**
-   * Get user name from user ID
+   * Get user name from user ID (optimized with memoized map)
    */
   const getUserName = (userId: string): string => {
-    const user = users.find((u) => u.id === userId);
-    return user?.name || "Unknown";
+    return userMap.get(userId) || "Unknown";
   };
 
   /**
@@ -306,18 +314,27 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
     }
   };
 
+  // Detect mobile device for performance optimization
+  const isMobile = useMemo(() => {
+    return window.innerWidth < 768;
+  }, []);
+
+  // Limit logs on mobile for better performance (show last 50 on mobile)
+  const displayedLogs = useMemo(() => {
+    if (isMobile && logs.length > 50) {
+      return logs.slice(0, 50);
+    }
+    return logs;
+  }, [logs, isMobile]);
+
   return (
-    <motion.div
-      // initial={{ opacity: 0, y: 20 }}
-      // animate={{ opacity: 1, y: 0 }}
-      className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg"
-    >
+    <div className="p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-lg">
       <h3 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-6 text-gray-800 flex items-center">
         <FileText className="w-5 h-5 lg:w-6 lg:h-6 mr-2 lg:mr-3 text-blue-600" />
         Activity Log (Logs past 2 months will be deleted)
       </h3>
 
-      {logs.length === 0 ? (
+      {displayedLogs.length === 0 ? (
         // Empty state
         <div className="text-center py-12 lg:py-16">
           <FileText className="w-16 h-16 lg:w-20 lg:h-20 mx-auto text-gray-300 mb-4 lg:mb-6" />
@@ -331,15 +348,17 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
       ) : (
         // Activity log entries
         <div className="space-y-2 lg:space-y-3">
-          {logs.map((log, index) => {
+          {isMobile && logs.length > 50 && (
+            <div className="text-center py-2 text-sm text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
+              Showing latest 50 of {logs.length} activities
+            </div>
+          )}
+          {displayedLogs.map((log) => {
             const IconComponent = getActionIcon(log.action);
 
             return (
-              <motion.div
+              <div
                 key={log.id}
-                // initial={{ opacity: 0, x: -20 }}
-                // animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: index * 0.05 }}
                 className="bg-gray-50 border border-gray-200 p-2.5 sm:p-3 rounded-lg hover:bg-gray-100 hover:border-gray-300 transition-all duration-200"
               >
                 <div className="flex items-start gap-2 sm:gap-3">
@@ -398,13 +417,14 @@ const ActivityLog = ({ logs, users }: ActivityLogProps) => {
                     )}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             );
           })}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 
-export default ActivityLog;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(ActivityLog);

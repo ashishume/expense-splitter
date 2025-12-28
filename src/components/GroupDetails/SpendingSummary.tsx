@@ -2,6 +2,7 @@ import { motion } from "framer-motion";
 import { CurrencyIcon } from "../icons/index";
 import { calculateGroupBalances } from "../../utils/expenseCalculations";
 import type { User, Expense } from "../../types";
+import React, { useMemo } from "react";
 
 interface SpendingSummaryProps {
   expenses: Expense[];
@@ -15,17 +16,27 @@ interface SpendingSummaryProps {
  * Shows who owes money and who should receive money.
  */
 const SpendingSummary = ({ expenses, groupMembers }: SpendingSummaryProps) => {
-  // Calculate total group spend (excluding settlements)
-  const totalSpend = expenses
-    .filter((e) => !e.isSettlement)
-    .reduce((sum, expense) => sum + expense.amount, 0);
+  // Memoize calculations to prevent recalculation on every render
+  const { totalSpend, totalExpenses, avgPerExpense, balances } = useMemo(() => {
+    // Calculate total group spend (excluding settlements)
+    const spend = expenses
+      .filter((e) => !e.isSettlement)
+      .reduce((sum, expense) => sum + expense.amount, 0);
 
-  // Calculate per person balances using utility function
-  const memberIds = groupMembers.map((user) => user.id);
-  const balances = calculateGroupBalances(expenses, memberIds);
+    // Calculate per person balances using utility function
+    const memberIds = groupMembers.map((user) => user.id);
+    const memberBalances = calculateGroupBalances(expenses, memberIds);
 
-  const totalExpenses = expenses.filter((e) => !e.isSettlement).length;
-  const avgPerExpense = totalExpenses > 0 ? totalSpend / totalExpenses : 0;
+    const expensesCount = expenses.filter((e) => !e.isSettlement).length;
+    const avg = expensesCount > 0 ? spend / expensesCount : 0;
+
+    return {
+      totalSpend: spend,
+      totalExpenses: expensesCount,
+      avgPerExpense: avg,
+      balances: memberBalances,
+    };
+  }, [expenses, groupMembers]);
 
   return (
     <motion.div
@@ -142,4 +153,5 @@ const SpendingSummary = ({ expenses, groupMembers }: SpendingSummaryProps) => {
   );
 };
 
-export default SpendingSummary;
+// Memoize component to prevent unnecessary re-renders
+export default React.memo(SpendingSummary);

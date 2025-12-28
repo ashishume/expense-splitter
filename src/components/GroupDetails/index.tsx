@@ -11,6 +11,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
 } from "firebase/firestore";
 import { db } from "../../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
@@ -84,6 +85,11 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   // Find the current group
   const group = groups.find((g) => g.id === groupId);
 
+  // Detect mobile for performance optimization
+  const isMobile = useMemo(() => {
+    return typeof window !== "undefined" && window.innerWidth < 768;
+  }, []);
+
   /**
    * Check if user has access to this group
    * Redirects to home if group not found or user doesn't have access
@@ -113,6 +119,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   /**
    * Set up real-time listener for expenses in this group
    * Automatically updates when expenses are added/modified/deleted
+   * Mobile optimization: Limit to 100 expenses on mobile
    */
   useEffect(() => {
     if (!groupId || isLoading || !group) return;
@@ -120,7 +127,8 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
     const expensesQuery = query(
       collection(db, "expenses"),
       where("groupId", "==", groupId),
-      orderBy("date", "desc")
+      orderBy("date", "desc"),
+      ...(isMobile ? [limit(100)] : [])
     );
 
     const unsubscribe = onSnapshot(
@@ -163,6 +171,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   /**
    * Set up real-time listener for logs in this group
    * Automatically updates activity feed
+   * Mobile optimization: Limit to 50 logs on mobile
    */
   useEffect(() => {
     if (!groupId || isLoading || !group) return;
@@ -170,7 +179,8 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
     const logsQuery = query(
       collection(db, "logs"),
       where("groupId", "==", groupId),
-      orderBy("timestamp", "desc")
+      orderBy("timestamp", "desc"),
+      ...(isMobile ? [limit(50)] : [])
     );
 
     const unsubscribe = onSnapshot(
@@ -648,33 +658,59 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   return (
     <div className="space-y-4 lg:space-y-6">
       {/* Header: Back button and group info */}
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 lg:gap-4 p-3 sm:p-4 lg:p-6 bg-white rounded-xl shadow-lg"
-      >
-        <button
-          onClick={() => navigate("/")}
-          className="p-1.5 sm:p-2 lg:p-3 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
-        >
-          <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600" />
-        </button>
-        <div className="min-w-0 flex-1">
-          <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 truncate">
-            {group.name}
-          </h1>
-          <p className="text-xs sm:text-sm lg:text-base text-gray-600">
-            {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
-          </p>
+      {isMobile ? (
+        <div className="flex items-center gap-3 lg:gap-4 p-3 sm:p-4 lg:p-6 bg-white rounded-xl shadow-lg">
+          <button
+            onClick={() => navigate("/")}
+            className="p-1.5 sm:p-2 lg:p-3 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+          >
+            <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 truncate">
+              {group.name}
+            </h1>
+            <p className="text-xs sm:text-sm lg:text-base text-gray-600">
+              {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <button
+            onClick={handleShare}
+            className="p-2 sm:p-2.5 lg:p-3 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0 group"
+            title="Share group link"
+          >
+            <Share2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600 group-hover:text-blue-600 transition-colors" />
+          </button>
         </div>
-        <button
-          onClick={handleShare}
-          className="p-2 sm:p-2.5 lg:p-3 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0 group"
-          title="Share group link"
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 lg:gap-4 p-3 sm:p-4 lg:p-6 bg-white rounded-xl shadow-lg"
         >
-          <Share2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600 group-hover:text-blue-600 transition-colors" />
-        </button>
-      </motion.div>
+          <button
+            onClick={() => navigate("/")}
+            className="p-1.5 sm:p-2 lg:p-3 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+          >
+            <ArrowLeftIcon className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600" />
+          </button>
+          <div className="min-w-0 flex-1">
+            <h1 className="text-lg sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800 truncate">
+              {group.name}
+            </h1>
+            <p className="text-xs sm:text-sm lg:text-base text-gray-600">
+              {groupMembers.length} member{groupMembers.length !== 1 ? "s" : ""}
+            </p>
+          </div>
+          <button
+            onClick={handleShare}
+            className="p-2 sm:p-2.5 lg:p-3 hover:bg-blue-50 rounded-lg transition-colors flex-shrink-0 group"
+            title="Share group link"
+          >
+            <Share2 className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-gray-600 group-hover:text-blue-600 transition-colors" />
+          </button>
+        </motion.div>
+      )}
 
       {/* Sticky Tabs Navigation */}
       <div className="sticky top-0 sm:top-4 z-10 -mx-2 sm:mx-0 mb-4 lg:mb-6">
