@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { formatTimestamp } from "../../utils/dateUtils";
 import { EditIcon, DeleteIcon, LoadingSpinner } from "../icons/index";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import MembersModal from "./MembersModal";
 import type { User, Expense } from "../../types";
 
 interface ExpenseItemProps {
@@ -27,18 +28,26 @@ const ExpenseItem = ({
   isDeleting,
 }: ExpenseItemProps) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+
+  /**
+   * Gets all users who are splitting the expense
+   */
+  const getSplitUsers = () => {
+    return expense.splitWith
+      .map((userId) => users.find((u) => u.id === userId))
+      .filter((user): user is User => Boolean(user));
+  };
 
   /**
    * Formats the list of users who are splitting the expense
    * Shows up to 2 names, or first name + count for more
    */
   const getSplitWithDisplay = () => {
-    const splitUsers = expense.splitWith
-      .map((userId) => users.find((u) => u.id === userId))
-      .filter(Boolean);
+    const splitUsers = getSplitUsers();
 
     if (splitUsers.length <= 2) {
-      return splitUsers.map((user) => user?.name || "Unknown").join(" & ");
+      return splitUsers.map((user) => user.name || "Unknown").join(" & ");
     } else {
       return `${splitUsers[0]?.name || "Unknown"} +${
         splitUsers.length - 1
@@ -147,10 +156,20 @@ const ExpenseItem = ({
                   </div>
                 )}
               </div>
-              <p className="text-sm text-gray-600">
-                Split with{" "}
-                <span className="font-medium">{getSplitWithDisplay()}</span>
-              </p>
+              <div className="flex items-center gap-1">
+                <p className="text-sm text-gray-600">
+                  Split with{" "}
+                  <span className="font-medium">{getSplitWithDisplay()}</span>
+                </p>
+                {expense.splitWith.length > 0 && !expense.isSettlement && (
+                  <button
+                    onClick={() => setShowMembersModal(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium underline ml-1 transition-colors"
+                  >
+                    (see all members)
+                  </button>
+                )}
+              </div>
             </div>
 
             {/* Timestamp */}
@@ -212,6 +231,14 @@ const ExpenseItem = ({
         cancelText="Cancel"
         isLoading={isDeleting}
         variant="danger"
+      />
+
+      {/* Members Modal */}
+      <MembersModal
+        isOpen={showMembersModal}
+        onClose={() => setShowMembersModal(false)}
+        members={getSplitUsers()}
+        title="Split With"
       />
     </motion.div>
   );
