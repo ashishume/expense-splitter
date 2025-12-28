@@ -22,6 +22,7 @@ import {
   CloseIcon,
 } from "./icons/index";
 import ConfirmDialog from "./ui/ConfirmDialog";
+import { logMemberAction } from "../utils/logger";
 import type { User as AppUser, Group, Expense } from "../types";
 import type { User as FirebaseUser } from "firebase/auth";
 
@@ -335,6 +336,22 @@ const GroupCard = ({
       const updatedGroups = [...(user?.groups || []), group.id];
       await updateDoc(userRef, { groups: updatedGroups });
 
+      // Get the added user's name for logging (use existingUser if available, otherwise newUserName)
+      const memberName = existingUser?.name || newUserName;
+
+      // Log member addition with member count info
+      await logMemberAction(
+        "add",
+        memberName,
+        currentUser?.uid,
+        currentUser?.displayName || undefined,
+        group.id,
+        group.members.length, // old member count
+        updatedMembers.length, // new member count
+        [memberName], // added members
+        undefined // removed members
+      );
+
       setNewUserName("");
       setNewUserEmail("");
       setShowAddUser(false);
@@ -406,6 +423,20 @@ const GroupCard = ({
         (id) => id !== group.id
       );
       await updateDoc(userRef, { groups: updatedGroups });
+
+      // Log member removal with member count info
+      await logMemberAction(
+        "remove",
+        userToRemove.name,
+        currentUser?.uid,
+        currentUser?.displayName || undefined,
+        group.id,
+        group.members.length, // old member count
+        updatedMembers.length, // new member count
+        undefined, // added members
+        [userToRemove.name] // removed members
+      );
+
       onGroupUpdate();
       toast.success("User removed from group successfully!");
       setShowRemoveUserConfirm(false);

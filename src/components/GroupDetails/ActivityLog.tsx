@@ -1,19 +1,25 @@
+import React from "react";
 import { motion } from "framer-motion";
-import { FileText, Plus, Edit, Trash2 } from "lucide-react";
+import {
+  FileText,
+  Plus,
+  Edit,
+  Trash2,
+  UserPlus,
+  UserMinus,
+  ArrowRight,
+} from "lucide-react";
 import { formatTimestamp } from "../../utils/dateUtils";
+import type { User } from "../../types";
+import type { LogEntry } from "../../utils/logger";
 
-interface LogEntry {
+interface ExtendedLogEntry extends LogEntry {
   id: string;
-  action: string;
-  details: string;
-  timestamp: string;
-  userId?: string;
-  userName?: string;
-  groupId?: string;
 }
 
 interface ActivityLogProps {
-  logs: LogEntry[];
+  logs: ExtendedLogEntry[];
+  users: User[];
 }
 
 /**
@@ -21,8 +27,180 @@ interface ActivityLogProps {
  *
  * Displays group activity logs with action types and timestamps.
  * Shows create, update, and delete actions for expenses.
+ * Displays detailed changes for updates including old vs new values.
  */
-const ActivityLog = ({ logs }: ActivityLogProps) => {
+const ActivityLog = ({ logs, users }: ActivityLogProps) => {
+  /**
+   * Get user name from user ID
+   */
+  const getUserName = (userId: string): string => {
+    const user = users.find((u) => u.id === userId);
+    return user?.name || "Unknown";
+  };
+
+  /**
+   * Format expense changes for display
+   */
+  const formatExpenseChanges = (log: ExtendedLogEntry) => {
+    if (!log.changes) return null;
+
+    const changes = log.changes;
+    const changeItems: React.ReactElement[] = [];
+
+    // Amount change
+    if (
+      changes.oldAmount !== undefined &&
+      changes.newAmount !== undefined &&
+      changes.oldAmount !== changes.newAmount
+    ) {
+      changeItems.push(
+        <div key="amount" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Amount:</span>
+          <span className="line-through text-red-600">
+            ₹{changes.oldAmount}
+          </span>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <span className="font-semibold text-green-600">
+            ₹{changes.newAmount}
+          </span>
+        </div>
+      );
+    }
+
+    // Description change
+    if (
+      changes.oldDescription &&
+      changes.newDescription &&
+      changes.oldDescription !== changes.newDescription
+    ) {
+      changeItems.push(
+        <div key="description" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Description:</span>
+          <span className="line-through text-red-600 truncate max-w-[100px]">
+            {changes.oldDescription}
+          </span>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <span className="font-semibold text-green-600 truncate max-w-[100px]">
+            {changes.newDescription}
+          </span>
+        </div>
+      );
+    }
+
+    // Paid by change
+    if (
+      changes.oldPaidBy &&
+      changes.newPaidBy &&
+      changes.oldPaidBy !== changes.newPaidBy
+    ) {
+      changeItems.push(
+        <div key="paidBy" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Paid by:</span>
+          <span className="line-through text-red-600">
+            {changes.oldPaidByName || getUserName(changes.oldPaidBy)}
+          </span>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <span className="font-semibold text-green-600">
+            {changes.newPaidByName || getUserName(changes.newPaidBy)}
+          </span>
+        </div>
+      );
+    }
+
+    // Split with change
+    if (changes.oldSplitWith && changes.newSplitWith) {
+      const oldNames = changes.oldSplitWith
+        .map((id: string) => getUserName(id))
+        .join(", ");
+      const newNames = changes.newSplitWith
+        .map((id: string) => getUserName(id))
+        .join(", ");
+
+      if (oldNames !== newNames) {
+        changeItems.push(
+          <div key="splitWith" className="text-xs">
+            <span className="text-gray-600">Split with:</span>
+            <div className="ml-2 mt-0.5">
+              <div className="line-through text-red-600">
+                {oldNames || "None"}
+              </div>
+              <ArrowRight className="w-3 h-3 text-gray-400 my-0.5" />
+              <div className="font-semibold text-green-600">
+                {newNames || "None"}
+              </div>
+            </div>
+          </div>
+        );
+      }
+    }
+
+    return changeItems.length > 0 ? (
+      <div className="mt-2 pt-2 border-t border-gray-200 space-y-1.5">
+        {changeItems}
+      </div>
+    ) : null;
+  };
+
+  /**
+   * Format member changes for display
+   */
+  const formatMemberChanges = (log: ExtendedLogEntry) => {
+    if (!log.changes) return null;
+
+    const changes = log.changes;
+    const changeItems: React.ReactElement[] = [];
+
+    // Member count change
+    if (
+      changes.oldMemberCount !== undefined &&
+      changes.newMemberCount !== undefined
+    ) {
+      changeItems.push(
+        <div key="count" className="flex items-center gap-2 text-xs">
+          <span className="text-gray-600">Members:</span>
+          <span className="line-through text-red-600">
+            {changes.oldMemberCount}{" "}
+            {changes.oldMemberCount === 1 ? "member" : "members"}
+          </span>
+          <ArrowRight className="w-3 h-3 text-gray-400" />
+          <span className="font-semibold text-green-600">
+            {changes.newMemberCount}{" "}
+            {changes.newMemberCount === 1 ? "member" : "members"}
+          </span>
+        </div>
+      );
+    }
+
+    // Added members
+    if (changes.addedMembers && changes.addedMembers.length > 0) {
+      changeItems.push(
+        <div key="added" className="text-xs">
+          <span className="text-emerald-700 font-medium">Added:</span>
+          <span className="ml-2 text-emerald-600">
+            {changes.addedMembers.join(", ")}
+          </span>
+        </div>
+      );
+    }
+
+    // Removed members
+    if (changes.removedMembers && changes.removedMembers.length > 0) {
+      changeItems.push(
+        <div key="removed" className="text-xs">
+          <span className="text-orange-700 font-medium">Removed:</span>
+          <span className="ml-2 text-orange-600">
+            {changes.removedMembers.join(", ")}
+          </span>
+        </div>
+      );
+    }
+
+    return changeItems.length > 0 ? (
+      <div className="mt-2 pt-2 border-t border-gray-200 space-y-1.5">
+        {changeItems}
+      </div>
+    ) : null;
+  };
   /**
    * Returns appropriate color classes for action badge
    */
@@ -34,6 +212,10 @@ const ActivityLog = ({ logs }: ActivityLogProps) => {
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "EXPENSE_DELETE":
         return "bg-red-100 text-red-800 border-red-200";
+      case "MEMBER_ADD":
+        return "bg-emerald-100 text-emerald-800 border-emerald-200";
+      case "MEMBER_REMOVE":
+        return "bg-orange-100 text-orange-800 border-orange-200";
       default:
         return "bg-gray-100 text-gray-800 border-gray-200";
     }
@@ -50,6 +232,10 @@ const ActivityLog = ({ logs }: ActivityLogProps) => {
         return Edit;
       case "EXPENSE_DELETE":
         return Trash2;
+      case "MEMBER_ADD":
+        return UserPlus;
+      case "MEMBER_REMOVE":
+        return UserMinus;
       default:
         return FileText;
     }
@@ -109,7 +295,10 @@ const ActivityLog = ({ logs }: ActivityLogProps) => {
                             log.action
                           )}`}
                         >
-                          {log.action.replace("EXPENSE_", "").replace("_", " ")}
+                          {log.action
+                            .replace("EXPENSE_", "")
+                            .replace("MEMBER_", "")
+                            .replace("_", " ")}
                         </span>
                       </div>
                       {/* Timestamp */}
@@ -123,9 +312,18 @@ const ActivityLog = ({ logs }: ActivityLogProps) => {
                       {log.details}
                     </p>
 
+                    {/* Detailed changes for expense updates */}
+                    {log.action === "EXPENSE_UPDATE" &&
+                      formatExpenseChanges(log)}
+
+                    {/* Detailed changes for member actions */}
+                    {(log.action === "MEMBER_ADD" ||
+                      log.action === "MEMBER_REMOVE") &&
+                      formatMemberChanges(log)}
+
                     {/* User name */}
                     {log.userName && (
-                      <span className="text-xs text-gray-600">
+                      <span className="text-xs text-gray-600 mt-1.5 block">
                         by <span className="font-medium">{log.userName}</span>
                       </span>
                     )}

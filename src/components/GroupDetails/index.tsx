@@ -553,13 +553,30 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         groupId: groupId,
       });
 
+      // Get old paid by user name
+      const oldPaidByUser = users.find((user) => user.id === editingExpense.paidBy);
+
       await logExpenseAction(
         "update",
         editingExpense.id,
         `Updated expense: ${newExpense.description} - ₹${amount}`,
         currentUser?.uid,
         currentUser?.displayName || undefined,
-        groupId
+        groupId,
+        {
+          amount: editingExpense.amount,
+          description: editingExpense.description,
+          paidBy: editingExpense.paidBy,
+          paidByName: editingExpense.paidByName,
+          splitWith: editingExpense.splitWith,
+        },
+        {
+          amount: amount,
+          description: newExpense.description,
+          paidBy: newExpense.paidBy,
+          paidByName: paidByUser.name,
+          splitWith: newExpense.splitWith,
+        }
       );
 
       setEditingExpense(null);
@@ -807,7 +824,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       )}
 
       {/* Activity Log Tab Content */}
-      {activeTab === "logs" && <ActivityLog logs={logs} />}
+      {activeTab === "logs" && <ActivityLog logs={logs} users={users} />}
     </div>
   );
 };
