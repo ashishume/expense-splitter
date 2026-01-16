@@ -13,6 +13,7 @@
     "bump-sw": "node scripts/bump-sw-version.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.90.1",
     "@tailwindcss/vite": "^4.1.7",
     "firebase": "^11.8.1",
     "framer-motion": "^12.14.0",

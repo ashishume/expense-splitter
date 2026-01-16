@@ -1,12 +1,12 @@
 import { useState, useEffect, lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 import { useAuth } from "./components/useAuth";
 import Groups from "./components/Groups";
 import logo from "./assets/logo.jpg";
-import { LogOut } from "lucide-react";
+import { LogOut, Wallet } from "lucide-react";
 import { cleanupOldLogs } from "./utils/logger";
 import { LoadingSpinner } from "./components/icons";
 
@@ -15,8 +15,12 @@ import type { User, Group } from "./types";
 // Lazy load GroupDetails for code splitting (mobile optimization)
 const GroupDetails = lazy(() => import("./components/GroupDetails"));
 
+// Lazy load ExpenseTracker for code splitting
+const ExpenseTracker = lazy(() => import("./components/ExpenseTracker"));
+
 const ExpenseSplittingApp = () => {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
 
@@ -77,6 +81,25 @@ const ExpenseSplittingApp = () => {
       {/* Desktop Container Wrapper */}
       <div className="max-w-7xl mx-auto">
         <Routes>
+          {/* Personal Expense Tracker Route */}
+          <Route
+            path="/tracker"
+            element={
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center min-h-screen">
+                    <div className="text-center">
+                      <LoadingSpinner className="w-8 h-8 mx-auto mb-4" />
+                      <p className="text-gray-600">Loading expense tracker...</p>
+                    </div>
+                  </div>
+                }
+              >
+                <ExpenseTracker />
+              </Suspense>
+            }
+          />
+
           {/* Group Details Route - Lazy loaded for mobile optimization */}
           <Route
             path="/group/:groupId"
@@ -132,6 +155,48 @@ const ExpenseSplittingApp = () => {
                     </button>
                   </div>
                 </div>
+
+                {/* Personal Expense Tracker Card */}
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className="mb-6"
+                >
+                  <button
+                    onClick={() => navigate("/tracker")}
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white rounded-xl p-4 sm:p-5 shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-between group"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white/20 rounded-xl flex items-center justify-center">
+                        <Wallet className="w-6 h-6 sm:w-7 sm:h-7" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-semibold text-lg sm:text-xl">
+                          My Expenses
+                        </h3>
+                        <p className="text-white/80 text-sm sm:text-base">
+                          Track your personal spending
+                        </p>
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center group-hover:translate-x-1 transition-transform">
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </div>
+                  </button>
+                </motion.div>
 
                 {/* Groups Page */}
                 <Groups
