@@ -12,7 +12,7 @@ import ConfirmDialog from "../ui/ConfirmDialog";
 interface ExpenseListProps {
   expenses: PersonalExpense[];
   onExpenseDeleted: (id: string) => void;
-  userId?: string;
+  userId: string;
 }
 
 const formatCurrency = (amount: number) => {
@@ -59,11 +59,6 @@ const ExpenseList = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (id: string) => {
-    if (!userId) {
-      toast.error("Please sign in to delete expenses");
-      return;
-    }
-
     setIsDeleting(true);
     try {
       await deleteExpense(id, userId);

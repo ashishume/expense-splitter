@@ -11,7 +11,7 @@ import { createExpense } from "../../services/personalExpenseStorage";
 
 interface QuickAddExpenseProps {
   onExpenseAdded: (expense: PersonalExpense) => void;
-  userId?: string;
+  userId: string;
 }
 
 const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
