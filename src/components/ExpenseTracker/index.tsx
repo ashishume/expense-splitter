@@ -220,15 +220,28 @@ const ExpenseTracker = () => {
 
   // Handle expense updated
   const handleExpenseUpdated = (expense: PersonalExpense) => {
-    setExpenses((prev) =>
-      prev.map((e) => (e.id === expense.id ? expense : e))
-    );
-    // Reload stats
-    if (userId) {
-      getMonthlyStats(currentMonth, userId).then(setStats);
-      getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
-        setPreviousStats
+    // Optimistically update the UI first
+    if (!expense.date.startsWith(currentMonth)) {
+      // If date changed to a different month, remove from current view
+      setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+    } else {
+      // Update the expense in place
+      setExpenses((prev) =>
+        prev.map((e) => (e.id === expense.id ? expense : e))
       );
+    }
+
+    // Reload data from server to ensure sync (without showing loading state)
+    if (userId) {
+      Promise.all([
+        getExpenses({ month: currentMonth }, userId),
+        getMonthlyStats(currentMonth, userId),
+        getMonthlyStats(getPreviousMonthStr(currentMonth), userId),
+      ]).then(([monthExpenses, monthStats, prevStats]) => {
+        setExpenses(monthExpenses);
+        setStats(monthStats);
+        setPreviousStats(prevStats);
+      });
     }
   };
 
