@@ -218,6 +218,20 @@ const ExpenseTracker = () => {
     }
   };
 
+  // Handle expense updated
+  const handleExpenseUpdated = (expense: PersonalExpense) => {
+    setExpenses((prev) =>
+      prev.map((e) => (e.id === expense.id ? expense : e))
+    );
+    // Reload stats
+    if (userId) {
+      getMonthlyStats(currentMonth, userId).then(setStats);
+      getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
+        setPreviousStats
+      );
+    }
+  };
+
   // Show sign in prompt if not logged in
   if (!userId) {
     return (
@@ -394,6 +408,7 @@ const ExpenseTracker = () => {
               <ExpenseList
                 expenses={expenses}
                 onExpenseDeleted={handleExpenseDeleted}
+                onExpenseUpdated={handleExpenseUpdated}
                 userId={userId}
               />
             )}

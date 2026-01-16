@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2 } from "lucide-react";
+import { Trash2, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   EXPENSE_CATEGORIES,
@@ -8,10 +8,12 @@ import {
 } from "../../types/personalExpense";
 import { deleteExpense } from "../../services/personalExpenseStorage";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import EditExpenseModal from "./EditExpenseModal";
 
 interface ExpenseListProps {
   expenses: PersonalExpense[];
   onExpenseDeleted: (id: string) => void;
+  onExpenseUpdated: (expense: PersonalExpense) => void;
   userId: string;
 }
 
@@ -45,6 +47,7 @@ const formatDate = (dateStr: string) => {
 const ExpenseList = ({
   expenses,
   onExpenseDeleted,
+  onExpenseUpdated,
   userId,
 }: ExpenseListProps) => {
   const [deleteConfirm, setDeleteConfirm] = useState<{
@@ -57,6 +60,9 @@ const ExpenseList = ({
     expenseDescription: "",
   });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<PersonalExpense | null>(
+    null
+  );
 
   const handleDelete = async (id: string) => {
     setIsDeleting(true);
@@ -81,8 +87,12 @@ const ExpenseList = ({
     setDeleteConfirm({
       isOpen: true,
       expenseId: expense.id,
-      expenseDescription: expense.description,
+      expenseDescription: expense.description || expense.category,
     });
+  };
+
+  const openEditModal = (expense: PersonalExpense) => {
+    setEditingExpense(expense);
   };
 
   // Group expenses by date
@@ -145,23 +155,23 @@ const ExpenseList = ({
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20, height: 0 }}
-                      className="relative bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 group"
+                      className="relative bg-white rounded-xl p-3 sm:p-4 shadow-sm flex items-center gap-2 sm:gap-4 group"
                     >
                       {/* Category Icon */}
                       <div
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center text-xl sm:text-2xl flex-shrink-0"
                         style={{ backgroundColor: category?.bgColor }}
                       >
                         {category?.emoji}
                       </div>
 
                       {/* Description & Category */}
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-800 truncate">
-                          {expense.description}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="font-medium text-gray-800 truncate text-sm sm:text-base">
+                          {expense.description || category?.label}
                         </p>
                         <p
-                          className="text-sm truncate"
+                          className="text-xs sm:text-sm truncate"
                           style={{ color: category?.color }}
                         >
                           {category?.label}
@@ -170,22 +180,37 @@ const ExpenseList = ({
 
                       {/* Amount */}
                       <div className="text-right flex-shrink-0">
-                        <p className="font-semibold text-gray-800">
+                        <p className="font-semibold text-gray-800 text-sm sm:text-base">
                           {formatCurrency(expense.amount)}
                         </p>
                       </div>
 
-                      {/* Delete Button */}
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          openDeleteConfirm(expense);
-                        }}
-                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
-                        title="Delete expense"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-0 sm:gap-1 flex-shrink-0">
+                        {/* Edit Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openEditModal(expense);
+                          }}
+                          className="p-1.5 sm:p-2 text-gray-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-all"
+                          title="Edit expense"
+                        >
+                          <Pencil className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openDeleteConfirm(expense);
+                          }}
+                          className="p-1.5 sm:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          title="Delete expense"
+                        >
+                          <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                        </button>
+                      </div>
                     </motion.div>
                   );
                 })}
@@ -194,6 +219,15 @@ const ExpenseList = ({
           </div>
         ))}
       </div>
+
+      {/* Edit Expense Modal */}
+      <EditExpenseModal
+        expense={editingExpense}
+        isOpen={!!editingExpense}
+        onClose={() => setEditingExpense(null)}
+        onExpenseUpdated={onExpenseUpdated}
+        userId={userId}
+      />
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
