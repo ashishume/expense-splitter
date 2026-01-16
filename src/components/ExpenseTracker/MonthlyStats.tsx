@@ -12,7 +12,7 @@ interface MonthlyStatsProps {
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("de-CH", {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,

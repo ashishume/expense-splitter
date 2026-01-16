@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, ChevronRight } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   EXPENSE_CATEGORIES,
@@ -16,7 +16,7 @@ interface ExpenseListProps {
 }
 
 const formatCurrency = (amount: number) => {
-  return new Intl.NumberFormat("de-CH", {
+  return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     minimumFractionDigits: 2,
@@ -56,9 +56,15 @@ const ExpenseList = ({
     expenseId: null,
     expenseDescription: "",
   });
-  const [swipedId, setSwipedId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async (id: string) => {
+    if (!userId) {
+      toast.error("Please sign in to delete expenses");
+      return;
+    }
+
+    setIsDeleting(true);
     try {
       await deleteExpense(id, userId);
       onExpenseDeleted(id);
@@ -68,9 +74,20 @@ const ExpenseList = ({
         expenseId: null,
         expenseDescription: "",
       });
-    } catch {
+    } catch (error) {
+      console.error("Delete error:", error);
       toast.error("Failed to delete expense");
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const openDeleteConfirm = (expense: PersonalExpense) => {
+    setDeleteConfirm({
+      isOpen: true,
+      expenseId: expense.id,
+      expenseDescription: expense.description,
+    });
   };
 
   // Group expenses by date
@@ -133,67 +150,47 @@ const ExpenseList = ({
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20, height: 0 }}
-                      className="relative overflow-hidden"
+                      className="relative bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 group"
                     >
-                      {/* Delete button background (swipe to reveal) */}
-                      <div className="absolute inset-y-0 right-0 w-20 bg-red-500 flex items-center justify-center rounded-xl">
-                        <Trash2 className="w-5 h-5 text-white" />
+                      {/* Category Icon */}
+                      <div
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
+                        style={{ backgroundColor: category?.bgColor }}
+                      >
+                        {category?.emoji}
                       </div>
 
-                      {/* Main expense card */}
-                      <motion.div
-                        drag="x"
-                        dragConstraints={{ left: -80, right: 0 }}
-                        dragElastic={0.1}
-                        onDragEnd={(_, info) => {
-                          if (info.offset.x < -60) {
-                            setSwipedId(expense.id);
-                          } else {
-                            setSwipedId(null);
-                          }
-                        }}
-                        animate={{ x: swipedId === expense.id ? -80 : 0 }}
-                        className="relative bg-white rounded-xl p-4 shadow-sm flex items-center gap-4 cursor-pointer active:bg-gray-50"
-                        onClick={() => {
-                          if (swipedId === expense.id) {
-                            setDeleteConfirm({
-                              isOpen: true,
-                              expenseId: expense.id,
-                              expenseDescription: expense.description,
-                            });
-                          }
-                        }}
-                      >
-                        {/* Category Icon */}
-                        <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl flex-shrink-0"
-                          style={{ backgroundColor: category?.bgColor }}
+                      {/* Description & Category */}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-800 truncate">
+                          {expense.description}
+                        </p>
+                        <p
+                          className="text-sm truncate"
+                          style={{ color: category?.color }}
                         >
-                          {category?.emoji}
-                        </div>
+                          {category?.label}
+                        </p>
+                      </div>
 
-                        {/* Description & Category */}
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-gray-800 truncate">
-                            {expense.description}
-                          </p>
-                          <p
-                            className="text-sm truncate"
-                            style={{ color: category?.color }}
-                          >
-                            {category?.label}
-                          </p>
-                        </div>
+                      {/* Amount */}
+                      <div className="text-right flex-shrink-0">
+                        <p className="font-semibold text-gray-800">
+                          {formatCurrency(expense.amount)}
+                        </p>
+                      </div>
 
-                        {/* Amount */}
-                        <div className="text-right flex-shrink-0">
-                          <p className="font-semibold text-gray-800">
-                            {formatCurrency(expense.amount)}
-                          </p>
-                        </div>
-
-                        <ChevronRight className="w-5 h-5 text-gray-300 flex-shrink-0" />
-                      </motion.div>
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openDeleteConfirm(expense);
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all flex-shrink-0"
+                        title="Delete expense"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </motion.div>
                   );
                 })}
@@ -207,21 +204,22 @@ const ExpenseList = ({
       <ConfirmDialog
         isOpen={deleteConfirm.isOpen}
         title="Delete Expense"
-        message={`Are you sure you want to delete "${deleteConfirm.expenseDescription}"?`}
-        confirmText="Delete"
+        message={`Are you sure you want to delete "${deleteConfirm.expenseDescription}"? This action cannot be undone.`}
+        confirmText={isDeleting ? "Deleting..." : "Delete"}
         variant="danger"
         onConfirm={() => {
-          if (deleteConfirm.expenseId) {
+          if (deleteConfirm.expenseId && !isDeleting) {
             handleDelete(deleteConfirm.expenseId);
           }
         }}
         onClose={() => {
-          setDeleteConfirm({
-            isOpen: false,
-            expenseId: null,
-            expenseDescription: "",
-          });
-          setSwipedId(null);
+          if (!isDeleting) {
+            setDeleteConfirm({
+              isOpen: false,
+              expenseId: null,
+              expenseDescription: "",
+            });
+          }
         }}
       />
     </>
