@@ -205,10 +205,11 @@ const ExpenseList = ({
         isOpen={deleteConfirm.isOpen}
         title="Delete Expense"
         message={`Are you sure you want to delete "${deleteConfirm.expenseDescription}"? This action cannot be undone.`}
-        confirmText={isDeleting ? "Deleting..." : "Delete"}
+        confirmText="Delete"
         variant="danger"
+        isLoading={isDeleting}
         onConfirm={() => {
-          if (deleteConfirm.expenseId && !isDeleting) {
+          if (deleteConfirm.expenseId) {
             handleDelete(deleteConfirm.expenseId);
           }
         }}
