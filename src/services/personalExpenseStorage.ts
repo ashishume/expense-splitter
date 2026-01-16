@@ -22,7 +22,6 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   writeBatch,
   Timestamp,
@@ -50,17 +49,16 @@ interface ExpenseDoc {
 }
 
 // Convert Firestore document to PersonalExpense
-const docToExpense = (
-  docId: string,
-  data: ExpenseDoc
-): PersonalExpense => ({
+const docToExpense = (docId: string, data: ExpenseDoc): PersonalExpense => ({
   id: docId,
   amount: data.amount,
   description: data.description,
   category: data.category as ExpenseCategory,
   date: data.date,
-  createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
-  updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+  createdAt:
+    data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+  updatedAt:
+    data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
   userId: data.userId,
 });
 
@@ -76,30 +74,35 @@ export const createExpense = async (
   expense: Omit<PersonalExpense, "id" | "createdAt" | "updatedAt">,
   userId: string
 ): Promise<PersonalExpense> => {
-  const now = Timestamp.now();
-  
-  const docData: ExpenseDoc = {
-    userId,
-    amount: expense.amount,
-    description: expense.description,
-    category: expense.category,
-    date: expense.date,
-    createdAt: now,
-    updatedAt: now,
-  };
+  try {
+    const now = Timestamp.now();
 
-  const docRef = await addDoc(collection(db, COLLECTION_NAME), docData);
+    const docData: ExpenseDoc = {
+      userId,
+      amount: expense.amount,
+      description: expense.description,
+      category: expense.category,
+      date: expense.date,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-  return {
-    id: docRef.id,
-    amount: expense.amount,
-    description: expense.description,
-    category: expense.category as ExpenseCategory,
-    date: expense.date,
-    createdAt: now.toDate().toISOString(),
-    updatedAt: now.toDate().toISOString(),
-    userId,
-  };
+    const docRef = await addDoc(collection(db, COLLECTION_NAME), docData);
+
+    return {
+      id: docRef.id,
+      amount: expense.amount,
+      description: expense.description,
+      category: expense.category as ExpenseCategory,
+      date: expense.date,
+      createdAt: now.toDate().toISOString(),
+      updatedAt: now.toDate().toISOString(),
+      userId,
+    };
+  } catch (error) {
+    console.error("Error creating expense in Firebase:", error);
+    throw error;
+  }
 };
 
 /**
@@ -113,47 +116,56 @@ export const getExpenses = async (
     return [];
   }
 
-  let q = query(
-    collection(db, COLLECTION_NAME),
-    where("userId", "==", userId),
-    orderBy("date", "desc")
-  );
-
-  // Filter by month (date starts with YYYY-MM)
-  if (options?.month) {
-    const startDate = `${options.month}-01`;
-    const [year, month] = options.month.split("-").map(Number);
-    const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${options.month}-${lastDay.toString().padStart(2, "0")}T23:59:59.999Z`;
-
-    q = query(
+  try {
+    // Simple query - just filter by userId, do date filtering client-side
+    // This avoids needing complex composite indexes
+    const q = query(
       collection(db, COLLECTION_NAME),
-      where("userId", "==", userId),
-      where("date", ">=", startDate),
-      where("date", "<=", endDate),
-      orderBy("date", "desc")
+      where("userId", "==", userId)
     );
-  }
 
-  const snapshot = await getDocs(q);
-  let expenses = snapshot.docs.map((doc) =>
-    docToExpense(doc.id, doc.data() as ExpenseDoc)
-  );
-
-  // Filter by category (client-side since Firestore has limitations on compound queries)
-  if (options?.category) {
-    expenses = expenses.filter((e) => e.category === options.category);
-  }
-
-  // Filter by search query (client-side)
-  if (options?.searchQuery) {
-    const searchLower = options.searchQuery.toLowerCase();
-    expenses = expenses.filter((e) =>
-      e.description.toLowerCase().includes(searchLower)
+    const snapshot = await getDocs(q);
+    let expenses = snapshot.docs.map((doc) =>
+      docToExpense(doc.id, doc.data() as ExpenseDoc)
     );
-  }
 
-  return expenses;
+    // Filter by month (client-side to avoid index requirements)
+    if (options?.month) {
+      const startDate = `${options.month}-01`;
+      const [year, month] = options.month.split("-").map(Number);
+      const lastDay = new Date(year, month, 0).getDate();
+      const endDate = `${options.month}-${lastDay
+        .toString()
+        .padStart(2, "0")}T23:59:59.999Z`;
+
+      expenses = expenses.filter(
+        (e) => e.date >= startDate && e.date <= endDate
+      );
+    }
+
+    // Filter by category
+    if (options?.category) {
+      expenses = expenses.filter((e) => e.category === options.category);
+    }
+
+    // Filter by search query
+    if (options?.searchQuery) {
+      const searchLower = options.searchQuery.toLowerCase();
+      expenses = expenses.filter((e) =>
+        e.description.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Sort by date descending
+    expenses.sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    return expenses;
+  } catch (error) {
+    console.error("Error fetching expenses from Firebase:", error);
+    throw error;
+  }
 };
 
 /**
@@ -171,7 +183,7 @@ export const getExpenseById = async (
   }
 
   const data = docSnap.data() as ExpenseDoc;
-  
+
   // Verify ownership
   if (data.userId !== userId) {
     return null;
@@ -196,7 +208,7 @@ export const updateExpense = async (
   }
 
   const existingData = docSnap.data() as ExpenseDoc;
-  
+
   // Verify ownership
   if (existingData.userId !== userId) {
     throw new Error("Unauthorized");
@@ -207,7 +219,8 @@ export const updateExpense = async (
   };
 
   if (updates.amount !== undefined) updateData.amount = updates.amount;
-  if (updates.description !== undefined) updateData.description = updates.description;
+  if (updates.description !== undefined)
+    updateData.description = updates.description;
   if (updates.category !== undefined) updateData.category = updates.category;
   if (updates.date !== undefined) updateData.date = updates.date;
 
@@ -237,7 +250,7 @@ export const deleteExpense = async (
   }
 
   const data = docSnap.data() as ExpenseDoc;
-  
+
   // Verify ownership
   if (data.userId !== userId) {
     throw new Error("Unauthorized");
@@ -335,12 +348,12 @@ export const importExpenses = async (
   if (!merge) {
     const existingExpenses = await getExpenses(undefined, userId);
     const batch = writeBatch(db);
-    
+
     existingExpenses.forEach((exp) => {
       const docRef = doc(db, COLLECTION_NAME, exp.id);
       batch.delete(docRef);
     });
-    
+
     await batch.commit();
   }
 
@@ -391,38 +404,49 @@ export const subscribeToExpenses = (
   userId: string,
   callback: ExpenseChangeCallback
 ): Unsubscribe | null => {
-  const q = query(
-    collection(db, COLLECTION_NAME),
-    where("userId", "==", userId),
-    orderBy("date", "desc")
-  );
+  try {
+    // Simple query without orderBy to avoid composite index requirement
+    const q = query(
+      collection(db, COLLECTION_NAME),
+      where("userId", "==", userId)
+    );
 
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    snapshot.docChanges().forEach((change) => {
-      const data = change.doc.data() as ExpenseDoc;
-      const expense = docToExpense(change.doc.id, data);
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        snapshot.docChanges().forEach((change) => {
+          const data = change.doc.data() as ExpenseDoc;
+          const expense = docToExpense(change.doc.id, data);
 
-      if (change.type === "added") {
-        callback({
-          eventType: "INSERT",
-          expense,
+          if (change.type === "added") {
+            callback({
+              eventType: "INSERT",
+              expense,
+            });
+          } else if (change.type === "modified") {
+            callback({
+              eventType: "UPDATE",
+              expense,
+            });
+          } else if (change.type === "removed") {
+            callback({
+              eventType: "DELETE",
+              expense: null,
+              oldExpense: expense,
+            });
+          }
         });
-      } else if (change.type === "modified") {
-        callback({
-          eventType: "UPDATE",
-          expense,
-        });
-      } else if (change.type === "removed") {
-        callback({
-          eventType: "DELETE",
-          expense: null,
-          oldExpense: expense,
-        });
+      },
+      (error) => {
+        console.error("Error in realtime subscription:", error);
       }
-    });
-  });
+    );
 
-  return unsubscribe;
+    return unsubscribe;
+  } catch (error) {
+    console.error("Error setting up realtime subscription:", error);
+    return null;
+  }
 };
 
 /**

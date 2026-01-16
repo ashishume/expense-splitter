@@ -72,7 +72,7 @@ const EditExpenseModal = ({
                 damping: 25,
                 stiffness: 300,
               }}
-              className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl sm:w-full max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col pointer-events-auto"
+              className="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl sm:w-full max-h-[80vh] sm:max-h-[75vh] overflow-hidden flex flex-col pointer-events-auto"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Mobile drag handle indicator */}
