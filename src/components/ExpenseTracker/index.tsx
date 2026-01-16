@@ -20,12 +20,11 @@ import {
   subscribeToExpenses,
   unsubscribeFromExpenses,
 } from "../../services/personalExpenseStorage";
-import { isSupabaseConfigured } from "../../config/supabase";
 import { useAuth } from "../useAuth";
 import QuickAddExpense from "./QuickAddExpense";
 import MonthlyStats from "./MonthlyStats";
 import ExpenseList from "./ExpenseList";
-import type { RealtimeChannel } from "@supabase/supabase-js";
+import type { Unsubscribe } from "firebase/firestore";
 
 type ViewMode = "stats" | "list";
 
@@ -118,12 +117,12 @@ const ExpenseTracker = () => {
 
   // Realtime subscription
   useEffect(() => {
-    if (!userId || !isSupabaseConfigured()) return;
+    if (!userId) return;
 
-    let channel: RealtimeChannel | null = null;
+    let unsubscribe: Unsubscribe | null = null;
 
     const setupSubscription = () => {
-      channel = subscribeToExpenses(userId, (payload) => {
+      unsubscribe = subscribeToExpenses(userId, (payload) => {
         const { eventType, expense, oldExpense } = payload;
 
         // Check if the change affects current month
@@ -178,8 +177,8 @@ const ExpenseTracker = () => {
     setupSubscription();
 
     return () => {
-      if (channel) {
-        unsubscribeFromExpenses(channel);
+      if (unsubscribe) {
+        unsubscribeFromExpenses(unsubscribe);
       }
     };
   }, [userId, currentMonth]);

@@ -1,5 +1,4 @@
 // Personal Expense Tracker Types
-// Designed for easy migration to Supabase
 
 export type ExpenseCategory =
   | "food"
@@ -21,7 +20,6 @@ export interface PersonalExpense {
   date: string; // ISO string
   createdAt: string; // ISO string
   updatedAt: string; // ISO string
-  // Future Supabase fields
   userId?: string;
 }
 

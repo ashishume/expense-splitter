@@ -1,7 +1,7 @@
 /**
- * Personal Expense Storage Service - Supabase Only
+ * Personal Expense Storage Service - Firebase Firestore
  *
- * This service uses Supabase for cloud storage with realtime sync.
+ * This service uses Firebase Firestore for cloud storage with realtime sync.
  * Requires user to be signed in.
  */
 
@@ -11,13 +11,25 @@ import type {
   MonthlyStats,
   ExpenseFilterOptions,
 } from "../types/personalExpense";
-import { supabase, isSupabaseConfigured } from "../config/supabase";
-import type {
-  RealtimeChannel,
-  RealtimePostgresChangesPayload,
-} from "@supabase/supabase-js";
+import { db } from "../firebase";
+import {
+  collection,
+  doc,
+  addDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+  writeBatch,
+  Timestamp,
+  type Unsubscribe,
+} from "firebase/firestore";
 
-const TABLE_NAME = "personal_expenses";
+const COLLECTION_NAME = "personal_expenses";
 
 // Helper to format date as YYYY-MM using local timezone
 const formatMonthString = (date: Date): string => {
@@ -26,41 +38,34 @@ const formatMonthString = (date: Date): string => {
   return `${year}-${month}`;
 };
 
-// Supabase row type
-interface PersonalExpenseRow {
-  id: string;
-  user_id: string;
+// Firebase document type
+interface ExpenseDoc {
+  userId: string;
   amount: number;
   description: string;
   category: string;
   date: string;
-  created_at: string;
-  updated_at: string;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
 }
 
-// Convert Supabase row to PersonalExpense
-const rowToExpense = (row: PersonalExpenseRow): PersonalExpense => ({
-  id: row.id,
-  amount: row.amount,
-  description: row.description,
-  category: row.category as ExpenseCategory,
-  date: row.date,
-  createdAt: row.created_at,
-  updatedAt: row.updated_at,
-  userId: row.user_id,
+// Convert Firestore document to PersonalExpense
+const docToExpense = (
+  docId: string,
+  data: ExpenseDoc
+): PersonalExpense => ({
+  id: docId,
+  amount: data.amount,
+  description: data.description,
+  category: data.category as ExpenseCategory,
+  date: data.date,
+  createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+  updatedAt: data.updatedAt?.toDate?.()?.toISOString() || new Date().toISOString(),
+  userId: data.userId,
 });
 
-// Helper to check if service is ready
-const ensureConfigured = () => {
-  if (!isSupabaseConfigured()) {
-    throw new Error(
-      "Supabase is not configured. Please check your environment variables."
-    );
-  }
-};
-
 // ============================================
-// Supabase CRUD Operations
+// Firebase CRUD Operations
 // ============================================
 
 /**
@@ -71,26 +76,30 @@ export const createExpense = async (
   expense: Omit<PersonalExpense, "id" | "createdAt" | "updatedAt">,
   userId: string
 ): Promise<PersonalExpense> => {
-  ensureConfigured();
+  const now = Timestamp.now();
+  
+  const docData: ExpenseDoc = {
+    userId,
+    amount: expense.amount,
+    description: expense.description,
+    category: expense.category,
+    date: expense.date,
+    createdAt: now,
+    updatedAt: now,
+  };
 
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .insert({
-      user_id: userId,
-      amount: expense.amount,
-      description: expense.description,
-      category: expense.category,
-      date: expense.date,
-    })
-    .select()
-    .single();
+  const docRef = await addDoc(collection(db, COLLECTION_NAME), docData);
 
-  if (error) {
-    console.error("Error creating expense in Supabase:", error);
-    throw new Error(error.message);
-  }
-
-  return rowToExpense(data as PersonalExpenseRow);
+  return {
+    id: docRef.id,
+    amount: expense.amount,
+    description: expense.description,
+    category: expense.category as ExpenseCategory,
+    date: expense.date,
+    createdAt: now.toDate().toISOString(),
+    updatedAt: now.toDate().toISOString(),
+    userId,
+  };
 };
 
 /**
@@ -100,48 +109,51 @@ export const getExpenses = async (
   options?: ExpenseFilterOptions,
   userId?: string
 ): Promise<PersonalExpense[]> => {
-  ensureConfigured();
-
   if (!userId) {
     return [];
   }
 
-  let query = supabase
-    .from(TABLE_NAME)
-    .select("*")
-    .eq("user_id", userId)
-    .order("date", { ascending: false });
+  let q = query(
+    collection(db, COLLECTION_NAME),
+    where("userId", "==", userId),
+    orderBy("date", "desc")
+  );
 
   // Filter by month (date starts with YYYY-MM)
   if (options?.month) {
     const startDate = `${options.month}-01`;
     const [year, month] = options.month.split("-").map(Number);
     const lastDay = new Date(year, month, 0).getDate();
-    const endDate = `${options.month}-${lastDay.toString().padStart(2, "0")}`;
+    const endDate = `${options.month}-${lastDay.toString().padStart(2, "0")}T23:59:59.999Z`;
 
-    query = query
-      .gte("date", startDate)
-      .lte("date", endDate + "T23:59:59.999Z");
+    q = query(
+      collection(db, COLLECTION_NAME),
+      where("userId", "==", userId),
+      where("date", ">=", startDate),
+      where("date", "<=", endDate),
+      orderBy("date", "desc")
+    );
   }
 
-  // Filter by category
+  const snapshot = await getDocs(q);
+  let expenses = snapshot.docs.map((doc) =>
+    docToExpense(doc.id, doc.data() as ExpenseDoc)
+  );
+
+  // Filter by category (client-side since Firestore has limitations on compound queries)
   if (options?.category) {
-    query = query.eq("category", options.category);
+    expenses = expenses.filter((e) => e.category === options.category);
   }
 
-  // Filter by search query
+  // Filter by search query (client-side)
   if (options?.searchQuery) {
-    query = query.ilike("description", `%${options.searchQuery}%`);
+    const searchLower = options.searchQuery.toLowerCase();
+    expenses = expenses.filter((e) =>
+      e.description.toLowerCase().includes(searchLower)
+    );
   }
 
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("Error fetching expenses from Supabase:", error);
-    throw new Error(error.message);
-  }
-
-  return ((data || []) as PersonalExpenseRow[]).map(rowToExpense);
+  return expenses;
 };
 
 /**
@@ -151,21 +163,21 @@ export const getExpenseById = async (
   id: string,
   userId: string
 ): Promise<PersonalExpense | null> => {
-  ensureConfigured();
+  const docRef = doc(db, COLLECTION_NAME, id);
+  const docSnap = await getDoc(docRef);
 
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", userId)
-    .single();
-
-  if (error) {
-    console.error("Error fetching expense from Supabase:", error);
+  if (!docSnap.exists()) {
     return null;
   }
 
-  return data ? rowToExpense(data as PersonalExpenseRow) : null;
+  const data = docSnap.data() as ExpenseDoc;
+  
+  // Verify ownership
+  if (data.userId !== userId) {
+    return null;
+  }
+
+  return docToExpense(docSnap.id, data);
 };
 
 /**
@@ -176,32 +188,38 @@ export const updateExpense = async (
   updates: Partial<Omit<PersonalExpense, "id" | "createdAt">>,
   userId: string
 ): Promise<PersonalExpense | null> => {
-  ensureConfigured();
+  const docRef = doc(db, COLLECTION_NAME, id);
+  const docSnap = await getDoc(docRef);
 
-  const updateData: Record<string, unknown> = {
-    updated_at: new Date().toISOString(),
+  if (!docSnap.exists()) {
+    return null;
+  }
+
+  const existingData = docSnap.data() as ExpenseDoc;
+  
+  // Verify ownership
+  if (existingData.userId !== userId) {
+    throw new Error("Unauthorized");
+  }
+
+  const updateData: Partial<ExpenseDoc> & { updatedAt: Timestamp } = {
+    updatedAt: Timestamp.now(),
   };
 
   if (updates.amount !== undefined) updateData.amount = updates.amount;
-  if (updates.description !== undefined)
-    updateData.description = updates.description;
+  if (updates.description !== undefined) updateData.description = updates.description;
   if (updates.category !== undefined) updateData.category = updates.category;
   if (updates.date !== undefined) updateData.date = updates.date;
 
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .update(updateData)
-    .eq("id", id)
-    .eq("user_id", userId)
-    .select()
-    .single();
+  await updateDoc(docRef, updateData);
 
-  if (error) {
-    console.error("Error updating expense in Supabase:", error);
-    throw new Error(error.message);
+  // Fetch updated document
+  const updatedSnap = await getDoc(docRef);
+  if (!updatedSnap.exists()) {
+    return null;
   }
 
-  return data ? rowToExpense(data as PersonalExpenseRow) : null;
+  return docToExpense(updatedSnap.id, updatedSnap.data() as ExpenseDoc);
 };
 
 /**
@@ -211,19 +229,21 @@ export const deleteExpense = async (
   id: string,
   userId: string
 ): Promise<boolean> => {
-  ensureConfigured();
+  const docRef = doc(db, COLLECTION_NAME, id);
+  const docSnap = await getDoc(docRef);
 
-  const { error } = await supabase
-    .from(TABLE_NAME)
-    .delete()
-    .eq("id", id)
-    .eq("user_id", userId);
-
-  if (error) {
-    console.error("Error deleting expense from Supabase:", error);
-    throw new Error(error.message);
+  if (!docSnap.exists()) {
+    return false;
   }
 
+  const data = docSnap.data() as ExpenseDoc;
+  
+  // Verify ownership
+  if (data.userId !== userId) {
+    throw new Error("Unauthorized");
+  }
+
+  await deleteDoc(docRef);
   return true;
 };
 
@@ -268,21 +288,17 @@ export const getMonthlyStats = async (
  * Get available months (for month picker)
  */
 export const getAvailableMonths = async (userId: string): Promise<string[]> => {
-  ensureConfigured();
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    where("userId", "==", userId)
+  );
 
-  const { data, error } = await supabase
-    .from(TABLE_NAME)
-    .select("date")
-    .eq("user_id", userId);
-
-  if (error) {
-    console.error("Error fetching months from Supabase:", error);
-    throw new Error(error.message);
-  }
-
+  const snapshot = await getDocs(q);
   const monthsSet = new Set<string>();
-  ((data || []) as { date: string }[]).forEach((row) => {
-    const month = row.date.substring(0, 7);
+
+  snapshot.docs.forEach((doc) => {
+    const data = doc.data() as ExpenseDoc;
+    const month = data.date.substring(0, 7);
     monthsSet.add(month);
   });
 
@@ -309,40 +325,53 @@ export const importExpenses = async (
   merge = false,
   userId: string
 ): Promise<number> => {
-  ensureConfigured();
+  const imported: PersonalExpense[] = JSON.parse(data);
 
-  try {
-    const imported: PersonalExpense[] = JSON.parse(data);
-
-    if (!Array.isArray(imported)) {
-      throw new Error("Invalid data format");
-    }
-
-    const rows = imported.map((exp) => ({
-      user_id: userId,
-      amount: exp.amount,
-      description: exp.description,
-      category: exp.category,
-      date: exp.date,
-    }));
-
-    if (!merge) {
-      // Delete existing expenses first
-      await supabase.from(TABLE_NAME).delete().eq("user_id", userId);
-    }
-
-    const { error } = await supabase.from(TABLE_NAME).insert(rows);
-
-    if (error) {
-      console.error("Error importing expenses to Supabase:", error);
-      throw new Error(error.message);
-    }
-
-    return rows.length;
-  } catch (error) {
-    console.error("Error importing expenses:", error);
-    throw error;
+  if (!Array.isArray(imported)) {
+    throw new Error("Invalid data format");
   }
+
+  // If not merging, delete existing expenses first
+  if (!merge) {
+    const existingExpenses = await getExpenses(undefined, userId);
+    const batch = writeBatch(db);
+    
+    existingExpenses.forEach((exp) => {
+      const docRef = doc(db, COLLECTION_NAME, exp.id);
+      batch.delete(docRef);
+    });
+    
+    await batch.commit();
+  }
+
+  // Add imported expenses
+  const now = Timestamp.now();
+  let count = 0;
+
+  // Process in batches of 500 (Firestore limit)
+  const batchSize = 500;
+  for (let i = 0; i < imported.length; i += batchSize) {
+    const batch = writeBatch(db);
+    const chunk = imported.slice(i, i + batchSize);
+
+    chunk.forEach((exp) => {
+      const docRef = doc(collection(db, COLLECTION_NAME));
+      batch.set(docRef, {
+        userId,
+        amount: exp.amount,
+        description: exp.description,
+        category: exp.category,
+        date: exp.date,
+        createdAt: now,
+        updatedAt: now,
+      });
+      count++;
+    });
+
+    await batch.commit();
+  }
+
+  return count;
 };
 
 // ============================================
@@ -361,56 +390,48 @@ export type ExpenseChangeCallback = (payload: {
 export const subscribeToExpenses = (
   userId: string,
   callback: ExpenseChangeCallback
-): RealtimeChannel | null => {
-  if (!isSupabaseConfigured()) {
-    console.warn("Supabase not configured, realtime subscriptions disabled");
-    return null;
-  }
+): Unsubscribe | null => {
+  const q = query(
+    collection(db, COLLECTION_NAME),
+    where("userId", "==", userId),
+    orderBy("date", "desc")
+  );
 
-  const channel = supabase
-    .channel(`personal_expenses:${userId}`)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: TABLE_NAME,
-        filter: `user_id=eq.${userId}`,
-      },
-      (payload: RealtimePostgresChangesPayload<PersonalExpenseRow>) => {
-        const eventType = payload.eventType as "INSERT" | "UPDATE" | "DELETE";
-        const newRow = payload.new as
-          | PersonalExpenseRow
-          | Record<string, never>;
-        const oldRow = payload.old as
-          | PersonalExpenseRow
-          | Record<string, never>;
+  const unsubscribe = onSnapshot(q, (snapshot) => {
+    snapshot.docChanges().forEach((change) => {
+      const data = change.doc.data() as ExpenseDoc;
+      const expense = docToExpense(change.doc.id, data);
 
+      if (change.type === "added") {
         callback({
-          eventType,
-          expense:
-            newRow && Object.keys(newRow).length > 0
-              ? rowToExpense(newRow as PersonalExpenseRow)
-              : null,
-          oldExpense:
-            oldRow && Object.keys(oldRow).length > 0
-              ? rowToExpense(oldRow as PersonalExpenseRow)
-              : null,
+          eventType: "INSERT",
+          expense,
+        });
+      } else if (change.type === "modified") {
+        callback({
+          eventType: "UPDATE",
+          expense,
+        });
+      } else if (change.type === "removed") {
+        callback({
+          eventType: "DELETE",
+          expense: null,
+          oldExpense: expense,
         });
       }
-    )
-    .subscribe();
+    });
+  });
 
-  return channel;
+  return unsubscribe;
 };
 
 /**
  * Unsubscribe from realtime expense changes
  */
 export const unsubscribeFromExpenses = async (
-  channel: RealtimeChannel | null
+  unsubscribe: Unsubscribe | null
 ): Promise<void> => {
-  if (channel) {
-    await supabase.removeChannel(channel);
+  if (unsubscribe) {
+    unsubscribe();
   }
 };
