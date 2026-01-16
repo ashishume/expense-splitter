@@ -115,7 +115,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
               </div>
 
               {/* Header */}
-              <div className="flex items-center justify-between px-6 py-5 sm:py-6 border-b border-gray-100">
+              <div className="flex items-center justify-between px-6 py-2 sm:py-6 border-b border-gray-100">
                 <h2 className="text-2xl font-bold text-gray-800">
                   Add Expense
                 </h2>
@@ -129,7 +129,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
 
               <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
                 {/* Amount Input - Big and prominent */}
-                <div className="text-center py-6 sm:py-8 bg-gradient-to-br from-indigo-50 to-purple-50 rounded-2xl">
+                <div className="text-center py-1 sm:py-1 bg-gradient-to-br rounded-2xl">
                   <label className="text-sm font-medium text-gray-500 mb-3 block uppercase tracking-wide">
                     Amount
                   </label>
@@ -150,24 +150,10 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                   </div>
                 </div>
 
-                {/* Description */}
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-gray-600 block">
-                    Description
-                  </label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What did you spend on?"
-                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  />
-                </div>
-
                 {/* Category Selection */}
-                <div className="space-y-3">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-600 block">
-                    Category
+                    Category*
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {EXPENSE_CATEGORIES.map((cat) => (
@@ -175,7 +161,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                         key={cat.id}
                         type="button"
                         onClick={() => setCategory(cat.id)}
-                        className={`flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-medium transition-all ${
+                        className={`flex items-center gap-3 px-1 py-1 rounded-xl text-sm font-medium transition-all ${
                           category === cat.id
                             ? "ring-2 ring-offset-2 shadow-md scale-[1.02]"
                             : "opacity-70 hover:opacity-100 hover:shadow-sm"
@@ -194,7 +180,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                 </div>
 
                 {/* Date */}
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <label className="text-sm font-medium text-gray-600 block">
                     Date
                   </label>
@@ -207,6 +193,19 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                       className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                     />
                   </div>
+                </div>
+                {/* Description */}
+                <div className="space-y-1">
+                  <label className="text-sm font-medium text-gray-600 block">
+                    Description (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="What did you spend on?"
+                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
                 </div>
 
                 {/* Submit Button */}
