@@ -61,9 +61,9 @@ export const EXPENSE_CATEGORIES: CategoryConfig[] = [
     bgColor: "#f5f3ff",
   },
   {
-    id: "utilities",
-    label: "Utilities",
-    emoji: "💡",
+    id: "groceries",
+    label: "Groceries",
+    emoji: "🛒",
     color: "#eab308",
     bgColor: "#fefce8",
   },
@@ -82,13 +82,6 @@ export const EXPENSE_CATEGORIES: CategoryConfig[] = [
     color: "#6366f1",
     bgColor: "#eef2ff",
   },
-  // {
-  //   id: "groceries",
-  //   label: "Groceries",
-  //   emoji: "🛒",
-  //   color: "#22c55e",
-  //   bgColor: "#f0fdf4",
-  // },
   {
     id: "other",
     label: "Other",

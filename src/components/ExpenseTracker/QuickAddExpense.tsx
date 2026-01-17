@@ -106,7 +106,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[80vh] sm:max-h-[75vh] overflow-y-auto"
+              className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[80vh] sm:max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Handle bar for mobile */}
@@ -127,111 +127,113 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 sm:p-8 space-y-8">
-                {/* Amount Input - Big and prominent */}
-                <div className="text-center py-1 sm:py-1 bg-gradient-to-br rounded-2xl">
-                  <label className="text-sm font-medium text-gray-500 mb-3 block uppercase tracking-wide">
-                    Amount
-                  </label>
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-4xl sm:text-5xl font-bold text-indigo-400">
-                      ₹
-                    </span>
-                    <input
-                      ref={amountInputRef}
-                      type="number"
-                      inputMode="decimal"
-                      step="0.01"
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      placeholder="0.00"
-                      className="text-5xl sm:text-6xl font-bold text-center w-48 sm:w-56 bg-transparent border-none outline-none text-gray-800 placeholder:text-gray-300"
-                    />
-                  </div>
-                </div>
-
-                {/* Category Selection */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-600 block">
-                    Category*
-                  </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {EXPENSE_CATEGORIES.map((cat) => (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        onClick={() => setCategory(cat.id)}
-                        className={`flex items-center gap-3 px-1 py-1 rounded-xl text-sm font-medium transition-all ${
-                          category === cat.id
-                            ? "ring-2 ring-offset-2 shadow-md scale-[1.02]"
-                            : "opacity-70 hover:opacity-100 hover:shadow-sm"
-                        }`}
-                        style={{
-                          backgroundColor: cat.bgColor,
-                          color: cat.color,
-                          ...(category === cat.id && { ringColor: cat.color }),
-                        }}
-                      >
-                        <span className="text-xl">{cat.emoji}</span>
-                        <span className="truncate">{cat.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Date */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-600 block">
-                    Date
-                  </label>
-                  <div className="relative">
-                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
-                    <input
-                      type="date"
-                      value={date}
-                      onChange={(e) => setDate(e.target.value)}
-                      className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                    />
-                  </div>
-                </div>
-                {/* Description */}
-                <div className="space-y-1">
-                  <label className="text-sm font-medium text-gray-600 block">
-                    Description (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="What did you spend on?"
-                    className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                  />
-                </div>
-
-                {/* Submit Button */}
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl hover:from-indigo-600 hover:to-purple-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Adding...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-2xl">
-                        {selectedCategory?.emoji}
+              <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+                {/* Scrollable content area */}
+                <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-8">
+                  {/* Amount Input - Big and prominent */}
+                  <div className="text-center py-1 sm:py-1 bg-gradient-to-br rounded-2xl">
+                    <label className="text-sm font-medium text-gray-500 mb-3 block uppercase tracking-wide">
+                      Amount
+                    </label>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-4xl sm:text-5xl font-bold text-indigo-400">
+                        ₹
                       </span>
-                      <span>Add Expense</span>
-                    </>
-                  )}
-                </button>
-              </form>
+                      <input
+                        ref={amountInputRef}
+                        type="number"
+                        inputMode="decimal"
+                        step="0.01"
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        placeholder="0.00"
+                        className="text-5xl sm:text-6xl font-bold text-center w-48 sm:w-56 bg-transparent border-none outline-none text-gray-800 placeholder:text-gray-300"
+                      />
+                    </div>
+                  </div>
 
-              {/* Safe area padding for iPhone */}
-              <div className="h-8 sm:h-4" />
+                  {/* Category Selection */}
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-600 block">
+                      Category*
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {EXPENSE_CATEGORIES.map((cat) => (
+                        <button
+                          key={cat.id}
+                          type="button"
+                          onClick={() => setCategory(cat.id)}
+                          className={`flex items-center gap-3 px-1 py-1 rounded-xl text-sm font-medium transition-all ${
+                            category === cat.id
+                              ? "ring-2 ring-offset-2 shadow-md scale-[1.02]"
+                              : "opacity-70 hover:opacity-100 hover:shadow-sm"
+                          }`}
+                          style={{
+                            backgroundColor: cat.bgColor,
+                            color: cat.color,
+                            ...(category === cat.id && { ringColor: cat.color }),
+                          }}
+                        >
+                          <span className="text-xl">{cat.emoji}</span>
+                          <span className="truncate">{cat.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Date */}
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-600 block">
+                      Date
+                    </label>
+                    <div className="relative">
+                      <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                      <input
+                        type="date"
+                        value={date}
+                        onChange={(e) => setDate(e.target.value)}
+                        className="w-full pl-12 pr-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                  </div>
+                  {/* Description */}
+                  <div className="space-y-1">
+                    <label className="text-sm font-medium text-gray-600 block">
+                      Description (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="What did you spend on?"
+                      className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl text-gray-800 text-lg placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+
+                {/* Sticky Submit Button */}
+                <div className="sticky bottom-0 bg-white border-t border-gray-100 px-6 sm:px-8 py-4 pb-8 sm:pb-6">
+                  <button
+                    type="submit"
+                    disabled={isSubmitting}
+                    className="w-full py-5 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-lg font-semibold rounded-2xl shadow-lg hover:shadow-xl hover:from-indigo-600 hover:to-purple-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Adding...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-2xl">
+                          {selectedCategory?.emoji}
+                        </span>
+                        <span>Add Expense</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </form>
             </motion.div>
           </motion.div>
         )}
