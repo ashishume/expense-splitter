@@ -415,6 +415,7 @@ const ExpenseTracker = () => {
               <MonthlyStats
                 stats={stats}
                 previousStats={previousStats || undefined}
+                expenses={expenses}
               />
             ) : (
               <ExpenseList

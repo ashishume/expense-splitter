@@ -4,11 +4,13 @@ import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import {
   EXPENSE_CATEGORIES,
   type MonthlyStats as MonthlyStatsType,
+  type PersonalExpense,
 } from "../../types/personalExpense";
 
 interface MonthlyStatsProps {
   stats: MonthlyStatsType;
   previousStats?: MonthlyStatsType;
+  expenses?: PersonalExpense[];
 }
 
 const formatCurrency = (amount: number) => {
@@ -19,7 +21,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const MonthlyStats = ({ stats, previousStats }: MonthlyStatsProps) => {
+const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps) => {
   // Calculate percentage change from previous month
   const percentChange = useMemo(() => {
     if (!previousStats || previousStats.total === 0) return null;
@@ -45,6 +47,36 @@ const MonthlyStats = ({ stats, previousStats }: MonthlyStatsProps) => {
       { month: "long", year: "numeric" }
     );
   }, [stats.month]);
+
+  // Find the biggest single expense
+  const biggestExpense = useMemo(() => {
+    if (expenses.length === 0) return null;
+    return expenses.reduce((max, exp) => exp.amount > max.amount ? exp : max, expenses[0]);
+  }, [expenses]);
+
+  // Calculate daily average (based on days elapsed or days in month)
+  const dailyAverage = useMemo(() => {
+    const [year, month] = stats.month.split("-").map(Number);
+    const today = new Date();
+    const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
+    
+    let daysToCount: number;
+    if (isCurrentMonth) {
+      // For current month, use days elapsed
+      daysToCount = today.getDate();
+    } else {
+      // For past months, use total days in that month
+      daysToCount = new Date(year, month, 0).getDate();
+    }
+    
+    return stats.total / Math.max(daysToCount, 1);
+  }, [stats.total, stats.month]);
+
+  // Find the category for the biggest expense
+  const biggestExpenseCategory = useMemo(() => {
+    if (!biggestExpense) return null;
+    return EXPENSE_CATEGORIES.find(c => c.id === biggestExpense.category);
+  }, [biggestExpense]);
 
   return (
     <div className="space-y-6">
@@ -163,13 +195,28 @@ const MonthlyStats = ({ stats, previousStats }: MonthlyStatsProps) => {
         transition={{ delay: 0.2 }}
         className="grid grid-cols-2 gap-3"
       >
-        {/* Average per expense */}
+        {/* Biggest expense */}
         <div className="bg-white rounded-xl p-4 shadow-md">
-          <p className="text-xs text-gray-500 mb-1">Avg per expense</p>
+          <p className="text-xs text-gray-500 mb-1">Biggest expense</p>
+          {biggestExpense ? (
+            <div className="flex items-center gap-2">
+              <span className="text-lg">{biggestExpenseCategory?.emoji}</span>
+              <span className="text-xl font-bold text-gray-800">
+                {formatCurrency(biggestExpense.amount)}
+              </span>
+            </div>
+          ) : (
+            <p className="text-gray-400">-</p>
+          )}
+        </div>
+
+        {/* Daily average */}
+        <div className="bg-white rounded-xl p-4 shadow-md">
+          <p className="text-xs text-gray-500 mb-1">Daily average</p>
           <p className="text-xl font-bold text-gray-800">
             {stats.count > 0
-              ? formatCurrency(stats.total / stats.count)
-              : "INR 0.00"}
+              ? formatCurrency(dailyAverage)
+              : "₹0.00"}
           </p>
         </div>
 
@@ -186,6 +233,17 @@ const MonthlyStats = ({ stats, previousStats }: MonthlyStatsProps) => {
           ) : (
             <p className="text-gray-400">-</p>
           )}
+        </div>
+
+        {/* Total transactions */}
+        <div className="bg-white rounded-xl p-4 shadow-md">
+          <p className="text-xs text-gray-500 mb-1">Transactions</p>
+          <p className="text-xl font-bold text-gray-800">
+            {stats.count}
+            <span className="text-sm font-normal text-gray-500 ml-1">
+              this month
+            </span>
+          </p>
         </div>
       </motion.div>
     </div>
