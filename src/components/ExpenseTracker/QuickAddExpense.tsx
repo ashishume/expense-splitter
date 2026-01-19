@@ -106,7 +106,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[80vh] sm:max-h-[75vh] flex flex-col"
+              className="w-full sm:max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden max-h-[95vh] sm:max-h-[75vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Handle bar for mobile */}
@@ -163,9 +163,9 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                           key={cat.id}
                           type="button"
                           onClick={() => setCategory(cat.id)}
-                          className={`flex items-center gap-3 px-1 py-1 rounded-xl text-sm font-medium transition-all ${
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                             category === cat.id
-                              ? "ring-2 ring-offset-2 shadow-md scale-[1.02]"
+                              ? "ring-2 ring-offset-2 shadow-xl scale-[1.02]"
                               : "opacity-70 hover:opacity-100 hover:shadow-sm"
                           }`}
                           style={{
