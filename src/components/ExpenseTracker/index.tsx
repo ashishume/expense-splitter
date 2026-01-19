@@ -8,7 +8,6 @@ import {
   BarChart3,
   List,
   Cloud,
-  LogIn,
 } from "lucide-react";
 
 import type {
@@ -40,7 +39,7 @@ const formatMonthString = (date: Date): string => {
 
 const ExpenseTracker = () => {
   const navigate = useNavigate();
-  const { user, signInWithGoogle } = useAuth();
+  const { user } = useAuth();
   const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [currentMonth, setCurrentMonth] = useState(() =>
     formatMonthString(new Date())
