@@ -22,7 +22,7 @@ const CATEGORY_KEYWORDS: Record<ExpenseCategory, string[]> = {
   ],
   transport: [
     "transport", "transportation", "travel", "taxi", "uber", "ola", "rapido", "bus", "train", "metro", "subway",
-    "fuel", "petrol", "diesel", "gas", "gasoline", "cab", "auto", "rickshaw", "auto rickshaw", "bike", "bicycle",
+    "cab", "auto", "rickshaw", "auto rickshaw", "bike", "bicycle",
     "parking", "toll", "fare", "commute", "commuting", "ride", "vehicle", "car", "scooter", "motorcycle", "bike ride",
     "two wheeler", "four wheeler", "rickshaw", "e-rickshaw", "shared", "pool", "car pool", "carpool", "shared ride",
     "metro card", "bus pass", "train ticket", "flight ticket", "airport", "railway", "station", "depot", "garage",
@@ -31,7 +31,6 @@ const CATEGORY_KEYWORDS: Record<ExpenseCategory, string[]> = {
   shopping: [
     "shopping", "shop", "shopped", "buy", "bought", "purchase", "purchased", "mall", "store", "stores", "market",
     "clothes", "clothing", "apparel", "garments", "dress", "shirt", "pants", "jeans", "shoes", "footwear", "sneakers",
-    "electronics", "electronic", "gadget", "gadgets", "phone", "mobile", "smartphone", "laptop", "computer", "tablet",
     "accessories", "fashion", "retail", "amazon", "flipkart", "myntra", "nykaa", "online shopping", "e-commerce",
     "watch", "watches", "jewelry", "jewellery", "bag", "bags", "wallet", "perfume", "cosmetics", "makeup", "skincare",
     "books", "stationery", "gift", "gifts", "present", "presents", "toys", "games", "board games", "video games"
@@ -86,6 +85,24 @@ const CATEGORY_KEYWORDS: Record<ExpenseCategory, string[]> = {
     "detergent", "soap", "shampoo", "toothpaste", "toilet paper", "tissue", "napkins", "sanitary", "pads", "diapers",
     "baby", "baby products", "kitchen", "kitchen items", "utensils", "cookware", "bigbasket", "grofers", "zepto",
     "blinkit", "dunzo", "instamart", "swiggy instamart", "fresh", "fresh produce", "organic", "local market"
+  ],
+  fuel: [
+    "fuel", "petrol", "diesel", "gas", "gasoline", "cng", "lpg", "refuel", "refuelling", "refueling", "filling",
+    "petrol pump", "gas station", "fuel station", "filling station", "petrol station", "diesel station",
+    "fuel cost", "petrol cost", "diesel cost", "gas cost", "fuel expense", "petrol expense", "diesel expense",
+    "fuel bill", "petrol bill", "diesel bill", "fuel charge", "petrol charge", "diesel charge", "fuel payment",
+    "fuel tank", "petrol tank", "diesel tank", "fuel top up", "petrol top up", "diesel top up", "fuel fill",
+    "petrol fill", "diesel fill", "fuel up", "gas up", "tank", "tanking", "fueling", "fuelling"
+  ],
+  electronics: [
+    "electronics", "electronic", "gadget", "gadgets", "device", "devices", "phone", "mobile", "smartphone", "smartphones",
+    "laptop", "laptops", "computer", "computers", "pc", "desktop", "tablet", "tablets", "ipad", "iphone", "android",
+    "headphones", "earphones", "earbuds", "speakers", "bluetooth", "wireless", "charger", "charging", "cable", "cables",
+    "usb", "usb cable", "power bank", "powerbank", "battery", "batteries", "screen", "display", "monitor", "tv",
+    "television", "smart tv", "led tv", "lcd tv", "camera", "cameras", "dslr", "mirrorless", "action camera",
+    "smartwatch", "fitness tracker", "watch", "smart watch", "apple watch", "fitbit", "garmin", "keyboard", "mouse",
+    "webcam", "microphone", "mic", "printer", "scanner", "router", "modem", "wifi router", "smart home", "iot",
+    "amazon", "flipkart", "electronics store", "tech", "technology", "tech product", "tech gadget", "electronic item"
   ],
   other: [
     "other", "misc", "miscellaneous", "misc expenses", "various", "different", "unexpected", "one-time", "one time",

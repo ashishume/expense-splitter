@@ -10,6 +10,8 @@ export type ExpenseCategory =
   | "travel"
   | "subscriptions"
   | "groceries"
+  | "fuel"
+  | "electronics"
   | "other";
 
 export interface PersonalExpense {
@@ -81,6 +83,20 @@ export const EXPENSE_CATEGORIES: CategoryConfig[] = [
     emoji: "📱",
     color: "#6366f1",
     bgColor: "#eef2ff",
+  },
+  {
+    id: "fuel",
+    label: "Fuel",
+    emoji: "⛽",
+    color: "#f59e0b",
+    bgColor: "#fef3c7",
+  },
+  {
+    id: "electronics",
+    label: "Electronics",
+    emoji: "💻",
+    color: "#06b6d4",
+    bgColor: "#cffafe",
   },
   {
     id: "other",

@@ -305,6 +305,8 @@ export const getMonthlyStats = async (
     travel: 0,
     subscriptions: 0,
     groceries: 0,
+    fuel: 0,
+    electronics: 0,
     other: 0,
   };
 
