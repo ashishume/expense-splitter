@@ -27,6 +27,11 @@ import {
   Timestamp,
   type Unsubscribe,
 } from "firebase/firestore";
+import {
+  logCreateActivity,
+  logUpdateActivity,
+  logDeleteActivity,
+} from "./personalExpenseActivityLog";
 
 const COLLECTION_NAME = "personal_expenses";
 
@@ -89,7 +94,7 @@ export const createExpense = async (
 
     const docRef = await addDoc(collection(db, COLLECTION_NAME), docData);
 
-    return {
+    const createdExpense: PersonalExpense = {
       id: docRef.id,
       amount: expense.amount,
       description: expense.description,
@@ -99,6 +104,13 @@ export const createExpense = async (
       updatedAt: now.toDate().toISOString(),
       userId,
     };
+
+    // Log activity
+    logCreateActivity(createdExpense, userId).catch((err) =>
+      console.error("Failed to log create activity:", err)
+    );
+
+    return createdExpense;
   } catch (error) {
     console.error("Error creating expense in Firebase:", error);
     throw error;
@@ -232,7 +244,15 @@ export const updateExpense = async (
     return null;
   }
 
-  return docToExpense(updatedSnap.id, updatedSnap.data() as ExpenseDoc);
+  const updatedExpense = docToExpense(updatedSnap.id, updatedSnap.data() as ExpenseDoc);
+  const oldExpense = docToExpense(id, existingData);
+
+  // Log activity
+  logUpdateActivity(id, oldExpense, updatedExpense, userId).catch(
+    (err) => console.error("Failed to log update activity:", err)
+  );
+
+  return updatedExpense;
 };
 
 /**
@@ -255,6 +275,12 @@ export const deleteExpense = async (
   if (data.userId !== userId) {
     throw new Error("Unauthorized");
   }
+
+  // Log activity before deleting
+  const expenseToDelete = docToExpense(docRef.id, data);
+  logDeleteActivity(expenseToDelete, userId).catch((err) =>
+    console.error("Failed to log delete activity:", err)
+  );
 
   await deleteDoc(docRef);
   return true;

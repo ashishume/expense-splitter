@@ -39,8 +39,8 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
     // Check if we got at least amount
     if (parsed.amount === null) {
       toast.error(
-        `Couldn't understand the amount. Try saying something like: "Yesterday I spent 200 rupees in groceries"`,
-        { duration: 5000 }
+        `Couldn't understand the amount. Try saying something like: "Today I spent 200 rupees in groceries"`,
+        { duration: 10000 }
       );
       return;
     }
@@ -227,8 +227,8 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
           <motion.button
             onClick={isListening ? stopListening : startListening}
             className={`w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:shadow-xl active:scale-95 transition-all ${isListening
-                ? "bg-gradient-to-br from-red-500 to-red-600 text-white animate-pulse"
-                : "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
+              ? "bg-gradient-to-br from-red-500 to-red-600 text-white animate-pulse"
+              : "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
               }`}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -360,7 +360,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
             </div>
             <div>
               <p className="font-semibold text-red-900">Listening...</p>
-              <p className="text-sm text-red-700">Speak your expense details</p>
+              <p className="text-sm text-red-700">Speak your expense details like "Today I spent 200 rupees in groceries"</p>
             </div>
           </motion.div>
         )}

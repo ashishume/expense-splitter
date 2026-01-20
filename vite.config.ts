@@ -33,6 +33,10 @@ export default defineConfig({
       Expires: "0",
     },
   },
+  // Explicitly enable source maps in dev mode (enabled by default, but explicit is better)
+  css: {
+    devSourcemap: true,
+  },
   // Ensure service worker and manifest are copied to build output
   publicDir: "public",
   // Fix Firebase package resolution
@@ -43,5 +47,7 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ["firebase/app", "firebase/firestore", "firebase/auth"],
+    // Force re-optimization when dependencies change
+    force: false, // Set to true if you continue having issues
   },
 });

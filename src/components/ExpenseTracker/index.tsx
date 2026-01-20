@@ -7,6 +7,7 @@ import {
   ChevronRight,
   BarChart3,
   List,
+  Clock,
   Cloud,
 } from "lucide-react";
 
@@ -24,11 +25,12 @@ import { useAuth } from "../useAuth";
 import QuickAddExpense from "./QuickAddExpense";
 import MonthlyStats from "./MonthlyStats";
 import ExpenseList from "./ExpenseList";
+import ActivityFeed from "./ActivityFeed";
 import type { Unsubscribe } from "firebase/firestore";
 import SigninButton from "./SigninButton";
 import MonthPicker from "./MonthPicker";
 
-type ViewMode = "stats" | "list";
+type ViewMode = "stats" | "list" | "activity";
 
 // Helper to format date as YYYY-MM using local timezone
 const formatMonthString = (date: Date): string => {
@@ -290,6 +292,7 @@ const ExpenseTracker = () => {
                   ? "bg-white shadow text-indigo-600"
                   : "text-gray-500"
                   }`}
+                title="Statistics"
               >
                 <BarChart3 className="w-5 h-5" />
               </button>
@@ -299,8 +302,19 @@ const ExpenseTracker = () => {
                   ? "bg-white shadow text-indigo-600"
                   : "text-gray-500"
                   }`}
+                title="Expense List"
               >
                 <List className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode("activity")}
+                className={`p-2 rounded-md transition-all ${viewMode === "activity"
+                  ? "bg-white shadow text-indigo-600"
+                  : "text-gray-500"
+                  }`}
+                title="Activity Feed"
+              >
+                <Clock className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -361,6 +375,8 @@ const ExpenseTracker = () => {
                 previousStats={previousStats || undefined}
                 expenses={expenses}
               />
+            ) : viewMode === "activity" ? (
+              <ActivityFeed userId={userId} />
             ) : (
               <ExpenseList
                 expenses={expenses}

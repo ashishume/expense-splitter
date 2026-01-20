@@ -105,6 +105,15 @@ const ExpenseList = ({
     groupedExpenses[dateKey].push(expense);
   });
 
+  // Sort expenses within each day by createdAt (latest first)
+  Object.keys(groupedExpenses).forEach((dateKey) => {
+    groupedExpenses[dateKey].sort((a, b) => {
+      const timeA = new Date(a.createdAt || a.date).getTime();
+      const timeB = new Date(b.createdAt || b.date).getTime();
+      return timeB - timeA; // Latest first
+    });
+  });
+
   const dateKeys = Object.keys(groupedExpenses).sort(
     (a, b) => new Date(b).getTime() - new Date(a).getTime()
   );

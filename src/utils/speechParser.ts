@@ -9,18 +9,92 @@ export interface ParsedExpense {
 
 /**
  * Maps category keywords to category IDs
+ * Expanded with many common terms and variations for better speech recognition
  */
 const CATEGORY_KEYWORDS: Record<ExpenseCategory, string[]> = {
-  food: ["food", "dining", "restaurant", "lunch", "dinner", "breakfast", "meal", "eat", "cafe"],
-  transport: ["transport", "travel", "taxi", "uber", "ola", "bus", "train", "metro", "fuel", "petrol", "diesel", "cab"],
-  shopping: ["shopping", "shop", "buy", "purchase", "mall", "store"],
-  entertainment: ["entertainment", "movie", "cinema", "theater", "game", "games", "fun"],
-  utilities: ["utilities", "electricity", "water", "gas", "internet", "wifi", "phone", "bill", "bills"],
-  health: ["health", "medical", "medicine", "doctor", "hospital", "pharmacy", "clinic"],
-  travel: ["travel", "trip", "vacation", "hotel", "flight", "airplane"],
-  subscriptions: ["subscription", "subscriptions", "netflix", "spotify", "prime", "youtube", "premium"],
-  groceries: ["groceries", "grocery", "vegetables", "fruits", "supermarket", "mart"],
-  other: ["other", "misc", "miscellaneous"],
+  food: [
+    "food", "dining", "restaurant", "lunch", "dinner", "breakfast", "meal", "meals", "eat", "eating", "cafe", "café",
+    "snack", "snacks", "pizza", "burger", "burgers", "coffee", "tea", "drink", "drinks", "beverage", "beverages",
+    "fast food", "takeout", "take away", "delivery", "zomato", "swiggy", "uber eats", "food delivery", "foodpanda",
+    "tiffin", "tiffin service", "mess", "mess food", "canteen", "stall", "street food", "chaat", "sweets", "dessert",
+    "ice cream", "juice", "smoothie", "shake", "biryani", "curry", "thali", "combo", "buffet", "brunch", "supper",
+    "appetizer", "starter", "main course", "side dish", "beverage", "soft drink", "cold drink", "hot drink"
+  ],
+  transport: [
+    "transport", "transportation", "travel", "taxi", "uber", "ola", "rapido", "bus", "train", "metro", "subway",
+    "fuel", "petrol", "diesel", "gas", "gasoline", "cab", "auto", "rickshaw", "auto rickshaw", "bike", "bicycle",
+    "parking", "toll", "fare", "commute", "commuting", "ride", "vehicle", "car", "scooter", "motorcycle", "bike ride",
+    "two wheeler", "four wheeler", "rickshaw", "e-rickshaw", "shared", "pool", "car pool", "carpool", "shared ride",
+    "metro card", "bus pass", "train ticket", "flight ticket", "airport", "railway", "station", "depot", "garage",
+    "service", "repair", "maintenance", "insurance", "registration", "rc", "puc", "pollution", "emission"
+  ],
+  shopping: [
+    "shopping", "shop", "shopped", "buy", "bought", "purchase", "purchased", "mall", "store", "stores", "market",
+    "clothes", "clothing", "apparel", "garments", "dress", "shirt", "pants", "jeans", "shoes", "footwear", "sneakers",
+    "electronics", "electronic", "gadget", "gadgets", "phone", "mobile", "smartphone", "laptop", "computer", "tablet",
+    "accessories", "fashion", "retail", "amazon", "flipkart", "myntra", "nykaa", "online shopping", "e-commerce",
+    "watch", "watches", "jewelry", "jewellery", "bag", "bags", "wallet", "perfume", "cosmetics", "makeup", "skincare",
+    "books", "stationery", "gift", "gifts", "present", "presents", "toys", "games", "board games", "video games"
+  ],
+  entertainment: [
+    "entertainment", "movie", "movies", "cinema", "theater", "theatre", "game", "games", "fun", "recreation",
+    "streaming", "music", "concert", "show", "shows", "party", "parties", "celebration", "celebrations", "outing",
+    "outings", "hangout", "hangouts", "pub", "bar", "alcohol", "drinks", "beer", "wine", "cocktail", "sports",
+    "cricket", "football", "soccer", "basketball", "tennis", "badminton", "gym", "fitness", "yoga", "dance",
+    "karaoke", "bowling", "arcade", "amusement", "park", "zoo", "museum", "exhibition", "fair", "festival",
+    "event", "events", "ticket", "tickets", "booking", "reservation", "netflix", "prime video", "disney", "hotstar"
+  ],
+  utilities: [
+    "utilities", "utility", "electricity", "electric", "power", "water", "gas", "lpg", "cng", "internet", "wifi",
+    "wi-fi", "phone", "mobile", "telephone", "bill", "bills", "mobile bill", "phone bill", "electric bill",
+    "water bill", "gas bill", "internet bill", "broadband", "cable", "tv", "television", "dth", "dish tv", "tata sky",
+    "recharge", "prepaid", "postpaid", "data", "calling", "sms", "plan", "tariff", "rent", "maintenance",
+    "society", "society charges", "maintenance charges", "security", "guard", "cleaning", "housekeeping", "maid",
+    "domestic help", "cook", "driver", "salary", "wages", "service charge", "service tax", "gst"
+  ],
+  health: [
+    "health", "medical", "medicine", "medicines", "medication", "drugs", "doctor", "doctors", "hospital", "hospitals",
+    "pharmacy", "pharmacies", "clinic", "clinics", "fitness", "gym", "yoga", "pilates", "workout", "exercise",
+    "medication", "prescription", "tablets", "pills", "vitamins", "supplements", "checkup", "check-up", "test",
+    "tests", "lab", "laboratory", "diagnostic", "diagnosis", "therapy", "treatment", "surgery", "operation",
+    "dental", "dentist", "eye", "optometrist", "glasses", "spectacles", "lens", "contact lens", "physiotherapy",
+    "massage", "spa", "salon", "haircut", "hair", "beauty", "parlor", "parlour", "skincare", "facial", "manicure",
+    "pedicure", "insurance", "health insurance", "medical insurance"
+  ],
+  travel: [
+    "travel", "travelling", "trip", "trips", "vacation", "holiday", "holidays", "hotel", "hotels", "flight", "flights",
+    "airplane", "airline", "airport", "tourism", "sightseeing", "booking", "bookings", "reservation", "reservations",
+    "luggage", "baggage", "visa", "passport", "tour", "tours", "journey", "journeys", "commute", "commuting",
+    "train", "railway", "rail", "bus", "coach", "car rental", "rental car", "taxi", "cab", "uber", "ola", "accommodation",
+    "stay", "staying", "lodging", "resort", "resorts", "hostel", "hostels", "backpacking", "sightseeing", "tourist",
+    "guide", "tickets", "travel tickets", "package", "tour package", "travel package", "cruise", "cruises"
+  ],
+  subscriptions: [
+    "subscription", "subscriptions", "netflix", "spotify", "prime", "amazon prime", "youtube", "youtube premium",
+    "premium", "disney", "disney plus", "hotstar", "disney hotstar", "zee5", "sony liv", "voot", "alt balaji",
+    "music", "apple music", "gaana", "wynk", "jio saavn", "hungama", "podcast", "podcasts", "audible", "kindle",
+    "newspaper", "newspapers", "magazine", "magazines", "newsletter", "newsletters", "software", "saas", "cloud",
+    "storage", "dropbox", "google drive", "icloud", "onedrive", "adobe", "creative cloud", "microsoft", "office",
+    "office 365", "gaming", "xbox", "playstation", "nintendo", "steam", "epic games", "gaming subscription"
+  ],
+  groceries: [
+    "groceries", "grocery", "vegetables", "veggies", "fruits", "supermarket", "mart", "store", "shopping", "provisions",
+    "daily", "daily needs", "household", "household items", "essentials", "staples", "rice", "wheat", "flour", "atta",
+    "dal", "pulses", "lentils", "spices", "masala", "oil", "cooking oil", "ghee", "butter", "milk", "dairy", "curd",
+    "yogurt", "cheese", "eggs", "chicken", "meat", "fish", "seafood", "bread", "biscuits", "cookies", "snacks",
+    "chips", "namkeen", "pickle", "sauce", "ketchup", "mayonnaise", "jam", "honey", "sugar", "salt", "tea", "coffee",
+    "detergent", "soap", "shampoo", "toothpaste", "toilet paper", "tissue", "napkins", "sanitary", "pads", "diapers",
+    "baby", "baby products", "kitchen", "kitchen items", "utensils", "cookware", "bigbasket", "grofers", "zepto",
+    "blinkit", "dunzo", "instamart", "swiggy instamart", "fresh", "fresh produce", "organic", "local market"
+  ],
+  other: [
+    "other", "misc", "miscellaneous", "misc expenses", "various", "different", "unexpected", "one-time", "one time",
+    "special", "occasion", "emergency", "emergencies", "donation", "donations", "charity", "tip", "tips", "gratuity",
+    "service charge", "fine", "fines", "penalty", "penalties", "tax", "taxes", "gst", "service tax", "fee", "fees",
+    "charges", "bank charges", "atm", "withdrawal", "transfer", "loan", "emi", "installment", "interest", "investment",
+    "savings", "deposit", "withdrawal", "cash", "payment", "payments", "transaction", "transactions", "expense",
+    "expenses", "spending", "spend", "spent", "cost", "costs", "price", "prices", "amount", "money", "rupees", "rs"
+  ],
 };
 
 /**
@@ -88,6 +162,17 @@ function extractCategory(text: string): ExpenseCategory | null {
 }
 
 /**
+ * Format date to YYYY-MM-DD in local timezone (not UTC)
+ * This prevents timezone issues that cause dates to shift by one day
+ */
+function formatDateLocal(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Extract date from text
  * Supports: "yesterday", "today", "tomorrow", "2 days ago", etc.
  */
@@ -100,19 +185,19 @@ function extractDate(text: string): string | null {
   if (lowerText.includes("yesterday")) {
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    return yesterday.toISOString().split("T")[0];
+    return formatDateLocal(yesterday);
   }
 
   // Today
   if (lowerText.includes("today")) {
-    return today.toISOString().split("T")[0];
+    return formatDateLocal(today);
   }
 
   // Tomorrow
   if (lowerText.includes("tomorrow")) {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().split("T")[0];
+    return formatDateLocal(tomorrow);
   }
 
   // "X days ago" pattern
@@ -121,7 +206,7 @@ function extractDate(text: string): string | null {
     const days = parseInt(daysAgoMatch[1], 10);
     const date = new Date(today);
     date.setDate(date.getDate() - days);
-    return date.toISOString().split("T")[0];
+    return formatDateLocal(date);
   }
 
   // "X days back" pattern
@@ -130,7 +215,7 @@ function extractDate(text: string): string | null {
     const days = parseInt(daysBackMatch[1], 10);
     const date = new Date(today);
     date.setDate(date.getDate() - days);
-    return date.toISOString().split("T")[0];
+    return formatDateLocal(date);
   }
 
   // Try to parse specific dates (e.g., "january 5", "5th january", "15th of dec", "15th of december")
@@ -153,12 +238,13 @@ function extractDate(text: string): string | null {
     if (ofPattern) {
       const day = parseInt(ofPattern[1], 10);
       if (day >= 1 && day <= 31) {
-        const date = new Date(today.getFullYear(), i, day + 1);
+        const date = new Date(today.getFullYear(), i, day);
+        date.setHours(0, 0, 0, 0);
         // If date is in the future, use previous year
         if (date > today) {
           date.setFullYear(date.getFullYear() - 1);
         }
-        return date.toISOString().split("T")[0];
+        return formatDateLocal(date);
       }
     }
 
@@ -168,11 +254,12 @@ function extractDate(text: string): string | null {
       const day = parseInt(dayMatch[1] || dayMatch[2], 10);
       if (day >= 1 && day <= 31) {
         const date = new Date(today.getFullYear(), i, day);
+        date.setHours(0, 0, 0, 0);
         // If date is in the future, use previous year
         if (date > today) {
           date.setFullYear(date.getFullYear() - 1);
         }
-        return date.toISOString().split("T")[0];
+        return formatDateLocal(date);
       }
     }
   }
@@ -187,11 +274,12 @@ function extractDate(text: string): string | null {
       const day = parseInt(ofPattern[1], 10);
       if (day >= 1 && day <= 31) {
         const date = new Date(today.getFullYear(), i, day);
+        date.setHours(0, 0, 0, 0);
         // If date is in the future, use previous year
         if (date > today) {
           date.setFullYear(date.getFullYear() - 1);
         }
-        return date.toISOString().split("T")[0];
+        return formatDateLocal(date);
       }
     }
 
@@ -201,11 +289,12 @@ function extractDate(text: string): string | null {
       const day = parseInt(dayMatch[1] || dayMatch[2], 10);
       if (day >= 1 && day <= 31) {
         const date = new Date(today.getFullYear(), i, day);
+        date.setHours(0, 0, 0, 0);
         // If date is in the future, use previous year
         if (date > today) {
           date.setFullYear(date.getFullYear() - 1);
         }
-        return date.toISOString().split("T")[0];
+        return formatDateLocal(date);
       }
     }
   }
