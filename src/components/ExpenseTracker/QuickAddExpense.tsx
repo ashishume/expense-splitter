@@ -1,6 +1,6 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Calendar } from "lucide-react";
+import { Plus, X, Calendar, Mic, MicOff, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   EXPENSE_CATEGORIES,
@@ -8,6 +8,7 @@ import {
   type PersonalExpense,
 } from "../../types/personalExpense";
 import { createExpense } from "../../services/personalExpenseStorage";
+import { parseExpenseSpeech, type ParsedExpense } from "../../utils/speechParser";
 
 interface QuickAddExpenseProps {
   onExpenseAdded: (expense: PersonalExpense) => void;
@@ -23,20 +24,157 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
     () => new Date().toISOString().split("T")[0]
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isListening, setIsListening] = useState(false);
+  const [speechPreview, setSpeechPreview] = useState<{
+    transcript: string;
+    parsed: ParsedExpense;
+  } | null>(null);
   const amountInputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
-  // Focus amount input when modal opens
+  // Handle speech recognition result
+  const handleSpeechResult = useCallback((transcript: string) => {
+    const parsed: ParsedExpense = parseExpenseSpeech(transcript);
+
+    // Check if we got at least amount
+    if (parsed.amount === null) {
+      toast.error(
+        `Couldn't understand the amount. Try saying something like: "Yesterday I spent 200 rupees in groceries"`,
+        { duration: 5000 }
+      );
+      return;
+    }
+
+    // Show preview card with parsed data
+    setSpeechPreview({
+      transcript,
+      parsed,
+    });
+  }, []);
+
+  // Focus amount input when modal opens - instant focus
   useEffect(() => {
     if (isOpen && amountInputRef.current) {
-      setTimeout(() => amountInputRef.current?.focus(), 100);
+      // Use requestAnimationFrame for instant focus
+      requestAnimationFrame(() => {
+        amountInputRef.current?.focus();
+      });
     }
   }, [isOpen]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    // Check if browser supports speech recognition
+    const SpeechRecognition = window.SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = "en-US";
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setSpeechPreview(null); // Clear previous preview
+      };
+
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        const transcript = event.results[0][0].transcript;
+        handleSpeechResult(transcript);
+      };
+
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error("Speech recognition error:", event.error);
+        setIsListening(false);
+        if (event.error === "not-allowed") {
+          toast.error("Microphone permission denied. Please enable it in browser settings.");
+        } else if (event.error === "no-speech") {
+          toast.error("No speech detected. Please try again.");
+        } else {
+          toast.error("Speech recognition error. Please try again.");
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+    };
+  }, [handleSpeechResult]);
+
+  const startListening = () => {
+    if (!recognitionRef.current) {
+      toast.error("Speech recognition is not supported in your browser.");
+      return;
+    }
+
+    try {
+      recognitionRef.current.start();
+    } catch (error) {
+      console.error("Error starting recognition:", error);
+      toast.error("Could not start speech recognition. Please try again.");
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
 
   const resetForm = () => {
     setAmount("");
     setDescription("");
     setCategory("food");
     setDate(new Date().toISOString().split("T")[0]);
+  };
+
+  // Directly add expense from speech preview
+  const handleAddFromSpeech = async () => {
+    if (!speechPreview) {
+      return;
+    }
+
+    const { parsed } = speechPreview;
+
+    // Validate amount
+    if (parsed.amount === null) {
+      toast.error("Amount is required");
+      return;
+    }
+
+    const finalCategory = parsed.category || "other";
+    const finalDate = parsed.date || new Date().toISOString().split("T")[0];
+    const finalDescription = parsed.description || "";
+
+    setIsSubmitting(true);
+    try {
+      const expense = await createExpense(
+        {
+          amount: parsed.amount,
+          description: finalDescription,
+          category: finalCategory,
+          date: new Date(finalDate).toISOString(),
+        },
+        userId
+      );
+
+      onExpenseAdded(expense);
+      toast.success("Expense added!");
+      setSpeechPreview(null);
+    } catch {
+      toast.error("Failed to add expense");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,11 +185,6 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
       toast.error("Please enter a valid amount");
       return;
     }
-
-    // if (!description.trim()) {
-    //   toast.error("Please add a description");
-    //   return;
-    // }
 
     setIsSubmitting(true);
     try {
@@ -77,18 +210,161 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
   };
 
   const selectedCategory = EXPENSE_CATEGORIES.find((c) => c.id === category);
+  const previewCategory = speechPreview
+    ? EXPENSE_CATEGORIES.find((c) => c.id === (speechPreview.parsed.category || "other"))
+    : null;
+
+  const isSpeechSupported =
+    typeof window !== "undefined" &&
+    (window.SpeechRecognition || (window as any).webkitSpeechRecognition);
 
   return (
     <>
-      {/* Floating Add Button */}
-      <motion.button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-40 w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg flex items-center justify-center hover:shadow-xl active:scale-95 transition-all"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-      >
-        <Plus className="w-8 h-8" />
-      </motion.button>
+      {/* Floating Action Buttons - Bottom Right and Left */}
+      <div className="fixed bottom-6 right-6 z-40 flex items-center gap-4">
+        {/* Speech Recognition Button - Bottom Left */}
+        {isSpeechSupported && (
+          <motion.button
+            onClick={isListening ? stopListening : startListening}
+            className={`w-16 h-16 rounded-full shadow-lg flex items-center justify-center hover:shadow-xl active:scale-95 transition-all ${isListening
+                ? "bg-gradient-to-br from-red-500 to-red-600 text-white animate-pulse"
+                : "bg-gradient-to-br from-green-500 to-emerald-600 text-white"
+              }`}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title={isListening ? "Stop listening" : "Start voice input"}
+          >
+            {isListening ? (
+              <MicOff className="w-8 h-8" />
+            ) : (
+              <Mic className="w-8 h-8" />
+            )}
+          </motion.button>
+        )}
+
+        {/* Add Expense Button - Bottom Right */}
+        <motion.button
+          onClick={() => setIsOpen(true)}
+          className="w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 text-white shadow-lg flex items-center justify-center hover:shadow-xl active:scale-95 transition-all"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus className="w-8 h-8" />
+        </motion.button>
+      </div>
+
+      {/* Speech Preview Card */}
+      <AnimatePresence>
+        {speechPreview && (
+          <motion.div
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-24 left-6 right-6 sm:left-auto sm:right-24 sm:w-96 z-50 bg-white rounded-2xl shadow-2xl border-2 border-indigo-200 overflow-hidden"
+          >
+            <div className="p-6 space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                  <Mic className="w-5 h-5 text-indigo-600" />
+                  Voice Input
+                </h3>
+                <button
+                  onClick={() => setSpeechPreview(null)}
+                  className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Transcript */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <p className="text-sm text-gray-500 mb-2">You said:</p>
+                <p className="text-base text-gray-800 italic">"{speechPreview.transcript}"</p>
+              </div>
+
+              {/* Parsed Details */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">Amount:</span>
+                  <span className="text-lg font-bold text-indigo-600">
+                    ₹{speechPreview.parsed.amount}
+                  </span>
+                </div>
+
+                {speechPreview.parsed.category && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Category:</span>
+                    <span
+                      className="px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2"
+                      style={{
+                        backgroundColor: previewCategory?.bgColor,
+                        color: previewCategory?.color,
+                      }}
+                    >
+                      <span>{previewCategory?.emoji}</span>
+                      <span>{previewCategory?.label}</span>
+                    </span>
+                  </div>
+                )}
+
+                {speechPreview.parsed.date && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Date:</span>
+                    <span className="text-sm text-gray-800">
+                      {new Date(speechPreview.parsed.date).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              {/* Add Button */}
+              <button
+                onClick={handleAddFromSpeech}
+                disabled={isSubmitting}
+                className="w-full py-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white text-base font-semibold rounded-xl shadow-lg hover:shadow-xl hover:from-indigo-600 hover:to-purple-700 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Adding...</span>
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-5 h-5" />
+                    <span>Add Expense</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Listening Indicator */}
+      <AnimatePresence>
+        {isListening && !speechPreview && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            className="fixed bottom-24 left-6 right-6 sm:left-auto sm:right-24 sm:w-80 z-50 bg-red-50 border-2 border-red-300 rounded-2xl p-4 flex items-center gap-3 shadow-lg"
+          >
+            <div className="relative">
+              <Mic className="w-6 h-6 text-red-600" />
+              <motion.div
+                className="absolute inset-0 bg-red-400 rounded-full -z-10"
+                animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                transition={{ repeat: Infinity, duration: 1.5 }}
+              />
+            </div>
+            <div>
+              <p className="font-semibold text-red-900">Listening...</p>
+              <p className="text-sm text-red-700">Speak your expense details</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modal Overlay */}
       <AnimatePresence>
@@ -163,11 +439,10 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                           key={cat.id}
                           type="button"
                           onClick={() => setCategory(cat.id)}
-                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                            category === cat.id
-                              ? "ring-2 ring-offset-2 shadow-xl scale-[1.02]"
-                              : "opacity-70 hover:opacity-100 hover:shadow-sm"
-                          }`}
+                          className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${category === cat.id
+                            ? "ring-2 ring-offset-2 shadow-xl scale-[1.02]"
+                            : "opacity-70 hover:opacity-100 hover:shadow-sm"
+                            }`}
                           style={{
                             backgroundColor: cat.bgColor,
                             color: cat.color,
