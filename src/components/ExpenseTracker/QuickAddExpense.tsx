@@ -312,7 +312,16 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-gray-600">Date:</span>
                     <span className="text-sm text-gray-800">
-                      {new Date(speechPreview.parsed.date).toLocaleDateString()}
+                      {
+                        new Date(speechPreview.parsed.date).toLocaleDateString(
+                          "en-US",
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          }
+                        ).replace(/^\w/, (c) => c.toUpperCase())
+                      }
                     </span>
                   </div>
                 )}
