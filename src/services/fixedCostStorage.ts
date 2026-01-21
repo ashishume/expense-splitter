@@ -16,19 +16,10 @@ import {
   query,
   where,
   Timestamp,
-  type Unsubscribe,
-  onSnapshot,
 } from "firebase/firestore";
 
 const TEMPLATES_COLLECTION = "fixed_costs";
 const INSTANCES_COLLECTION = "fixed_cost_instances";
-
-// Helper to format date as YYYY-MM using local timezone
-const formatMonthString = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  return `${year}-${month}`;
-};
 
 // Firebase document types
 interface FixedCostDoc {

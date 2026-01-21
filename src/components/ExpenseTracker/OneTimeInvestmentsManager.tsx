@@ -1,6 +1,6 @@
 import { useState, useEffect, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Edit2, Trash2, TrendingUp, Calendar } from "lucide-react";
+import { Plus, Edit2, Trash2, TrendingUp, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 import type { OneTimeInvestment } from "../../types/personalExpense";
 import {

@@ -23,7 +23,7 @@ import {
   unsubscribeFromExpenses,
 } from "../../services/personalExpenseStorage";
 import { useAuth } from "../useAuth";
-import { lazy, Suspense, memo } from "react";
+import { lazy, Suspense } from "react";
 import QuickAddExpense from "./QuickAddExpense";
 import ExpenseList from "./ExpenseList";
 import type { Unsubscribe } from "firebase/firestore";

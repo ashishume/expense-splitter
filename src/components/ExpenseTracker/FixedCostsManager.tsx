@@ -1,6 +1,6 @@
-import { useState, useEffect, memo, useCallback, useMemo } from "react";
+import { useState, useEffect, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, X, Edit2, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
+import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FixedCost, FixedCostInstance } from "../../types/personalExpense";
 import {

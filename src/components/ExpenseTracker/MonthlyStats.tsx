@@ -21,7 +21,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps) => {
+const MonthlyStats = ({ stats, previousStats: _previousStats, expenses = [] }: MonthlyStatsProps) => {
   // Privacy: Hide salary by default
   const [isSalaryVisible, setIsSalaryVisible] = useState(() => {
     const saved = localStorage.getItem("salaryVisible");

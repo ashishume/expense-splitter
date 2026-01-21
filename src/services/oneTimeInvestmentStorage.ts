@@ -16,8 +16,6 @@ import {
   query,
   where,
   Timestamp,
-  type Unsubscribe,
-  onSnapshot,
 } from "firebase/firestore";
 
 const COLLECTION_NAME = "one_time_investments";

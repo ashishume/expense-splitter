@@ -21,12 +21,6 @@ import {
 const TEMPLATES_COLLECTION = "investments";
 const INSTANCES_COLLECTION = "investment_instances";
 
-// Helper to format date as YYYY-MM using local timezone
-const formatMonthString = (date: Date): string => {
-  const year = date.getFullYear();
-  const month = (date.getMonth() + 1).toString().padStart(2, "0");
-  return `${year}-${month}`;
-};
 
 // Firebase document types
 interface InvestmentDoc {
