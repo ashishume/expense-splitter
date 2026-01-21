@@ -6,9 +6,16 @@ import tailwindcss from "@tailwindcss/vite";
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
-    // Optimize for mobile performance
+    // Optimize for mobile performance (iPhone)
     target: "es2015",
     minify: "terser",
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.logs in production
+        drop_debugger: true,
+        pure_funcs: ["console.log", "console.info"], // Remove specific console methods
+      },
+    },
     // Enable cache busting with content hashing
     rollupOptions: {
       output: {
@@ -16,12 +23,21 @@ export default defineConfig({
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
         assetFileNames: "assets/[name]-[hash].[ext]",
+        // Code splitting for better mobile performance
+        manualChunks: {
+          // Separate vendor chunks
+          "react-vendor": ["react", "react-dom", "react-router-dom"],
+          "firebase-vendor": ["firebase/app", "firebase/firestore", "firebase/auth"],
+          "ui-vendor": ["framer-motion", "lucide-react", "react-hot-toast"],
+        },
       },
     },
     // Generate manifest for better cache control
     manifest: true,
-    // Ensure source maps are generated for debugging
+    // Disable source maps for smaller bundle
     sourcemap: false,
+    // Chunk size warning limit (iPhone has limited RAM)
+    chunkSizeWarningLimit: 500,
   },
   server: {
     // Enable HTTPS for local development (helps with service worker testing)

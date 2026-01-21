@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, memo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, X, Calendar, Mic, MicOff, Check } from "lucide-react";
 import toast from "react-hot-toast";
@@ -526,4 +526,5 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
   );
 };
 
-export default QuickAddExpense;
+// Memoize to prevent unnecessary re-renders
+export default memo(QuickAddExpense);

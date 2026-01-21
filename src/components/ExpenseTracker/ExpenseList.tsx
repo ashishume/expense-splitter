@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Pencil } from "lucide-react";
 import toast from "react-hot-toast";
@@ -64,7 +64,7 @@ const ExpenseList = ({
     null
   );
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     setIsDeleting(true);
     try {
       await deleteExpense(id, userId);
@@ -81,42 +81,46 @@ const ExpenseList = ({
     } finally {
       setIsDeleting(false);
     }
-  };
+  }, [userId, onExpenseDeleted]);
 
-  const openDeleteConfirm = (expense: PersonalExpense) => {
+  const openDeleteConfirm = useCallback((expense: PersonalExpense) => {
     setDeleteConfirm({
       isOpen: true,
       expenseId: expense.id,
       expenseDescription: expense.description || expense.category,
     });
-  };
+  }, []);
 
-  const openEditModal = (expense: PersonalExpense) => {
+  const openEditModal = useCallback((expense: PersonalExpense) => {
     setEditingExpense(expense);
-  };
+  }, []);
 
-  // Group expenses by date
-  const groupedExpenses: { [date: string]: PersonalExpense[] } = {};
-  expenses.forEach((expense) => {
-    const dateKey = new Date(expense.date).toDateString();
-    if (!groupedExpenses[dateKey]) {
-      groupedExpenses[dateKey] = [];
-    }
-    groupedExpenses[dateKey].push(expense);
-  });
-
-  // Sort expenses within each day by createdAt (latest first)
-  Object.keys(groupedExpenses).forEach((dateKey) => {
-    groupedExpenses[dateKey].sort((a, b) => {
-      const timeA = new Date(a.createdAt || a.date).getTime();
-      const timeB = new Date(b.createdAt || b.date).getTime();
-      return timeB - timeA; // Latest first
+  // Memoize grouped expenses calculation (expensive operation)
+  const { groupedExpenses, dateKeys } = useMemo(() => {
+    const grouped: { [date: string]: PersonalExpense[] } = {};
+    expenses.forEach((expense) => {
+      const dateKey = new Date(expense.date).toDateString();
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(expense);
     });
-  });
 
-  const dateKeys = Object.keys(groupedExpenses).sort(
-    (a, b) => new Date(b).getTime() - new Date(a).getTime()
-  );
+    // Sort expenses within each day by createdAt (latest first)
+    Object.keys(grouped).forEach((dateKey) => {
+      grouped[dateKey].sort((a, b) => {
+        const timeA = new Date(a.createdAt || a.date).getTime();
+        const timeB = new Date(b.createdAt || b.date).getTime();
+        return timeB - timeA; // Latest first
+      });
+    });
+
+    const sortedDateKeys = Object.keys(grouped).sort(
+      (a, b) => new Date(b).getTime() - new Date(a).getTime()
+    );
+
+    return { groupedExpenses: grouped, dateKeys: sortedDateKeys };
+  }, [expenses]);
 
   if (expenses.length === 0) {
     return (
@@ -265,4 +269,5 @@ const ExpenseList = ({
   );
 };
 
-export default ExpenseList;
+// Memoize component to prevent unnecessary re-renders
+export default memo(ExpenseList);

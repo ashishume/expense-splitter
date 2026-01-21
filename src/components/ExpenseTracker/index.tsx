@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,6 +9,7 @@ import {
   List,
   Clock,
   Cloud,
+  Settings,
 } from "lucide-react";
 
 import type {
@@ -22,13 +23,18 @@ import {
   unsubscribeFromExpenses,
 } from "../../services/personalExpenseStorage";
 import { useAuth } from "../useAuth";
+import { lazy, Suspense, memo } from "react";
 import QuickAddExpense from "./QuickAddExpense";
-import MonthlyStats from "./MonthlyStats";
 import ExpenseList from "./ExpenseList";
-import ActivityFeed from "./ActivityFeed";
 import type { Unsubscribe } from "firebase/firestore";
 import SigninButton from "./SigninButton";
-import MonthPicker from "./MonthPicker";
+import { LoadingSpinner } from "../icons";
+
+// Lazy load heavy components for better iPhone performance
+const MonthlyStats = lazy(() => import("./MonthlyStats"));
+const ActivityFeed = lazy(() => import("./ActivityFeed"));
+const MonthPicker = lazy(() => import("./MonthPicker"));
+const RecurringItemsSettings = lazy(() => import("./RecurringItemsSettings"));
 
 type ViewMode = "stats" | "list" | "activity";
 
@@ -53,6 +59,7 @@ const ExpenseTracker = () => {
   const [viewMode, setViewMode] = useState<ViewMode>("stats");
   const [isLoading, setIsLoading] = useState(true);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const userId = user?.uid || null;
 
   // Format month for display
@@ -119,7 +126,24 @@ const ExpenseTracker = () => {
     loadData();
   }, [loadData]);
 
-  // Realtime subscription
+  // Debounce stats updates to reduce Firebase calls (iPhone optimization)
+  const statsUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const debouncedStatsUpdate = useCallback(() => {
+    if (statsUpdateTimeoutRef.current) {
+      clearTimeout(statsUpdateTimeoutRef.current);
+    }
+    statsUpdateTimeoutRef.current = setTimeout(() => {
+      if (userId) {
+        getMonthlyStats(currentMonth, userId).then(setStats);
+        getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
+          setPreviousStats
+        );
+      }
+    }, 300); // 300ms debounce
+  }, [currentMonth, userId]);
+
+  // Realtime subscription (optimized for iPhone)
   useEffect(() => {
     if (!userId) return;
 
@@ -169,11 +193,8 @@ const ExpenseTracker = () => {
               break;
           }
 
-          // Reload stats on any change
-          getMonthlyStats(currentMonth, userId).then(setStats);
-          getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
-            setPreviousStats
-          );
+          // Debounced stats update to reduce Firebase calls
+          debouncedStatsUpdate();
         }
       });
     };
@@ -184,11 +205,14 @@ const ExpenseTracker = () => {
       if (unsubscribe) {
         unsubscribeFromExpenses(unsubscribe);
       }
+      if (statsUpdateTimeoutRef.current) {
+        clearTimeout(statsUpdateTimeoutRef.current);
+      }
     };
-  }, [userId, currentMonth]);
+  }, [userId, currentMonth, debouncedStatsUpdate]);
 
   // Handle expense added (optimistic update already done by QuickAddExpense)
-  const handleExpenseAdded = (expense: PersonalExpense) => {
+  const handleExpenseAdded = useCallback((expense: PersonalExpense) => {
     // If expense is in current month, add to list (if not already there from realtime)
     if (expense.date.startsWith(currentMonth)) {
       setExpenses((prev) => {
@@ -200,29 +224,19 @@ const ExpenseTracker = () => {
         return updated;
       });
     }
-    // Reload stats
-    if (userId) {
-      getMonthlyStats(currentMonth, userId).then(setStats);
-      getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
-        setPreviousStats
-      );
-    }
-  };
+    // Debounced stats reload
+    debouncedStatsUpdate();
+  }, [currentMonth, debouncedStatsUpdate]);
 
   // Handle expense deleted (optimistic update)
-  const handleExpenseDeleted = (id: string) => {
+  const handleExpenseDeleted = useCallback((id: string) => {
     setExpenses((prev) => prev.filter((e) => e.id !== id));
-    // Reload stats
-    if (userId) {
-      getMonthlyStats(currentMonth, userId).then(setStats);
-      getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
-        setPreviousStats
-      );
-    }
-  };
+    // Debounced stats reload
+    debouncedStatsUpdate();
+  }, [debouncedStatsUpdate]);
 
   // Handle expense updated
-  const handleExpenseUpdated = (expense: PersonalExpense) => {
+  const handleExpenseUpdated = useCallback((expense: PersonalExpense) => {
     // Optimistically update the UI first
     if (!expense.date.startsWith(currentMonth)) {
       // If date changed to a different month, remove from current view
@@ -234,19 +248,9 @@ const ExpenseTracker = () => {
       );
     }
 
-    // Reload data from server to ensure sync (without showing loading state)
-    if (userId) {
-      Promise.all([
-        getExpenses({ month: currentMonth }, userId),
-        getMonthlyStats(currentMonth, userId),
-        getMonthlyStats(getPreviousMonthStr(currentMonth), userId),
-      ]).then(([monthExpenses, monthStats, prevStats]) => {
-        setExpenses(monthExpenses);
-        setStats(monthStats);
-        setPreviousStats(prevStats);
-      });
-    }
-  };
+    // Debounced stats reload
+    debouncedStatsUpdate();
+  }, [currentMonth, debouncedStatsUpdate]);
 
   const handleMonthSelect = (month: string) => {
     setCurrentMonth(month);
@@ -284,38 +288,47 @@ const ExpenseTracker = () => {
               </div>
             </div>
 
-            {/* View Toggle */}
-            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            {/* View Toggle and Settings */}
+            <div className="flex items-center gap-2">
               <button
-                onClick={() => setViewMode("stats")}
-                className={`p-2 rounded-md transition-all ${viewMode === "stats"
-                  ? "bg-white shadow text-indigo-600"
-                  : "text-gray-500"
-                  }`}
-                title="Statistics"
+                onClick={() => setIsSettingsOpen(true)}
+                className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                title="Recurring Items Settings"
               >
-                <BarChart3 className="w-5 h-5" />
+                <Settings className="w-5 h-5" />
               </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 rounded-md transition-all ${viewMode === "list"
-                  ? "bg-white shadow text-indigo-600"
-                  : "text-gray-500"
-                  }`}
-                title="Expense List"
-              >
-                <List className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setViewMode("activity")}
-                className={`p-2 rounded-md transition-all ${viewMode === "activity"
-                  ? "bg-white shadow text-indigo-600"
-                  : "text-gray-500"
-                  }`}
-                title="Activity Feed"
-              >
-                <Clock className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode("stats")}
+                  className={`p-2 rounded-md transition-all ${viewMode === "stats"
+                    ? "bg-white shadow text-indigo-600"
+                    : "text-gray-500"
+                    }`}
+                  title="Statistics"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("list")}
+                  className={`p-2 rounded-md transition-all ${viewMode === "list"
+                    ? "bg-white shadow text-indigo-600"
+                    : "text-gray-500"
+                    }`}
+                  title="Expense List"
+                >
+                  <List className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("activity")}
+                  className={`p-2 rounded-md transition-all ${viewMode === "activity"
+                    ? "bg-white shadow text-indigo-600"
+                    : "text-gray-500"
+                    }`}
+                  title="Activity Feed"
+                >
+                  <Clock className="w-5 h-5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -370,13 +383,17 @@ const ExpenseTracker = () => {
             transition={{ duration: 0.2 }}
           >
             {viewMode === "stats" && stats ? (
-              <MonthlyStats
-                stats={stats}
-                previousStats={previousStats || undefined}
-                expenses={expenses}
-              />
+              <Suspense fallback={<div className="flex items-center justify-center py-20"><LoadingSpinner /></div>}>
+                <MonthlyStats
+                  stats={stats}
+                  previousStats={previousStats || undefined}
+                  expenses={expenses}
+                />
+              </Suspense>
             ) : viewMode === "activity" ? (
-              <ActivityFeed userId={userId} />
+              <Suspense fallback={<div className="flex items-center justify-center py-20"><LoadingSpinner /></div>}>
+                <ActivityFeed userId={userId} />
+              </Suspense>
             ) : (
               <ExpenseList
                 expenses={expenses}
@@ -393,13 +410,33 @@ const ExpenseTracker = () => {
       <QuickAddExpense onExpenseAdded={handleExpenseAdded} userId={userId} />
 
       {/* Month Picker Modal */}
-      {isMonthPickerOpen ? <MonthPicker
-        isOpen={isMonthPickerOpen}
-        onClose={() => setIsMonthPickerOpen(false)}
-        currentMonth={currentMonth}
-        onMonthSelect={handleMonthSelect}
-        maxMonth={formatMonthString(new Date())}
-      /> : null}
+      {isMonthPickerOpen && (
+        <Suspense fallback={null}>
+          <MonthPicker
+            isOpen={isMonthPickerOpen}
+            onClose={() => setIsMonthPickerOpen(false)}
+            currentMonth={currentMonth}
+            onMonthSelect={handleMonthSelect}
+            maxMonth={formatMonthString(new Date())}
+          />
+        </Suspense>
+      )}
+
+      {/* Recurring Items Settings Modal */}
+      {isSettingsOpen && (
+        <Suspense fallback={null}>
+          <RecurringItemsSettings
+            isOpen={isSettingsOpen}
+            onClose={() => setIsSettingsOpen(false)}
+            userId={userId}
+            month={currentMonth}
+            onUpdate={() => {
+              // Reload data when settings are updated
+              loadData();
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 };

@@ -109,13 +109,89 @@ export const EXPENSE_CATEGORIES: CategoryConfig[] = [
 
 export interface MonthlyStats {
   month: string; // YYYY-MM format
-  total: number;
+  total: number; // Variable expenses total (for backward compatibility)
+  variableExpensesTotal: number; // Variable expenses total
   byCategory: Record<ExpenseCategory, number>;
   count: number;
+  fixedCostsTotal: number;
+  income: number;
+  investmentsTotal: number;
+  savings: number;
 }
 
 export interface ExpenseFilterOptions {
   month?: string; // YYYY-MM format
   category?: ExpenseCategory;
   searchQuery?: string;
+}
+
+// Fixed Costs
+export interface FixedCost {
+  id: string;
+  userId: string;
+  name: string;
+  defaultAmount: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export interface FixedCostInstance {
+  id: string;
+  fixedCostId: string;
+  userId: string;
+  month: string; // YYYY-MM format
+  amount: number;
+  isEnabled: boolean;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+// Salary Income
+export interface SalaryIncome {
+  id: string;
+  userId: string;
+  defaultAmount: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export interface SalaryInstance {
+  id: string;
+  salaryId: string;
+  userId: string;
+  month: string; // YYYY-MM format
+  amount: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+// Investments
+export interface Investment {
+  id: string;
+  userId: string;
+  name: string;
+  defaultAmount: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+export interface InvestmentInstance {
+  id: string;
+  investmentId: string;
+  userId: string;
+  month: string; // YYYY-MM format
+  amount: number;
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
+}
+
+// One-time investments (e.g., US stocks, one-time purchases)
+export interface OneTimeInvestment {
+  id: string;
+  userId: string;
+  amount: number;
+  description: string; // e.g., "AAPL Stock", "Tesla Shares"
+  date: string; // ISO string
+  createdAt: string; // ISO string
+  updatedAt: string; // ISO string
 }

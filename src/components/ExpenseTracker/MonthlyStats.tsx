@@ -1,6 +1,6 @@
-import { useMemo } from "react";
+import { useState, useMemo, useEffect, memo, useCallback } from "react";
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { DollarSign, Lock, TrendingUp as TrendingUpIcon, Wallet, Eye, EyeOff } from "lucide-react";
 import {
   EXPENSE_CATEGORIES,
   type MonthlyStats as MonthlyStatsType,
@@ -22,11 +22,27 @@ const formatCurrency = (amount: number) => {
 };
 
 const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps) => {
-  // Calculate percentage change from previous month
-  const percentChange = useMemo(() => {
-    if (!previousStats || previousStats.total === 0) return null;
-    return ((stats.total - previousStats.total) / previousStats.total) * 100;
-  }, [stats.total, previousStats]);
+  // Privacy: Hide salary by default
+  const [isSalaryVisible, setIsSalaryVisible] = useState(() => {
+    const saved = localStorage.getItem("salaryVisible");
+    return saved === "true";
+  });
+
+  // Memoize toggle handler
+  const toggleSalaryVisibility = useCallback(() => {
+    setIsSalaryVisible((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("salaryVisible", isSalaryVisible.toString());
+  }, [isSalaryVisible]);
+
+  // Backward compatibility: use total if variableExpensesTotal doesn't exist
+  const variableExpensesTotal = stats.variableExpensesTotal ?? stats.total;
+  const fixedCostsTotal = stats.fixedCostsTotal ?? 0;
+  const income = stats.income ?? 0;
+  const investmentsTotal = stats.investmentsTotal ?? 0;
+  const savings = stats.savings ?? (income - variableExpensesTotal - fixedCostsTotal - investmentsTotal);
 
   // Get categories sorted by amount (highest first)
   const sortedCategories = useMemo(() => {
@@ -59,7 +75,7 @@ const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps
     const [year, month] = stats.month.split("-").map(Number);
     const today = new Date();
     const isCurrentMonth = today.getFullYear() === year && today.getMonth() + 1 === month;
-    
+
     let daysToCount: number;
     if (isCurrentMonth) {
       // For current month, use days elapsed
@@ -68,9 +84,9 @@ const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps
       // For past months, use total days in that month
       daysToCount = new Date(year, month, 0).getDate();
     }
-    
-    return stats.total / Math.max(daysToCount, 1);
-  }, [stats.total, stats.month]);
+
+    return variableExpensesTotal / Math.max(daysToCount, 1);
+  }, [variableExpensesTotal, stats.month]);
 
   // Find the category for the biggest expense
   const biggestExpenseCategory = useMemo(() => {
@@ -80,67 +96,141 @@ const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps
 
   return (
     <div className="space-y-6">
-      {/* Total Spending Card */}
+      {/* Savings Card - Most Prominent */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-2xl p-6 text-white shadow-xl"
+        className={`rounded-2xl p-6 text-white shadow-xl ${savings >= 0
+          ? "bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500"
+          : "bg-gradient-to-br from-red-500 via-rose-500 to-pink-500"
+          }`}
       >
-        <p className="text-white/80 text-sm font-medium mb-1">{monthName}</p>
+        <p className="text-white/80 text-sm font-medium mb-1">{monthName} Savings</p>
         <div className="flex items-end justify-between">
           <div>
             <p className="text-3xl sm:text-4xl font-bold tracking-tight">
-              {formatCurrency(stats.total)}
+              {formatCurrency(Math.abs(savings))}
             </p>
             <p className="text-white/70 text-sm mt-1">
-              {stats.count} expense{stats.count !== 1 ? "s" : ""}
+              {savings >= 0 ? "Saved" : "Overspent"}
             </p>
           </div>
-
-          {percentChange !== null && (
-            <div
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-sm font-medium ${
-                percentChange > 0
-                  ? "bg-red-400/30 text-white"
-                  : percentChange < 0
-                  ? "bg-green-400/30 text-white"
-                  : "bg-white/20 text-white"
-              }`}
-            >
-              {percentChange > 0 ? (
-                <TrendingUp className="w-4 h-4" />
-              ) : percentChange < 0 ? (
-                <TrendingDown className="w-4 h-4" />
-              ) : (
-                <Minus className="w-4 h-4" />
-              )}
-              <span>{Math.abs(percentChange).toFixed(1)}%</span>
-            </div>
-          )}
+          <Wallet className="w-12 h-12 text-white/30" />
         </div>
       </motion.div>
 
-      {/* Category Breakdown */}
+      {/* Income and Expenses Overview */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.05 }}
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+      >
+        {/* Income Card */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5 border border-green-200 shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-5 h-5 text-green-600" />
+              <h3 className="text-sm font-semibold text-gray-700">Income</h3>
+            </div>
+            <button
+              onClick={toggleSalaryVisibility}
+              className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-white/50 rounded-lg transition-colors"
+              title={isSalaryVisible ? "Hide salary" : "Show salary"}
+            >
+              {isSalaryVisible ? (
+                <Eye className="w-4 h-4" />
+              ) : (
+                <EyeOff className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+          <p className="text-2xl font-bold text-green-700">
+            {isSalaryVisible ? formatCurrency(income) : "••••••"}
+          </p>
+          {!isSalaryVisible && (
+            <p className="text-xs text-gray-500 mt-1">Click eye icon to reveal</p>
+          )}
+        </div>
+
+        {/* Variable Expenses Card */}
+        <div className="bg-gradient-to-br from-orange-50 to-red-50 rounded-xl p-5 border border-orange-200 shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <TrendingUpIcon className="w-5 h-5 text-orange-600" />
+              <h3 className="text-sm font-semibold text-gray-700">Variable Expenses</h3>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-orange-700">
+            {formatCurrency(variableExpensesTotal)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">
+            {stats.count} transaction{stats.count !== 1 ? "s" : ""}
+          </p>
+        </div>
+      </motion.div>
+
+      {/* Fixed Costs and Investments */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
+        className="grid grid-cols-1 sm:grid-cols-2 gap-4"
+      >
+        {/* Fixed Costs Card */}
+        <div className="bg-gradient-to-br from-gray-50 to-slate-50 rounded-xl p-5 border border-gray-200 shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <Lock className="w-5 h-5 text-gray-600" />
+              <h3 className="text-sm font-semibold text-gray-700">Fixed Costs</h3>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-gray-700">
+            {formatCurrency(fixedCostsTotal)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">Rent, Maid, etc.</p>
+        </div>
+
+        {/* Investments Card */}
+        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-5 border border-blue-200 shadow-md">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <TrendingUpIcon className="w-5 h-5 text-blue-600" />
+              <h3 className="text-sm font-semibold text-gray-700">Investments</h3>
+            </div>
+          </div>
+          <p className="text-2xl font-bold text-blue-700">
+            {formatCurrency(investmentsTotal)}
+          </p>
+          <p className="text-xs text-gray-500 mt-1">SIPs & Savings</p>
+        </div>
+      </motion.div>
+
+      {/* Variable Expenses Breakdown */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
         className="bg-white rounded-2xl p-5 shadow-lg"
       >
         <h3 className="text-lg font-semibold text-gray-800 mb-4">
-          Spending by Category
+          Variable Expenses by Category
         </h3>
 
         {sortedCategories.length === 0 ? (
           <p className="text-gray-400 text-center py-8">
-            No expenses this month yet
+            No variable expenses this month yet
           </p>
         ) : (
           <div className="space-y-4">
             {sortedCategories.map((cat, index) => {
               const amount = stats.byCategory[cat.id];
-              const percentage = (amount / stats.total) * 100;
-              const barWidth = (amount / maxCategoryAmount) * 100;
+              const percentage = variableExpensesTotal > 0
+                ? (amount / variableExpensesTotal) * 100
+                : 0;
+              const barWidth = maxCategoryAmount > 0
+                ? (amount / maxCategoryAmount) * 100
+                : 0;
 
               return (
                 <motion.div
@@ -161,9 +251,11 @@ const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps
                       <span className="font-semibold text-gray-800">
                         {formatCurrency(amount)}
                       </span>
-                      <span className="text-gray-400 text-xs">
-                        ({percentage.toFixed(0)}%)
-                      </span>
+                      {variableExpensesTotal > 0 && (
+                        <span className="text-gray-400 text-xs">
+                          ({percentage.toFixed(0)}%)
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -250,4 +342,5 @@ const MonthlyStats = ({ stats, previousStats, expenses = [] }: MonthlyStatsProps
   );
 };
 
-export default MonthlyStats;
+// Memoize component to prevent unnecessary re-renders
+export default memo(MonthlyStats);

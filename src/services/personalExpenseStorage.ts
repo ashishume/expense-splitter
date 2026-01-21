@@ -11,6 +11,21 @@ import type {
   MonthlyStats,
   ExpenseFilterOptions,
 } from "../types/personalExpense";
+import {
+  ensureFixedCostInstancesForMonth,
+  getFixedCostInstances,
+} from "./fixedCostStorage";
+import {
+  ensureSalaryInstanceForMonth,
+  getSalaryInstance,
+} from "./salaryStorage";
+import {
+  ensureInvestmentInstancesForMonth,
+  getInvestmentInstances,
+} from "./investmentStorage";
+import {
+  getOneTimeInvestments,
+} from "./oneTimeInvestmentStorage";
 import { db } from "../firebase";
 import {
   collection,
@@ -293,8 +308,52 @@ export const getMonthlyStats = async (
   month: string,
   userId?: string
 ): Promise<MonthlyStats> => {
-  const expenses = await getExpenses({ month }, userId);
+  if (!userId) {
+    // Return empty stats if no user
+    const byCategory: Record<ExpenseCategory, number> = {
+      food: 0,
+      transport: 0,
+      shopping: 0,
+      entertainment: 0,
+      utilities: 0,
+      health: 0,
+      travel: 0,
+      subscriptions: 0,
+      groceries: 0,
+      fuel: 0,
+      electronics: 0,
+      other: 0,
+    };
+    return {
+      month,
+      total: 0,
+      variableExpensesTotal: 0,
+      byCategory,
+      count: 0,
+      fixedCostsTotal: 0,
+      income: 0,
+      investmentsTotal: 0,
+      savings: 0,
+    };
+  }
 
+  // Ensure instances exist for the month (auto-generate from templates)
+  await Promise.all([
+    ensureFixedCostInstancesForMonth(month, userId),
+    ensureSalaryInstanceForMonth(month, userId),
+    ensureInvestmentInstancesForMonth(month, userId),
+  ]);
+
+  // Fetch all data in parallel
+  const [expenses, fixedCostInstances, salaryInstance, investmentInstances, oneTimeInvestments] = await Promise.all([
+    getExpenses({ month }, userId),
+    getFixedCostInstances(month, userId),
+    getSalaryInstance(month, userId),
+    getInvestmentInstances(month, userId),
+    getOneTimeInvestments(month, userId),
+  ]);
+
+  // Calculate variable expenses
   const byCategory: Record<ExpenseCategory, number> = {
     food: 0,
     transport: 0,
@@ -310,18 +369,45 @@ export const getMonthlyStats = async (
     other: 0,
   };
 
-  let total = 0;
+  let variableExpensesTotal = 0;
 
   expenses.forEach((exp) => {
     byCategory[exp.category] += exp.amount;
-    total += exp.amount;
+    variableExpensesTotal += exp.amount;
   });
+
+  // Calculate fixed costs total (only enabled instances)
+  const fixedCostsTotal = fixedCostInstances
+    .filter((instance) => instance.isEnabled)
+    .reduce((sum, instance) => sum + instance.amount, 0);
+
+  // Get income
+  const income = salaryInstance?.amount || 0;
+
+  // Calculate investments total (recurring + one-time)
+  const recurringInvestmentsTotal = investmentInstances.reduce(
+    (sum, instance) => sum + instance.amount,
+    0
+  );
+  const oneTimeInvestmentsTotal = oneTimeInvestments.reduce(
+    (sum, inv) => sum + inv.amount,
+    0
+  );
+  const investmentsTotal = recurringInvestmentsTotal + oneTimeInvestmentsTotal;
+
+  // Calculate savings
+  const savings = income - variableExpensesTotal - fixedCostsTotal - investmentsTotal;
 
   return {
     month,
-    total,
+    total: variableExpensesTotal, // For backward compatibility
+    variableExpensesTotal,
     byCategory,
     count: expenses.length,
+    fixedCostsTotal,
+    income,
+    investmentsTotal,
+    savings,
   };
 };
 
