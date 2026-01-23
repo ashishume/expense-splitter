@@ -4,7 +4,7 @@
  */
 
 import { db } from "../firebase";
-import { collection, addDoc, query, where, onSnapshot, orderBy, limit, Timestamp, type Unsubscribe } from "firebase/firestore";
+import { collection, addDoc, query, where, onSnapshot, orderBy, limit, Timestamp, type Unsubscribe, getDocs, startAfter, type QueryDocumentSnapshot } from "firebase/firestore";
 import type { PersonalExpense } from "../types/personalExpense";
 
 const COLLECTION_NAME = "personal_expense_activities";
@@ -182,13 +182,104 @@ export const logDeleteActivity = async (
   }
 };
 
+export interface PaginatedActivitiesResult {
+  activities: PersonalExpenseActivity[];
+  lastDoc: QueryDocumentSnapshot | null;
+  hasMore: boolean;
+}
+
 /**
- * Subscribe to activity logs for a user
+ * Get activities with pagination support
+ */
+export const getActivitiesPaginated = async (
+  userId: string,
+  pageSize: number = 20,
+  lastDoc: QueryDocumentSnapshot | null = null
+): Promise<PaginatedActivitiesResult> => {
+  try {
+    let q = query(
+      collection(db, COLLECTION_NAME),
+      where("userId", "==", userId),
+      orderBy("timestamp", "desc"),
+      limit(pageSize + 1) // Fetch one extra to check if there's more
+    );
+
+    // Add cursor for pagination
+    if (lastDoc) {
+      q = query(
+        collection(db, COLLECTION_NAME),
+        where("userId", "==", userId),
+        orderBy("timestamp", "desc"),
+        startAfter(lastDoc),
+        limit(pageSize + 1)
+      );
+    }
+
+    const snapshot = await getDocs(q);
+    const docs = snapshot.docs;
+    const hasMore = docs.length > pageSize;
+    
+    // If we fetched one extra, remove it
+    const activitiesToReturn = hasMore ? docs.slice(0, pageSize) : docs;
+    const activities = activitiesToReturn.map((doc) =>
+      docToActivity(doc.id, doc.data() as ActivityDoc)
+    );
+
+    return {
+      activities,
+      lastDoc: activitiesToReturn.length > 0 ? activitiesToReturn[activitiesToReturn.length - 1] : null,
+      hasMore,
+    };
+  } catch (error) {
+    console.error("Error fetching paginated activities:", error);
+    // Fallback: try without orderBy if index is missing
+    if (error && typeof error === "object" && "code" in error && error.code === "failed-precondition") {
+      try {
+        let simpleQuery = query(
+          collection(db, COLLECTION_NAME),
+          where("userId", "==", userId)
+        );
+
+        const snapshot = await getDocs(simpleQuery);
+        let allActivities = snapshot.docs.map((doc) =>
+          docToActivity(doc.id, doc.data() as ActivityDoc)
+        );
+
+        // Sort manually by timestamp
+        allActivities.sort(
+          (a, b) =>
+            new Date(b.timestamp).getTime() -
+            new Date(a.timestamp).getTime()
+        );
+
+        // Manual pagination
+        const startIndex = lastDoc ? allActivities.findIndex(a => a.id === lastDoc.id) + 1 : 0;
+        const paginatedActivities = allActivities.slice(startIndex, startIndex + pageSize);
+        const hasMore = startIndex + pageSize < allActivities.length;
+
+        return {
+          activities: paginatedActivities,
+          lastDoc: paginatedActivities.length > 0 
+            ? snapshot.docs.find(doc => doc.id === paginatedActivities[paginatedActivities.length - 1].id) || null
+            : null,
+          hasMore,
+        };
+      } catch (fallbackError) {
+        console.error("Error in fallback pagination:", fallbackError);
+        return { activities: [], lastDoc: null, hasMore: false };
+      }
+    }
+    return { activities: [], lastDoc: null, hasMore: false };
+  }
+};
+
+/**
+ * Subscribe to activity logs for a user (real-time updates for initial page only)
  */
 export const subscribeToActivities = (
   userId: string,
   callback: (activities: PersonalExpenseActivity[]) => void,
-  maxItems: number = 50
+  maxItems: number = 20
 ): Unsubscribe | null => {
   try {
     const q = query(

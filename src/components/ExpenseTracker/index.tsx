@@ -62,6 +62,16 @@ const ExpenseTracker = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const userId = user?.uid || null;
 
+  // Cache for expenses and stats to avoid redundant API calls
+  const dataCache = useRef<Map<string, {
+    expenses?: PersonalExpense[];
+    stats?: MonthlyStatsType;
+    timestamp: number;
+  }>>(new Map());
+  
+  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+  const loadingRef = useRef<Set<string>>(new Set()); // Track ongoing requests to prevent duplicates
+
   // Format month for display
   const monthDisplay = useMemo(() => {
     const [year, month] = currentMonth.split("-");
@@ -97,7 +107,7 @@ const ExpenseTracker = () => {
     return formatMonthString(prevDate);
   };
 
-  // Load data
+  // Load data based on view mode (lazy loading)
   const loadData = useCallback(async () => {
     if (!userId) {
       setIsLoading(false);
@@ -105,22 +115,94 @@ const ExpenseTracker = () => {
     }
 
     setIsLoading(true);
-    try {
-      const [monthExpenses, monthStats, prevStats] = await Promise.all([
-        getExpenses({ month: currentMonth }, userId),
-        getMonthlyStats(currentMonth, userId),
-        getMonthlyStats(getPreviousMonthStr(currentMonth), userId),
-      ]);
+    const cacheKey = `${currentMonth}-${viewMode}`;
+    const now = Date.now();
 
-      setExpenses(monthExpenses);
-      setStats(monthStats);
-      setPreviousStats(prevStats);
+    try {
+      // Check cache first
+      const cached = dataCache.current.get(cacheKey);
+      if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        if (cached.expenses) setExpenses(cached.expenses);
+        if (cached.stats) setStats(cached.stats);
+        setIsLoading(false);
+        return;
+      }
+
+      // Prevent duplicate requests
+      if (loadingRef.current.has(cacheKey)) {
+        return;
+      }
+      loadingRef.current.add(cacheKey);
+
+      const promises: Promise<any>[] = [];
+
+      // Only load expenses if needed (list or stats view)
+      if (viewMode === "list" || viewMode === "stats") {
+        const expensesKey = `${currentMonth}-expenses`;
+        const cachedExpenses = dataCache.current.get(expensesKey);
+        
+        if (cachedExpenses?.expenses && (now - cachedExpenses.timestamp) < CACHE_TTL) {
+          setExpenses(cachedExpenses.expenses);
+        } else {
+          promises.push(
+            getExpenses({ month: currentMonth }, userId).then((exp) => {
+              setExpenses(exp);
+              // Cache expenses
+              dataCache.current.set(expensesKey, {
+                expenses: exp,
+                timestamp: now,
+              });
+            })
+          );
+        }
+      }
+
+      // Only load stats if in stats view
+      if (viewMode === "stats") {
+        const statsKey = `${currentMonth}-stats`;
+        const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
+        
+        // Check cache for current month stats
+        const cachedStats = dataCache.current.get(statsKey);
+        if (cachedStats?.stats && (now - cachedStats.timestamp) < CACHE_TTL) {
+          setStats(cachedStats.stats);
+        } else {
+          promises.push(
+            getMonthlyStats(currentMonth, userId).then((s) => {
+              setStats(s);
+              dataCache.current.set(statsKey, {
+                stats: s,
+                timestamp: now,
+              });
+            })
+          );
+        }
+
+        // Check cache for previous month stats
+        const cachedPrevStats = dataCache.current.get(prevStatsKey);
+        if (cachedPrevStats?.stats && (now - cachedPrevStats.timestamp) < CACHE_TTL) {
+          setPreviousStats(cachedPrevStats.stats);
+        } else {
+          promises.push(
+            getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
+              setPreviousStats(s);
+              dataCache.current.set(prevStatsKey, {
+                stats: s,
+                timestamp: now,
+              });
+            })
+          );
+        }
+      }
+
+      await Promise.all(promises);
     } catch (error) {
       console.error("Error loading expenses:", error);
     } finally {
       setIsLoading(false);
+      loadingRef.current.delete(cacheKey);
     }
-  }, [currentMonth, userId]);
+  }, [currentMonth, userId, viewMode]);
 
   useEffect(() => {
     loadData();
@@ -130,22 +212,39 @@ const ExpenseTracker = () => {
   const statsUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const debouncedStatsUpdate = useCallback(() => {
+    // Only update stats if in stats view
+    if (viewMode !== "stats") return;
+
     if (statsUpdateTimeoutRef.current) {
       clearTimeout(statsUpdateTimeoutRef.current);
     }
     statsUpdateTimeoutRef.current = setTimeout(() => {
       if (userId) {
-        getMonthlyStats(currentMonth, userId).then(setStats);
-        getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then(
-          setPreviousStats
-        );
+        const now = Date.now();
+        const statsKey = `${currentMonth}-stats`;
+        const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
+        
+        // Invalidate cache
+        dataCache.current.delete(statsKey);
+        dataCache.current.delete(prevStatsKey);
+        
+        Promise.all([
+          getMonthlyStats(currentMonth, userId).then((s) => {
+            setStats(s);
+            dataCache.current.set(statsKey, { stats: s, timestamp: now });
+          }),
+          getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
+            setPreviousStats(s);
+            dataCache.current.set(prevStatsKey, { stats: s, timestamp: now });
+          }),
+        ]);
       }
-    }, 300); // 300ms debounce
-  }, [currentMonth, userId]);
+    }, 500); // 500ms debounce (increased for better performance)
+  }, [currentMonth, userId, viewMode]);
 
-  // Realtime subscription (optimized for iPhone)
+  // Realtime subscription (optimized - only for list/stats views)
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || viewMode === "activity") return;
 
     let unsubscribe: Unsubscribe | null = null;
 
@@ -159,6 +258,10 @@ const ExpenseTracker = () => {
           oldExpense?.date?.startsWith(currentMonth);
 
         if (affectsCurrentMonth) {
+          // Invalidate cache for this month
+          const expensesKey = `${currentMonth}-expenses`;
+          dataCache.current.delete(expensesKey);
+
           switch (eventType) {
             case "INSERT":
               if (expense && expense.date.startsWith(currentMonth)) {
@@ -193,8 +296,10 @@ const ExpenseTracker = () => {
               break;
           }
 
-          // Debounced stats update to reduce Firebase calls
-          debouncedStatsUpdate();
+          // Only update stats if in stats view
+          if (viewMode === "stats") {
+            debouncedStatsUpdate();
+          }
         }
       });
     };
@@ -209,12 +314,16 @@ const ExpenseTracker = () => {
         clearTimeout(statsUpdateTimeoutRef.current);
       }
     };
-  }, [userId, currentMonth, debouncedStatsUpdate]);
+  }, [userId, currentMonth, debouncedStatsUpdate, viewMode]);
 
   // Handle expense added (optimistic update already done by QuickAddExpense)
   const handleExpenseAdded = useCallback((expense: PersonalExpense) => {
+    // Invalidate cache
+    const expensesKey = `${currentMonth}-expenses`;
+    dataCache.current.delete(expensesKey);
+
     // If expense is in current month, add to list (if not already there from realtime)
-    if (expense.date.startsWith(currentMonth)) {
+    if (expense.date.startsWith(currentMonth) && (viewMode === "list" || viewMode === "stats")) {
       setExpenses((prev) => {
         if (prev.some((e) => e.id === expense.id)) return prev;
         const updated = [expense, ...prev];
@@ -224,38 +333,82 @@ const ExpenseTracker = () => {
         return updated;
       });
     }
-    // Debounced stats reload
-    debouncedStatsUpdate();
-  }, [currentMonth, debouncedStatsUpdate]);
+    // Only update stats if in stats view
+    if (viewMode === "stats") {
+      debouncedStatsUpdate();
+    }
+  }, [currentMonth, debouncedStatsUpdate, viewMode]);
 
   // Handle expense deleted (optimistic update)
   const handleExpenseDeleted = useCallback((id: string) => {
-    setExpenses((prev) => prev.filter((e) => e.id !== id));
-    // Debounced stats reload
-    debouncedStatsUpdate();
-  }, [debouncedStatsUpdate]);
+    // Invalidate cache
+    const expensesKey = `${currentMonth}-expenses`;
+    dataCache.current.delete(expensesKey);
+
+    if (viewMode === "list" || viewMode === "stats") {
+      setExpenses((prev) => prev.filter((e) => e.id !== id));
+    }
+    // Only update stats if in stats view
+    if (viewMode === "stats") {
+      debouncedStatsUpdate();
+    }
+  }, [currentMonth, debouncedStatsUpdate, viewMode]);
 
   // Handle expense updated
   const handleExpenseUpdated = useCallback((expense: PersonalExpense) => {
+    // Invalidate cache
+    const expensesKey = `${currentMonth}-expenses`;
+    dataCache.current.delete(expensesKey);
+
     // Optimistically update the UI first
-    if (!expense.date.startsWith(currentMonth)) {
-      // If date changed to a different month, remove from current view
-      setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
-    } else {
-      // Update the expense in place
-      setExpenses((prev) =>
-        prev.map((e) => (e.id === expense.id ? expense : e))
-      );
+    if (viewMode === "list" || viewMode === "stats") {
+      if (!expense.date.startsWith(currentMonth)) {
+        // If date changed to a different month, remove from current view
+        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
+      } else {
+        // Update the expense in place
+        setExpenses((prev) =>
+          prev.map((e) => (e.id === expense.id ? expense : e))
+        );
+      }
     }
 
-    // Debounced stats reload
-    debouncedStatsUpdate();
-  }, [currentMonth, debouncedStatsUpdate]);
+    // Only update stats if in stats view
+    if (viewMode === "stats") {
+      debouncedStatsUpdate();
+    }
+  }, [currentMonth, debouncedStatsUpdate, viewMode]);
 
   const handleMonthSelect = (month: string) => {
     setCurrentMonth(month);
     setIsMonthPickerOpen(false);
   };
+
+  // Cleanup cache periodically and on unmount
+  useEffect(() => {
+    const cleanupCache = () => {
+      const now = Date.now();
+      for (const [key, value] of dataCache.current.entries()) {
+        if (now - value.timestamp > CACHE_TTL) {
+          dataCache.current.delete(key);
+        }
+      }
+    };
+
+    const interval = setInterval(cleanupCache, CACHE_TTL);
+    return () => {
+      clearInterval(interval);
+      // Clear cache on unmount
+      dataCache.current.clear();
+      loadingRef.current.clear();
+    };
+  }, []);
+
+  // Handle view mode change - only reload if needed
+  const handleViewModeChange = useCallback((mode: ViewMode) => {
+    setViewMode(mode);
+    // Don't reload immediately - let loadData handle it based on view mode
+  }, []);
 
   // Show sign in prompt if not logged in
   if (!userId) {
@@ -299,7 +452,7 @@ const ExpenseTracker = () => {
               </button>
               <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
                 <button
-                  onClick={() => setViewMode("stats")}
+                  onClick={() => handleViewModeChange("stats")}
                   className={`p-2 rounded-md transition-all ${viewMode === "stats"
                     ? "bg-white shadow text-indigo-600"
                     : "text-gray-500"
@@ -309,7 +462,7 @@ const ExpenseTracker = () => {
                   <BarChart3 className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => setViewMode("list")}
+                  onClick={() => handleViewModeChange("list")}
                   className={`p-2 rounded-md transition-all ${viewMode === "list"
                     ? "bg-white shadow text-indigo-600"
                     : "text-gray-500"
@@ -319,7 +472,7 @@ const ExpenseTracker = () => {
                   <List className="w-5 h-5" />
                 </button>
                 <button
-                  onClick={() => setViewMode("activity")}
+                  onClick={() => handleViewModeChange("activity")}
                   className={`p-2 rounded-md transition-all ${viewMode === "activity"
                     ? "bg-white shadow text-indigo-600"
                     : "text-gray-500"

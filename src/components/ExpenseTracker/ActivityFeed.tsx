@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Clock, Plus, Edit, Trash2, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, Plus, Edit, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import type { PersonalExpenseActivity } from "../../services/personalExpenseActivityLog";
-import { subscribeToActivities } from "../../services/personalExpenseActivityLog";
+import { subscribeToActivities, getActivitiesPaginated, type PaginatedActivitiesResult } from "../../services/personalExpenseActivityLog";
+import type { QueryDocumentSnapshot } from "firebase/firestore";
 import { EXPENSE_CATEGORIES } from "../../types/personalExpense";
 
 interface ActivityFeedProps {
@@ -12,13 +13,48 @@ interface ActivityFeedProps {
 const ActivityFeed = ({ userId }: ActivityFeedProps) => {
   const [activities, setActivities] = useState<PersonalExpenseActivity[]>([]);
   const [isExpanded, setIsExpanded] = useState(true); // Default to expanded in tab view
+  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [lastDoc, setLastDoc] = useState<QueryDocumentSnapshot | null>(null);
+  const hasLoadedMore = useRef(false);
+  const PAGE_SIZE = 20;
 
+  // Initial load
   useEffect(() => {
     if (!userId) return;
 
-    const unsubscribe = subscribeToActivities(userId, (activities) => {
-      setActivities(activities);
-    }, 50); // Show last 50 activities in tab view
+    const loadInitialActivities = async () => {
+      setIsLoading(true);
+      try {
+        const result: PaginatedActivitiesResult = await getActivitiesPaginated(userId, PAGE_SIZE);
+        setActivities(result.activities);
+        setLastDoc(result.lastDoc);
+        setHasMore(result.hasMore);
+        hasLoadedMore.current = false;
+      } catch (error) {
+        console.error("Error loading initial activities:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialActivities();
+
+    // Subscribe to real-time updates for new activities (only affects first page)
+    const unsubscribe = subscribeToActivities(userId, (newActivities) => {
+      // Only update first page if we haven't loaded more pages
+      setActivities((prev) => {
+        if (hasLoadedMore.current) {
+          // If we've loaded more, only update the first PAGE_SIZE items
+          const paginatedItems = prev.slice(PAGE_SIZE);
+          return [...newActivities, ...paginatedItems];
+        } else {
+          // If we're still on first page, replace all
+          return newActivities;
+        }
+      });
+    }, PAGE_SIZE);
 
     return () => {
       if (unsubscribe) {
@@ -26,6 +62,23 @@ const ActivityFeed = ({ userId }: ActivityFeedProps) => {
       }
     };
   }, [userId]);
+
+  const loadMoreActivities = async () => {
+    if (!userId || isLoadingMore || !hasMore) return;
+
+    setIsLoadingMore(true);
+    try {
+      const result: PaginatedActivitiesResult = await getActivitiesPaginated(userId, PAGE_SIZE, lastDoc);
+      setActivities((prev) => [...prev, ...result.activities]);
+      setLastDoc(result.lastDoc);
+      setHasMore(result.hasMore);
+      hasLoadedMore.current = true;
+    } catch (error) {
+      console.error("Error loading more activities:", error);
+    } finally {
+      setIsLoadingMore(false);
+    }
+  };
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -78,6 +131,15 @@ const ActivityFeed = ({ userId }: ActivityFeedProps) => {
     const cat = EXPENSE_CATEGORIES.find((c) => c.id === category);
     return cat?.emoji || "📦";
   };
+
+  if (isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <Loader2 className="w-8 h-8 text-gray-400 mx-auto mb-4 animate-spin" />
+        <p className="text-gray-500">Loading activities...</p>
+      </div>
+    );
+  }
 
   if (activities.length === 0) {
     return (
@@ -212,6 +274,33 @@ const ActivityFeed = ({ userId }: ActivityFeedProps) => {
       {!isExpanded && activities.length > 10 && (
         <div className="px-4 py-2 text-center text-xs text-gray-500 bg-gray-50">
           {activities.length - 10} more activities
+        </div>
+      )}
+
+      {/* Load More Button */}
+      {isExpanded && hasMore && (
+        <div className="px-4 py-3 border-t border-gray-100">
+          <button
+            onClick={loadMoreActivities}
+            disabled={isLoadingMore}
+            className="w-full py-2 px-4 text-sm font-medium text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            {isLoadingMore ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Loading...
+              </>
+            ) : (
+              "Load More Activities"
+            )}
+          </button>
+        </div>
+      )}
+
+      {/* End of list indicator */}
+      {isExpanded && !hasMore && activities.length > PAGE_SIZE && (
+        <div className="px-4 py-2 text-center text-xs text-gray-500 bg-gray-50">
+          No more activities to load
         </div>
       )}
     </div>
