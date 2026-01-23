@@ -16,6 +16,26 @@ Your personal finance companion for tracking income, expenses, savings, and inve
 
 ---
 
+## Screenshots
+
+### Expense Splitter
+<img width="200" height="500" alt="IMG_8435" src="https://github.com/user-attachments/assets/a2923d5b-70bc-4ea4-b7fd-ca85362fc935" />
+<img width="200" height="500" alt="IMG_8444" src="https://github.com/user-attachments/assets/634ec328-57ce-4a00-ab72-ebb916acf2d3" />
+
+
+<!-- Add screenshot here-->
+
+#### Expense Tracking
+<img width="200" height="500" alt="IMG_8436" src="https://github.com/user-attachments/assets/7ff3f589-1476-4332-8640-92d9bbe3be52" />
+<img width="200" height="500" alt="IMG_8437" src="https://github.com/user-attachments/assets/a8352c23-436a-4495-a232-613e445e774f" />
+<img width="200" height="500" alt="IMG_8439" src="https://github.com/user-attachments/assets/296a5158-a410-45a9-9cf8-8e59c2314d8d" />
+<img width="200" height="500" alt="IMG_8440" src="https://github.com/user-attachments/assets/90d332f6-98a4-4082-bc21-340e38658dba" />
+<img width="200" height="500" alt="IMG_8441" src="https://github.com/user-attachments/assets/63cd26a8-1315-4bc9-b1f4-346da4178dfc" />
+<img width="200" height="500" alt="IMG_8442" src="https://github.com/user-attachments/assets/109d6513-8d40-4869-8a05-a8de2d608408" />
+
+
+---
+
 ## 🔀 Expense Splitter Features
 
 ### Group Management
@@ -89,18 +109,6 @@ Your personal finance companion for tracking income, expenses, savings, and inve
 - **Transaction List**: View all expenses in a detailed list format
 - **Stats View**: Visual dashboard with charts and metrics
 - **Month Comparison**: Compare spending across different months
-
----
-
-## Screenshots
-
-### Expense Splitter
-
-<!-- Add screenshot here-->
-
-#### Expense Tracking
-
-<!-- Add screenshot here -->
 
 ---
 
