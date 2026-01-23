@@ -5,12 +5,14 @@ import {
   EXPENSE_CATEGORIES,
   type MonthlyStats as MonthlyStatsType,
   type PersonalExpense,
+  type CategoryConfig,
 } from "../../types/personalExpense";
 
 interface MonthlyStatsProps {
   stats: MonthlyStatsType;
   previousStats?: MonthlyStatsType;
   expenses?: PersonalExpense[];
+  onCategoryClick?: (category: CategoryConfig) => void;
 }
 
 const formatCurrency = (amount: number) => {
@@ -21,7 +23,7 @@ const formatCurrency = (amount: number) => {
   }).format(amount);
 };
 
-const MonthlyStats = ({ stats, previousStats: _previousStats, expenses = [] }: MonthlyStatsProps) => {
+const MonthlyStats = ({ stats, previousStats: _previousStats, expenses = [], onCategoryClick }: MonthlyStatsProps) => {
   // Privacy: Hide salary by default
   const [isSalaryVisible, setIsSalaryVisible] = useState(() => {
     const saved = localStorage.getItem("salaryVisible");
@@ -240,39 +242,53 @@ const MonthlyStats = ({ stats, previousStats: _previousStats, expenses = [] }: M
                   transition={{ delay: 0.05 * index }}
                   className="space-y-2"
                 >
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{cat.emoji}</span>
-                      <span className="font-medium text-gray-700">
-                        {cat.label}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-gray-800">
-                        {formatCurrency(amount)}
-                      </span>
-                      {variableExpensesTotal > 0 && (
-                        <span className="text-gray-400 text-xs">
-                          ({percentage.toFixed(0)}%)
+                  <motion.button
+                    onClick={() => onCategoryClick?.(cat)}
+                    className={`w-full text-left space-y-2 p-3 rounded-xl transition-all ${
+                      onCategoryClick
+                        ? "hover:bg-gray-50 hover:shadow-md cursor-pointer active:scale-[0.98]"
+                        : ""
+                    }`}
+                    whileHover={onCategoryClick ? { scale: 1.01 } : {}}
+                    whileTap={onCategoryClick ? { scale: 0.98 } : {}}
+                  >
+                    <div className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{cat.emoji}</span>
+                        <span className="font-medium text-gray-700">
+                          {cat.label}
                         </span>
-                      )}
+                        {onCategoryClick && (
+                          <span className="text-xs text-gray-400">(tap to view)</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-gray-800">
+                          {formatCurrency(amount)}
+                        </span>
+                        {variableExpensesTotal > 0 && (
+                          <span className="text-gray-400 text-xs">
+                            ({percentage.toFixed(0)}%)
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Progress Bar */}
-                  <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${barWidth}%` }}
-                      transition={{
-                        duration: 0.5,
-                        delay: 0.1 * index,
-                        ease: "easeOut",
-                      }}
-                      className="h-full rounded-full"
-                      style={{ backgroundColor: cat.color }}
-                    />
-                  </div>
+                    {/* Progress Bar */}
+                    <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${barWidth}%` }}
+                        transition={{
+                          duration: 0.5,
+                          delay: 0.1 * index,
+                          ease: "easeOut",
+                        }}
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: cat.color }}
+                      />
+                    </div>
+                  </motion.button>
                 </motion.div>
               );
             })}

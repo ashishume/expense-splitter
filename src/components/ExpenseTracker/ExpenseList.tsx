@@ -1,10 +1,11 @@
 import { useState, useMemo, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Pencil } from "lucide-react";
+import { Trash2, Pencil, X } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   EXPENSE_CATEGORIES,
   type PersonalExpense,
+  type CategoryConfig,
 } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
 import ConfirmDialog from "../ui/ConfirmDialog";
@@ -15,6 +16,9 @@ interface ExpenseListProps {
   onExpenseDeleted: (id: string) => void;
   onExpenseUpdated: (expense: PersonalExpense) => void;
   userId: string;
+  selectedCategory?: CategoryConfig | null;
+  onClearCategory?: () => void;
+  onCategorySelect?: (category: CategoryConfig | null) => void;
 }
 
 const formatCurrency = (amount: number) => {
@@ -49,6 +53,9 @@ const ExpenseList = ({
   onExpenseDeleted,
   onExpenseUpdated,
   userId,
+  selectedCategory,
+  onClearCategory,
+  onCategorySelect,
 }: ExpenseListProps) => {
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
@@ -95,10 +102,36 @@ const ExpenseList = ({
     setEditingExpense(expense);
   }, []);
 
+  // Filter expenses by category if selected
+  const filteredExpenses = useMemo(() => {
+    if (!selectedCategory) return expenses;
+    return expenses.filter((expense) => expense.category === selectedCategory.id);
+  }, [expenses, selectedCategory]);
+
+  // Get categories that have expenses in the current list
+  const availableCategories = useMemo(() => {
+    const categoryMap = new Map<string, { category: CategoryConfig; count: number }>();
+    
+    expenses.forEach((expense) => {
+      const category = EXPENSE_CATEGORIES.find((c) => c.id === expense.category);
+      if (category) {
+        const existing = categoryMap.get(category.id);
+        if (existing) {
+          existing.count += 1;
+        } else {
+          categoryMap.set(category.id, { category, count: 1 });
+        }
+      }
+    });
+
+    return Array.from(categoryMap.values())
+      .sort((a, b) => b.count - a.count); // Sort by count (most expenses first)
+  }, [expenses]);
+
   // Memoize grouped expenses calculation (expensive operation)
   const { groupedExpenses, dateKeys } = useMemo(() => {
     const grouped: { [date: string]: PersonalExpense[] } = {};
-    expenses.forEach((expense) => {
+    filteredExpenses.forEach((expense) => {
       const dateKey = new Date(expense.date).toDateString();
       if (!grouped[dateKey]) {
         grouped[dateKey] = [];
@@ -120,29 +153,144 @@ const ExpenseList = ({
     );
 
     return { groupedExpenses: grouped, dateKeys: sortedDateKeys };
-  }, [expenses]);
+  }, [filteredExpenses]);
 
-  if (expenses.length === 0) {
+  const selectedCategoryInfo = selectedCategory
+    ? EXPENSE_CATEGORIES.find((cat) => cat.id === selectedCategory.id)
+    : null;
+
+  if (filteredExpenses.length === 0) {
     return (
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         className="text-center py-16"
       >
-        <div className="text-6xl mb-4">💸</div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">
-          No expenses yet
-        </h3>
-        <p className="text-gray-500">
-          Tap the <span className="text-indigo-500 font-semibold">+</span>{" "}
-          button to add your first expense
-        </p>
+        {selectedCategory ? (
+          <>
+            <div className="text-6xl mb-4">{selectedCategoryInfo?.emoji || "📂"}</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No {selectedCategoryInfo?.label || "category"} expenses
+            </h3>
+            <p className="text-gray-500 mb-4">
+              No expenses found for this category this month
+            </p>
+            {onClearCategory && (
+              <button
+                onClick={onClearCategory}
+                className="px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 transition-colors"
+              >
+                Show All Expenses
+              </button>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="text-6xl mb-4">💸</div>
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">
+              No expenses yet
+            </h3>
+            <p className="text-gray-500">
+              Tap the <span className="text-indigo-500 font-semibold">+</span>{" "}
+              button to add your first expense
+            </p>
+          </>
+        )}
       </motion.div>
     );
   }
 
   return (
     <>
+      {/* Category Filter Bar */}
+      {onCategorySelect && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-4 bg-white rounded-xl p-3 shadow-sm border border-gray-100"
+        >
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {/* All Categories Button */}
+            <button
+              onClick={() => onCategorySelect(null)}
+              className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
+                !selectedCategory
+                  ? "bg-indigo-500 text-white shadow-md"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              All
+            </button>
+
+            {/* Category Buttons */}
+            {availableCategories.map(({ category, count }) => {
+              const isSelected = selectedCategory?.id === category.id;
+              return (
+                <button
+                  key={category.id}
+                  onClick={() => onCategorySelect(category)}
+                  className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
+                    isSelected
+                      ? "bg-indigo-500 text-white shadow-md"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
+                  style={
+                    isSelected
+                      ? {}
+                      : {
+                          borderLeft: `3px solid ${category.color}`,
+                        }
+                  }
+                >
+                  <span className="text-base">{category.emoji}</span>
+                  <span>{category.label}</span>
+                  <span
+                    className={`text-xs px-1.5 py-0.5 rounded ${
+                      isSelected
+                        ? "bg-white/20 text-white"
+                        : "bg-gray-200 text-gray-600"
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Selected Category Info */}
+          {selectedCategory && selectedCategoryInfo && (
+            <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded-lg flex items-center justify-center text-lg"
+                  style={{ backgroundColor: selectedCategoryInfo.color + "20" }}
+                >
+                  <span>{selectedCategoryInfo.emoji}</span>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">
+                    {selectedCategoryInfo.label}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {filteredExpenses.length} expense{filteredExpenses.length !== 1 ? "s" : ""} this month
+                  </p>
+                </div>
+              </div>
+              {onClearCategory && (
+                <button
+                  onClick={onClearCategory}
+                  className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                  title="Clear filter"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </motion.div>
+      )}
+
       <div className="space-y-6">
         {dateKeys.map((dateKey) => (
           <div key={dateKey}>

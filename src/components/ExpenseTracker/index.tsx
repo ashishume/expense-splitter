@@ -15,6 +15,8 @@ import {
 import type {
   PersonalExpense,
   MonthlyStats as MonthlyStatsType,
+  ExpenseCategory,
+  CategoryConfig,
 } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
 import { useAuth } from "../useAuth";
@@ -55,6 +57,7 @@ const ExpenseTracker = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<CategoryConfig | null>(null);
   const userId = user?.uid || null;
 
   // Cache for expenses and stats to avoid redundant API calls
@@ -449,7 +452,17 @@ const ExpenseTracker = () => {
   // Handle view mode change - only reload if needed
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
+    // Clear category filter when switching views
+    if (mode !== "list") {
+      setSelectedCategory(null);
+    }
     // Don't reload immediately - let loadData handle it based on view mode
+  }, []);
+
+  // Handle category click - switch to list view and filter by category
+  const handleCategoryClick = useCallback((category: CategoryConfig) => {
+    setSelectedCategory(category);
+    setViewMode("list");
   }, []);
 
   // Show sign in prompt if not logged in
@@ -583,6 +596,7 @@ const ExpenseTracker = () => {
                   stats={stats}
                   previousStats={previousStats || undefined}
                   expenses={expenses}
+                  onCategoryClick={handleCategoryClick}
                 />
               </Suspense>
             ) : viewMode === "activity" ? (
@@ -595,6 +609,9 @@ const ExpenseTracker = () => {
                 onExpenseDeleted={handleExpenseDeleted}
                 onExpenseUpdated={handleExpenseUpdated}
                 userId={userId}
+                selectedCategory={selectedCategory}
+                onClearCategory={() => setSelectedCategory(null)}
+                onCategorySelect={(category) => setSelectedCategory(category)}
               />
             )}
           </motion.div>
