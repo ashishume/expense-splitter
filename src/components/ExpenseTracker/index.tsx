@@ -15,7 +15,6 @@ import {
 import type {
   PersonalExpense,
   MonthlyStats as MonthlyStatsType,
-  ExpenseCategory,
   CategoryConfig,
 } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
@@ -102,7 +101,7 @@ const ExpenseTracker = () => {
     const [year, month] = currentMonth.split("-").map(Number);
     const newDate = new Date(year, month, 1);
     const nextMonthStr = formatMonthString(newDate);
-    
+
     // Only allow going up to max allowed month (3 months in future)
     if (nextMonthStr <= maxAllowedMonth) {
       setCurrentMonth(nextMonthStr);
@@ -619,9 +618,9 @@ const ExpenseTracker = () => {
       </main>
 
       {/* Quick Add Button */}
-      <QuickAddExpense 
-        onExpenseAdded={handleExpenseAdded} 
-        userId={userId} 
+      <QuickAddExpense
+        onExpenseAdded={handleExpenseAdded}
+        userId={userId}
         currentMonth={currentMonth}
       />
 
