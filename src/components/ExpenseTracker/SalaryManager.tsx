@@ -3,13 +3,7 @@ import { motion } from "framer-motion";
 import { Edit2, DollarSign } from "lucide-react";
 import toast from "react-hot-toast";
 import type { SalaryIncome, SalaryInstance } from "../../types/personalExpense";
-import {
-  getSalaryIncome,
-  createOrUpdateSalaryIncome,
-  getSalaryInstance,
-  updateSalaryInstance,
-  ensureSalaryInstanceForMonth,
-} from "../../services/salaryStorage";
+import { api } from "../../services/apiService";
 
 interface SalaryManagerProps {
   userId: string;
@@ -32,11 +26,11 @@ const SalaryManager = ({ userId, month, onUpdate }: SalaryManagerProps) => {
     setIsLoading(true);
     try {
       // Ensure instance exists for the month
-      await ensureSalaryInstanceForMonth(month, userId);
+      await api.salary.ensureInstanceForMonth(month, userId);
 
       const [templateData, instanceData] = await Promise.all([
-        getSalaryIncome(userId),
-        getSalaryInstance(month, userId),
+        api.salary.getTemplate(userId),
+        api.salary.getInstance(month, userId),
       ]);
 
       setTemplate(templateData);
@@ -64,15 +58,15 @@ const SalaryManager = ({ userId, month, onUpdate }: SalaryManagerProps) => {
     try {
       if (template) {
         // Update template (affects future months)
-        await createOrUpdateSalaryIncome(numAmount, userId);
+        await api.salary.createOrUpdateTemplate(numAmount, userId);
       } else {
         // Create new template
-        await createOrUpdateSalaryIncome(numAmount, userId);
+        await api.salary.createOrUpdateTemplate(numAmount, userId);
       }
 
       // Update current month instance
       if (instance) {
-        await updateSalaryInstance(instance.id, numAmount, userId);
+        await api.salary.updateInstance(instance.id, numAmount, userId);
       }
 
       toast.success("Salary updated!");

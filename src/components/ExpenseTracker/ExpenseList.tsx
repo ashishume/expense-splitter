@@ -6,7 +6,7 @@ import {
   EXPENSE_CATEGORIES,
   type PersonalExpense,
 } from "../../types/personalExpense";
-import { deleteExpense } from "../../services/personalExpenseStorage";
+import { api } from "../../services/apiService";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import EditExpenseModal from "./EditExpenseModal";
 
@@ -67,7 +67,7 @@ const ExpenseList = ({
   const handleDelete = useCallback(async (id: string) => {
     setIsDeleting(true);
     try {
-      await deleteExpense(id, userId);
+      await api.expenses.delete(id, userId);
       onExpenseDeleted(id);
       toast.success("Expense deleted");
       setDeleteConfirm({

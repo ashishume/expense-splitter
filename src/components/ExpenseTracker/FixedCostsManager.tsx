@@ -3,15 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FixedCost, FixedCostInstance } from "../../types/personalExpense";
-import {
-  createFixedCost,
-  getFixedCosts,
-  updateFixedCost,
-  deleteFixedCost,
-  getFixedCostInstances,
-  updateFixedCostInstance,
-  ensureFixedCostInstancesForMonth,
-} from "../../services/fixedCostStorage";
+import { api } from "../../services/apiService";
 
 interface FixedCostsManagerProps {
   userId: string;
@@ -40,11 +32,11 @@ const FixedCostsManager = ({
     setIsLoading(true);
     try {
       // Ensure instances exist for the month
-      await ensureFixedCostInstancesForMonth(month, userId);
+      await api.fixedCosts.ensureInstancesForMonth(month, userId);
 
       const [templatesData, instancesData] = await Promise.all([
-        getFixedCosts(userId),
-        getFixedCostInstances(month, userId),
+        api.fixedCosts.getTemplates(userId),
+        api.fixedCosts.getInstances(month, userId),
       ]);
 
       setTemplates(templatesData);
@@ -65,7 +57,7 @@ const FixedCostsManager = ({
     }
 
     try {
-      await createFixedCost(
+      await api.fixedCosts.createTemplate(
         {
           userId,
           name: newName.trim(),
@@ -88,7 +80,7 @@ const FixedCostsManager = ({
 
   const handleUpdateTemplate = async (id: string, name: string, amount: number) => {
     try {
-      await updateFixedCost(id, { name, defaultAmount: amount }, userId);
+      await api.fixedCosts.updateTemplate(id, { name, defaultAmount: amount }, userId);
       toast.success("Fixed cost updated!");
       setEditingId(null);
       await loadData();
@@ -105,7 +97,7 @@ const FixedCostsManager = ({
     }
 
     try {
-      await deleteFixedCost(id, userId);
+      await api.fixedCosts.deleteTemplate(id, userId);
       toast.success("Fixed cost deleted!");
       await loadData();
       onUpdate?.();
@@ -117,7 +109,7 @@ const FixedCostsManager = ({
 
   const handleToggleInstance = async (instance: FixedCostInstance) => {
     try {
-      await updateFixedCostInstance(
+      await api.fixedCosts.updateInstance(
         instance.id,
         { isEnabled: !instance.isEnabled },
         userId
@@ -135,7 +127,7 @@ const FixedCostsManager = ({
     amount: number
   ) => {
     try {
-      await updateFixedCostInstance(instance.id, { amount }, userId);
+      await api.fixedCosts.updateInstance(instance.id, { amount }, userId);
       await loadData();
       onUpdate?.();
     } catch (error) {

@@ -3,12 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Edit2, Trash2, TrendingUp, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 import type { OneTimeInvestment } from "../../types/personalExpense";
-import {
-  createOneTimeInvestment,
-  getOneTimeInvestments,
-  updateOneTimeInvestment,
-  deleteOneTimeInvestment,
-} from "../../services/oneTimeInvestmentStorage";
+import { api } from "../../services/apiService";
 
 interface OneTimeInvestmentsManagerProps {
   userId: string;
@@ -36,7 +31,7 @@ const OneTimeInvestmentsManager = ({
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const data = await getOneTimeInvestments(month, userId);
+      const data = await api.oneTimeInvestments.getAll(month, userId);
       setInvestments(data);
     } catch (error) {
       console.error("Error loading one-time investments:", error);
@@ -54,7 +49,7 @@ const OneTimeInvestmentsManager = ({
     }
 
     try {
-      await createOneTimeInvestment(
+      await api.oneTimeInvestments.create(
         {
           userId,
           amount: numAmount,
@@ -79,7 +74,7 @@ const OneTimeInvestmentsManager = ({
 
   const handleUpdate = async (id: string, newDescription: string, newAmount: number, newDate: string) => {
     try {
-      await updateOneTimeInvestment(
+      await api.oneTimeInvestments.update(
         id,
         {
           description: newDescription,
@@ -104,7 +99,7 @@ const OneTimeInvestmentsManager = ({
     }
 
     try {
-      await deleteOneTimeInvestment(id, userId);
+      await api.oneTimeInvestments.delete(id, userId);
       toast.success("Investment deleted!");
       await loadData();
       onUpdate?.();

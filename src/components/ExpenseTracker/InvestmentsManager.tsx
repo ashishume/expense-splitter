@@ -3,15 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Edit2, Trash2, TrendingUp } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Investment, InvestmentInstance } from "../../types/personalExpense";
-import {
-  createInvestment,
-  getInvestments,
-  updateInvestment,
-  deleteInvestment,
-  getInvestmentInstances,
-  updateInvestmentInstance,
-  ensureInvestmentInstancesForMonth,
-} from "../../services/investmentStorage";
+import { api } from "../../services/apiService";
 import OneTimeInvestmentsManager from "./OneTimeInvestmentsManager";
 
 interface InvestmentsManagerProps {
@@ -41,11 +33,11 @@ const InvestmentsManager = ({
     setIsLoading(true);
     try {
       // Ensure instances exist for the month
-      await ensureInvestmentInstancesForMonth(month, userId);
+      await api.investments.ensureInstancesForMonth(month, userId);
 
       const [templatesData, instancesData] = await Promise.all([
-        getInvestments(userId),
-        getInvestmentInstances(month, userId),
+        api.investments.getTemplates(userId),
+        api.investments.getInstances(month, userId),
       ]);
 
       setTemplates(templatesData);
@@ -66,7 +58,7 @@ const InvestmentsManager = ({
     }
 
     try {
-      await createInvestment(
+      await api.investments.createTemplate(
         {
           userId,
           name: newName.trim(),
@@ -89,7 +81,7 @@ const InvestmentsManager = ({
 
   const handleUpdateTemplate = async (id: string, name: string, amount: number) => {
     try {
-      await updateInvestment(id, { name, defaultAmount: amount }, userId);
+      await api.investments.updateTemplate(id, { name, defaultAmount: amount }, userId);
       toast.success("Investment updated!");
       setEditingId(null);
       await loadData();
@@ -106,7 +98,7 @@ const InvestmentsManager = ({
     }
 
     try {
-      await deleteInvestment(id, userId);
+      await api.investments.deleteTemplate(id, userId);
       toast.success("Investment deleted!");
       await loadData();
       onUpdate?.();
@@ -121,7 +113,7 @@ const InvestmentsManager = ({
     amount: number
   ) => {
     try {
-      await updateInvestmentInstance(instance.id, amount, userId);
+      await api.investments.updateInstance(instance.id, amount, userId);
       await loadData();
       onUpdate?.();
     } catch (error) {

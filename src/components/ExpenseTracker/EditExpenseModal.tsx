@@ -7,7 +7,7 @@ import {
   type ExpenseCategory,
   type PersonalExpense,
 } from "../../types/personalExpense";
-import { updateExpense } from "../../services/personalExpenseStorage";
+import { api } from "../../services/apiService";
 
 interface EditExpenseModalProps {
   expense: PersonalExpense | null;
@@ -54,7 +54,7 @@ const EditExpenseModal = ({
 
     setIsSubmitting(true);
     try {
-      const updatedExpense = await updateExpense(
+      const updatedExpense = await api.expenses.update(
         expense.id,
         {
           amount: numAmount,

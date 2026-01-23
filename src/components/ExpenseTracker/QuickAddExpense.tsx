@@ -7,7 +7,7 @@ import {
   type ExpenseCategory,
   type PersonalExpense,
 } from "../../types/personalExpense";
-import { createExpense } from "../../services/personalExpenseStorage";
+import { api } from "../../services/apiService";
 import { parseExpenseSpeech, type ParsedExpense } from "../../utils/speechParser";
 
 interface QuickAddExpenseProps {
@@ -205,7 +205,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId, currentMonth }: QuickAddExpen
 
     setIsSubmitting(true);
     try {
-      const expense = await createExpense(
+      const expense = await api.expenses.create(
         {
           amount: parsed.amount,
           description: finalDescription,
@@ -236,7 +236,7 @@ const QuickAddExpense = ({ onExpenseAdded, userId, currentMonth }: QuickAddExpen
 
     setIsSubmitting(true);
     try {
-      const expense = await createExpense(
+      const expense = await api.expenses.create(
         {
           amount: numAmount,
           description: description.trim(),

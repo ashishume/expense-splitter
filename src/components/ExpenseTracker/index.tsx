@@ -16,12 +16,7 @@ import type {
   PersonalExpense,
   MonthlyStats as MonthlyStatsType,
 } from "../../types/personalExpense";
-import {
-  getExpenses,
-  getMonthlyStats,
-  subscribeToExpenses,
-  unsubscribeFromExpenses,
-} from "../../services/personalExpenseStorage";
+import { api } from "../../services/apiService";
 import { useAuth } from "../useAuth";
 import { lazy, Suspense } from "react";
 import QuickAddExpense from "./QuickAddExpense";
@@ -184,7 +179,7 @@ const ExpenseTracker = () => {
       if (needsExpenses) {
         const expensesKey = `${currentMonth}-expenses`;
         promises.push(
-          getExpenses({ month: currentMonth }, userId).then((exp) => {
+          api.expenses.getAll({ month: currentMonth }, userId).then((exp) => {
             setExpenses(exp);
             // Cache expenses
             dataCache.current.set(expensesKey, {
@@ -199,7 +194,7 @@ const ExpenseTracker = () => {
       if (needsStats) {
         const statsKey = `${currentMonth}-stats`;
         promises.push(
-          getMonthlyStats(currentMonth, userId).then((s) => {
+          api.expenses.getMonthlyStats(currentMonth, userId).then((s: MonthlyStatsType) => {
             setStats(s);
             dataCache.current.set(statsKey, {
               stats: s,
@@ -213,7 +208,7 @@ const ExpenseTracker = () => {
       if (needsPrevStats) {
         const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
         promises.push(
-          getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
+          api.expenses.getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s: MonthlyStatsType) => {
             setPreviousStats(s);
             dataCache.current.set(prevStatsKey, {
               stats: s,
@@ -267,7 +262,7 @@ const ExpenseTracker = () => {
 
           if (needsCurrentStats) {
             promises.push(
-              getMonthlyStats(currentMonth, userId).then((s) => {
+              api.expenses.getMonthlyStats(currentMonth, userId).then((s) => {
                 setStats(s);
                 dataCache.current.set(statsKey, { stats: s, timestamp: now });
               })
@@ -276,7 +271,7 @@ const ExpenseTracker = () => {
 
           if (needsPrevStats) {
             promises.push(
-              getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
+              api.expenses.getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
                 setPreviousStats(s);
                 dataCache.current.set(prevStatsKey, { stats: s, timestamp: now });
               })
@@ -296,7 +291,7 @@ const ExpenseTracker = () => {
     let unsubscribe: Unsubscribe | null = null;
 
     const setupSubscription = () => {
-      unsubscribe = subscribeToExpenses(userId, (payload) => {
+      unsubscribe = api.expenses.subscribe(userId, (payload) => {
         const { eventType, expense, oldExpense } = payload;
 
         // Check if the change affects current month
@@ -355,7 +350,7 @@ const ExpenseTracker = () => {
 
     return () => {
       if (unsubscribe) {
-        unsubscribeFromExpenses(unsubscribe);
+        api.expenses.unsubscribe(unsubscribe);
       }
       if (statsUpdateTimeoutRef.current) {
         clearTimeout(statsUpdateTimeoutRef.current);
