@@ -95,10 +95,14 @@ Your personal finance companion for tracking income, expenses, savings, and inve
 ## Screenshots
 
 ### Expense Splitter
+<img width="660" height="1434" alt="IMG_8435" src="https://github.com/user-attachments/assets/a2923d5b-70bc-4ea4-b7fd-ca85362fc935" />
+
 
 <!-- Add screenshot here-->
 
 #### Expense Tracking
+<img width="660" height="1434" alt="IMG_8436" src="https://github.com/user-attachments/assets/7ff3f589-1476-4332-8640-92d9bbe3be52" />
+
 
 <!-- Add screenshot here -->
 
