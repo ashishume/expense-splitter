@@ -68,7 +68,7 @@ const ExpenseTracker = () => {
     stats?: MonthlyStatsType;
     timestamp: number;
   }>>(new Map());
-  
+
   const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
   const loadingRef = useRef<Set<string>>(new Set()); // Track ongoing requests to prevent duplicates
 
@@ -81,11 +81,17 @@ const ExpenseTracker = () => {
     );
   }, [currentMonth]);
 
-  // Check if current month is the latest
-  const isCurrentMonth = useMemo(() => {
-    const now = formatMonthString(new Date());
-    return currentMonth === now;
-  }, [currentMonth]);
+  // Get max allowed month (3 months in the future)
+  const maxAllowedMonth = useMemo(() => {
+    const now = new Date();
+    const maxDate = new Date(now.getFullYear(), now.getMonth() + 3, 1);
+    return formatMonthString(maxDate);
+  }, []);
+
+  // Check if current month is at the max allowed (3 months in future)
+  const isMaxMonth = useMemo(() => {
+    return currentMonth >= maxAllowedMonth;
+  }, [currentMonth, maxAllowedMonth]);
 
   // Navigate months
   const goToPreviousMonth = () => {
@@ -97,7 +103,12 @@ const ExpenseTracker = () => {
   const goToNextMonth = () => {
     const [year, month] = currentMonth.split("-").map(Number);
     const newDate = new Date(year, month, 1);
-    setCurrentMonth(formatMonthString(newDate));
+    const nextMonthStr = formatMonthString(newDate);
+    
+    // Only allow going up to max allowed month (3 months in future)
+    if (nextMonthStr <= maxAllowedMonth) {
+      setCurrentMonth(nextMonthStr);
+    }
   };
 
   // Get previous month string for comparison
@@ -114,85 +125,102 @@ const ExpenseTracker = () => {
       return;
     }
 
-    setIsLoading(true);
     const cacheKey = `${currentMonth}-${viewMode}`;
     const now = Date.now();
 
+    // Check if we already have all required data in cache
+    let needsExpenses = false;
+    let needsStats = false;
+    let needsPrevStats = false;
+
+    // Check what we need to load
+    if (viewMode === "list" || viewMode === "stats") {
+      const expensesKey = `${currentMonth}-expenses`;
+      const cachedExpenses = dataCache.current.get(expensesKey);
+      if (!cachedExpenses?.expenses || (now - cachedExpenses.timestamp) >= CACHE_TTL) {
+        needsExpenses = true;
+      } else {
+        // Use cached data immediately
+        setExpenses(cachedExpenses.expenses);
+      }
+    }
+
+    if (viewMode === "stats") {
+      const statsKey = `${currentMonth}-stats`;
+      const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
+
+      const cachedStats = dataCache.current.get(statsKey);
+      if (!cachedStats?.stats || (now - cachedStats.timestamp) >= CACHE_TTL) {
+        needsStats = true;
+      } else {
+        setStats(cachedStats.stats);
+      }
+
+      const cachedPrevStats = dataCache.current.get(prevStatsKey);
+      if (!cachedPrevStats?.stats || (now - cachedPrevStats.timestamp) >= CACHE_TTL) {
+        needsPrevStats = true;
+      } else {
+        setPreviousStats(cachedPrevStats.stats);
+      }
+    }
+
+    // If everything is cached, no need to show loading or make API calls
+    if (!needsExpenses && !needsStats && !needsPrevStats) {
+      setIsLoading(false);
+      return;
+    }
+
+    // Prevent duplicate requests
+    if (loadingRef.current.has(cacheKey)) {
+      return;
+    }
+    loadingRef.current.add(cacheKey);
+    setIsLoading(true);
+
     try {
-      // Check cache first
-      const cached = dataCache.current.get(cacheKey);
-      if (cached && (now - cached.timestamp) < CACHE_TTL) {
-        if (cached.expenses) setExpenses(cached.expenses);
-        if (cached.stats) setStats(cached.stats);
-        setIsLoading(false);
-        return;
-      }
-
-      // Prevent duplicate requests
-      if (loadingRef.current.has(cacheKey)) {
-        return;
-      }
-      loadingRef.current.add(cacheKey);
-
       const promises: Promise<any>[] = [];
 
-      // Only load expenses if needed (list or stats view)
-      if (viewMode === "list" || viewMode === "stats") {
+      // Only load expenses if needed
+      if (needsExpenses) {
         const expensesKey = `${currentMonth}-expenses`;
-        const cachedExpenses = dataCache.current.get(expensesKey);
-        
-        if (cachedExpenses?.expenses && (now - cachedExpenses.timestamp) < CACHE_TTL) {
-          setExpenses(cachedExpenses.expenses);
-        } else {
-          promises.push(
-            getExpenses({ month: currentMonth }, userId).then((exp) => {
-              setExpenses(exp);
-              // Cache expenses
-              dataCache.current.set(expensesKey, {
-                expenses: exp,
-                timestamp: now,
-              });
-            })
-          );
-        }
+        promises.push(
+          getExpenses({ month: currentMonth }, userId).then((exp) => {
+            setExpenses(exp);
+            // Cache expenses
+            dataCache.current.set(expensesKey, {
+              expenses: exp,
+              timestamp: now,
+            });
+          })
+        );
       }
 
-      // Only load stats if in stats view
-      if (viewMode === "stats") {
+      // Only load stats if needed
+      if (needsStats) {
         const statsKey = `${currentMonth}-stats`;
-        const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
-        
-        // Check cache for current month stats
-        const cachedStats = dataCache.current.get(statsKey);
-        if (cachedStats?.stats && (now - cachedStats.timestamp) < CACHE_TTL) {
-          setStats(cachedStats.stats);
-        } else {
-          promises.push(
-            getMonthlyStats(currentMonth, userId).then((s) => {
-              setStats(s);
-              dataCache.current.set(statsKey, {
-                stats: s,
-                timestamp: now,
-              });
-            })
-          );
-        }
+        promises.push(
+          getMonthlyStats(currentMonth, userId).then((s) => {
+            setStats(s);
+            dataCache.current.set(statsKey, {
+              stats: s,
+              timestamp: now,
+            });
+          })
+        );
+      }
 
-        // Check cache for previous month stats
-        const cachedPrevStats = dataCache.current.get(prevStatsKey);
-        if (cachedPrevStats?.stats && (now - cachedPrevStats.timestamp) < CACHE_TTL) {
-          setPreviousStats(cachedPrevStats.stats);
-        } else {
-          promises.push(
-            getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
-              setPreviousStats(s);
-              dataCache.current.set(prevStatsKey, {
-                stats: s,
-                timestamp: now,
-              });
-            })
-          );
-        }
+      // Only load previous stats if needed
+      if (needsPrevStats) {
+        const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
+        promises.push(
+          getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
+            setPreviousStats(s);
+            dataCache.current.set(prevStatsKey, {
+              stats: s,
+              timestamp: now,
+            });
+          })
+        );
       }
 
       await Promise.all(promises);
@@ -223,21 +251,40 @@ const ExpenseTracker = () => {
         const now = Date.now();
         const statsKey = `${currentMonth}-stats`;
         const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
-        
-        // Invalidate cache
-        dataCache.current.delete(statsKey);
-        dataCache.current.delete(prevStatsKey);
-        
-        Promise.all([
-          getMonthlyStats(currentMonth, userId).then((s) => {
-            setStats(s);
-            dataCache.current.set(statsKey, { stats: s, timestamp: now });
-          }),
-          getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
-            setPreviousStats(s);
-            dataCache.current.set(prevStatsKey, { stats: s, timestamp: now });
-          }),
-        ]);
+
+        // Check if stats are already fresh (less than 30 seconds old)
+        // Only reload if cache is stale to avoid unnecessary calls
+        const cachedStats = dataCache.current.get(statsKey);
+        const cachedPrevStats = dataCache.current.get(prevStatsKey);
+        const FRESH_THRESHOLD = 30 * 1000; // 30 seconds
+
+        const needsCurrentStats = !cachedStats?.stats || (now - cachedStats.timestamp) >= FRESH_THRESHOLD;
+        const needsPrevStats = !cachedPrevStats?.stats || (now - cachedPrevStats.timestamp) >= FRESH_THRESHOLD;
+
+        // Only make API calls if stats are stale
+        if (needsCurrentStats || needsPrevStats) {
+          const promises: Promise<any>[] = [];
+
+          if (needsCurrentStats) {
+            promises.push(
+              getMonthlyStats(currentMonth, userId).then((s) => {
+                setStats(s);
+                dataCache.current.set(statsKey, { stats: s, timestamp: now });
+              })
+            );
+          }
+
+          if (needsPrevStats) {
+            promises.push(
+              getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
+                setPreviousStats(s);
+                dataCache.current.set(prevStatsKey, { stats: s, timestamp: now });
+              })
+            );
+          }
+
+          Promise.all(promises);
+        }
       }
     }, 500); // 500ms debounce (increased for better performance)
   }, [currentMonth, userId, viewMode]);
@@ -510,8 +557,8 @@ const ExpenseTracker = () => {
 
             <button
               onClick={goToNextMonth}
-              disabled={isCurrentMonth}
-              className={`p-2 rounded-lg transition-all ${isCurrentMonth
+              disabled={isMaxMonth}
+              className={`p-2 rounded-lg transition-all ${isMaxMonth
                 ? "text-gray-300 cursor-not-allowed"
                 : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
                 }`}
@@ -560,7 +607,11 @@ const ExpenseTracker = () => {
       </main>
 
       {/* Quick Add Button */}
-      <QuickAddExpense onExpenseAdded={handleExpenseAdded} userId={userId} />
+      <QuickAddExpense 
+        onExpenseAdded={handleExpenseAdded} 
+        userId={userId} 
+        currentMonth={currentMonth}
+      />
 
       {/* Month Picker Modal */}
       {isMonthPickerOpen && (
@@ -570,7 +621,7 @@ const ExpenseTracker = () => {
             onClose={() => setIsMonthPickerOpen(false)}
             currentMonth={currentMonth}
             onMonthSelect={handleMonthSelect}
-            maxMonth={formatMonthString(new Date())}
+            maxMonth={maxAllowedMonth}
           />
         </Suspense>
       )}

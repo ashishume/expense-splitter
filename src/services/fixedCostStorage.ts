@@ -191,9 +191,31 @@ export const getFixedCostInstances = async (
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) =>
+    const instances = snapshot.docs.map((doc) =>
       docToInstance(doc.id, doc.data() as FixedCostInstanceDoc)
     );
+    
+    // Deduplicate by fixedCostId (shouldn't be needed, but safety check)
+    // If duplicates exist, keep the most recently updated one
+    const instanceMap = new Map<string, FixedCostInstance>();
+    for (const instance of instances) {
+      const existing = instanceMap.get(instance.fixedCostId);
+      if (!existing || new Date(instance.updatedAt) > new Date(existing.updatedAt)) {
+        instanceMap.set(instance.fixedCostId, instance);
+      } else if (existing && new Date(instance.updatedAt) === new Date(existing.updatedAt)) {
+        // If same timestamp, keep the one with the later created date
+        if (new Date(instance.createdAt) > new Date(existing.createdAt)) {
+          instanceMap.set(instance.fixedCostId, instance);
+        }
+      }
+    }
+    
+    // Log warning if duplicates were found
+    if (instances.length > instanceMap.size) {
+      console.warn(`Found ${instances.length - instanceMap.size} duplicate fixed cost instances for month ${month}. Deduplicated.`);
+    }
+    
+    return Array.from(instanceMap.values());
   } catch (error) {
     console.error("Error fetching fixed cost instances:", error);
     throw error;
@@ -205,7 +227,7 @@ export const getOrCreateFixedCostInstance = async (
   month: string,
   userId: string
 ): Promise<FixedCostInstance> => {
-  // Check if instance exists
+  // Check if instance exists for this month
   const q = query(
     collection(db, INSTANCES_COLLECTION),
     where("fixedCostId", "==", fixedCostId),
@@ -214,11 +236,17 @@ export const getOrCreateFixedCostInstance = async (
   );
 
   const snapshot = await getDocs(q);
+  
+  // If multiple instances exist (shouldn't happen, but handle it), use the first one
   if (!snapshot.empty) {
+    // If there are multiple, log a warning but use the first one
+    if (snapshot.docs.length > 1) {
+      console.warn(`Multiple instances found for fixedCostId ${fixedCostId}, month ${month}. Using first one.`);
+    }
     return docToInstance(snapshot.docs[0].id, snapshot.docs[0].data() as FixedCostInstanceDoc);
   }
 
-  // Get template to use default amount
+  // Get template
   const templateDoc = await getDoc(doc(db, TEMPLATES_COLLECTION, fixedCostId));
   if (!templateDoc.exists()) {
     throw new Error("Fixed cost template not found");
@@ -226,14 +254,41 @@ export const getOrCreateFixedCostInstance = async (
 
   const template = docToFixedCost(templateDoc.id, templateDoc.data() as FixedCostDoc);
 
-  // Create new instance
+  // Try to find the most recent previous month's instance to copy amount and enabled state
+  // This ensures future months inherit the values from the previous month
+  const allInstancesQuery = query(
+    collection(db, INSTANCES_COLLECTION),
+    where("fixedCostId", "==", fixedCostId),
+    where("userId", "==", userId)
+  );
+  const allInstancesSnapshot = await getDocs(allInstancesQuery);
+  
+  let amountToUse = template.defaultAmount;
+  let isEnabledToUse = true;
+  
+  if (!allInstancesSnapshot.empty) {
+    // Find the most recent previous month's instance
+    const instances = allInstancesSnapshot.docs
+      .map((doc) => docToInstance(doc.id, doc.data() as FixedCostInstanceDoc))
+      .filter((inst) => inst.month < month) // Only previous months
+      .sort((a, b) => b.month.localeCompare(a.month)); // Sort descending (most recent first)
+    
+    if (instances.length > 0) {
+      // Use the most recent previous month's values
+      const previousInstance = instances[0];
+      amountToUse = previousInstance.amount;
+      isEnabledToUse = previousInstance.isEnabled;
+    }
+  }
+
+  // Create new instance with inherited values
   const now = Timestamp.now();
   const docData: FixedCostInstanceDoc = {
     fixedCostId,
     userId,
     month,
-    amount: template.defaultAmount,
-    isEnabled: true,
+    amount: amountToUse,
+    isEnabled: isEnabledToUse,
     createdAt: now,
     updatedAt: now,
   };
@@ -245,8 +300,8 @@ export const getOrCreateFixedCostInstance = async (
     fixedCostId,
     userId,
     month,
-    amount: template.defaultAmount,
-    isEnabled: true,
+    amount: amountToUse,
+    isEnabled: isEnabledToUse,
     createdAt: now.toDate().toISOString(),
     updatedAt: now.toDate().toISOString(),
   };
@@ -287,16 +342,37 @@ export const updateFixedCostInstance = async (
 };
 
 // Auto-generate instances for a month from all templates
+// Optimized to fetch all existing instances first, then only create missing ones
 export const ensureFixedCostInstancesForMonth = async (
   month: string,
   userId: string
 ): Promise<FixedCostInstance[]> => {
   const templates = await getFixedCosts(userId);
-  const instances: FixedCostInstance[] = [];
+  
+  // Fetch all existing instances for this month in one query
+  const existingInstances = await getFixedCostInstances(month, userId);
+  const existingInstancesMap = new Map<string, FixedCostInstance>();
+  existingInstances.forEach(inst => {
+    existingInstancesMap.set(inst.fixedCostId, inst);
+  });
 
+  const instances: FixedCostInstance[] = [];
+  const instancesToCreate: Array<{ templateId: string }> = [];
+
+  // Check which templates need instances created
   for (const template of templates) {
+    const existing = existingInstancesMap.get(template.id);
+    if (existing) {
+      instances.push(existing);
+    } else {
+      instancesToCreate.push({ templateId: template.id });
+    }
+  }
+
+  // Only create instances that don't exist (reduces POST calls)
+  for (const { templateId } of instancesToCreate) {
     const instance = await getOrCreateFixedCostInstance(
-      template.id,
+      templateId,
       month,
       userId
     );

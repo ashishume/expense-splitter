@@ -190,9 +190,31 @@ export const getInvestmentInstances = async (
     );
 
     const snapshot = await getDocs(q);
-    return snapshot.docs.map((doc) =>
+    const instances = snapshot.docs.map((doc) =>
       docToInstance(doc.id, doc.data() as InvestmentInstanceDoc)
     );
+    
+    // Deduplicate by investmentId (shouldn't be needed, but safety check)
+    // If duplicates exist, keep the most recently updated one
+    const instanceMap = new Map<string, InvestmentInstance>();
+    for (const instance of instances) {
+      const existing = instanceMap.get(instance.investmentId);
+      if (!existing || new Date(instance.updatedAt) > new Date(existing.updatedAt)) {
+        instanceMap.set(instance.investmentId, instance);
+      } else if (existing && new Date(instance.updatedAt) === new Date(existing.updatedAt)) {
+        // If same timestamp, keep the one with the later created date
+        if (new Date(instance.createdAt) > new Date(existing.createdAt)) {
+          instanceMap.set(instance.investmentId, instance);
+        }
+      }
+    }
+    
+    // Log warning if duplicates were found
+    if (instances.length > instanceMap.size) {
+      console.warn(`Found ${instances.length - instanceMap.size} duplicate investment instances for month ${month}. Deduplicated.`);
+    }
+    
+    return Array.from(instanceMap.values());
   } catch (error) {
     console.error("Error fetching investment instances:", error);
     throw error;
@@ -204,7 +226,7 @@ export const getOrCreateInvestmentInstance = async (
   month: string,
   userId: string
 ): Promise<InvestmentInstance> => {
-  // Check if instance exists
+  // Check if instance exists for this month
   const q = query(
     collection(db, INSTANCES_COLLECTION),
     where("investmentId", "==", investmentId),
@@ -213,11 +235,17 @@ export const getOrCreateInvestmentInstance = async (
   );
 
   const snapshot = await getDocs(q);
+  
+  // If multiple instances exist (shouldn't happen, but handle it), use the first one
   if (!snapshot.empty) {
+    // If there are multiple, log a warning but use the first one
+    if (snapshot.docs.length > 1) {
+      console.warn(`Multiple instances found for investmentId ${investmentId}, month ${month}. Using first one.`);
+    }
     return docToInstance(snapshot.docs[0].id, snapshot.docs[0].data() as InvestmentInstanceDoc);
   }
 
-  // Get template to use default amount
+  // Get template
   const templateDoc = await getDoc(doc(db, TEMPLATES_COLLECTION, investmentId));
   if (!templateDoc.exists()) {
     throw new Error("Investment template not found");
@@ -225,13 +253,38 @@ export const getOrCreateInvestmentInstance = async (
 
   const template = docToInvestment(templateDoc.id, templateDoc.data() as InvestmentDoc);
 
-  // Create new instance
+  // Try to find the most recent previous month's instance to copy amount
+  // This ensures future months inherit the values from the previous month (like fixed costs)
+  const allInstancesQuery = query(
+    collection(db, INSTANCES_COLLECTION),
+    where("investmentId", "==", investmentId),
+    where("userId", "==", userId)
+  );
+  const allInstancesSnapshot = await getDocs(allInstancesQuery);
+  
+  let amountToUse = template.defaultAmount;
+  
+  if (!allInstancesSnapshot.empty) {
+    // Find the most recent previous month's instance
+    const instances = allInstancesSnapshot.docs
+      .map((doc) => docToInstance(doc.id, doc.data() as InvestmentInstanceDoc))
+      .filter((inst) => inst.month < month) // Only previous months
+      .sort((a, b) => b.month.localeCompare(a.month)); // Sort descending (most recent first)
+    
+    if (instances.length > 0) {
+      // Use the most recent previous month's amount
+      const previousInstance = instances[0];
+      amountToUse = previousInstance.amount;
+    }
+  }
+
+  // Create new instance with inherited values
   const now = Timestamp.now();
   const docData: InvestmentInstanceDoc = {
     investmentId,
     userId,
     month,
-    amount: template.defaultAmount,
+    amount: amountToUse,
     createdAt: now,
     updatedAt: now,
   };
@@ -243,7 +296,7 @@ export const getOrCreateInvestmentInstance = async (
     investmentId,
     userId,
     month,
-    amount: template.defaultAmount,
+    amount: amountToUse,
     createdAt: now.toDate().toISOString(),
     updatedAt: now.toDate().toISOString(),
   };
@@ -280,16 +333,40 @@ export const updateInvestmentInstance = async (
 };
 
 // Auto-generate instances for a month from all templates
+// For all months (including future), auto-create instances by copying from previous month
+// This ensures SIPs are inherited from previous months like fixed costs
+// Optimized to fetch all existing instances first, then only create missing ones
 export const ensureInvestmentInstancesForMonth = async (
   month: string,
   userId: string
 ): Promise<InvestmentInstance[]> => {
   const templates = await getInvestments(userId);
-  const instances: InvestmentInstance[] = [];
+  
+  // Fetch all existing instances for this month in one query
+  const existingInstances = await getInvestmentInstances(month, userId);
+  const existingInstancesMap = new Map<string, InvestmentInstance>();
+  existingInstances.forEach(inst => {
+    existingInstancesMap.set(inst.investmentId, inst);
+  });
 
+  const instances: InvestmentInstance[] = [];
+  const instancesToCreate: Array<{ templateId: string }> = [];
+
+  // Check which templates need instances created
   for (const template of templates) {
+    const existing = existingInstancesMap.get(template.id);
+    if (existing) {
+      instances.push(existing);
+    } else {
+      instancesToCreate.push({ templateId: template.id });
+    }
+  }
+
+  // Only create instances that don't exist (reduces POST calls)
+  // getOrCreateInvestmentInstance will copy from previous month if available
+  for (const { templateId } of instancesToCreate) {
     const instance = await getOrCreateInvestmentInstance(
-      template.id,
+      templateId,
       month,
       userId
     );

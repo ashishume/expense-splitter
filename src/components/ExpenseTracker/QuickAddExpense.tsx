@@ -13,16 +13,57 @@ import { parseExpenseSpeech, type ParsedExpense } from "../../utils/speechParser
 interface QuickAddExpenseProps {
   onExpenseAdded: (expense: PersonalExpense) => void;
   userId: string;
+  currentMonth?: string; // Format: "YYYY-MM" - the month being viewed
 }
 
-const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
+const QuickAddExpense = ({ onExpenseAdded, userId, currentMonth }: QuickAddExpenseProps) => {
+  // Helper to get default date based on current month being viewed
+  const getDefaultDate = useCallback(() => {
+    if (!currentMonth) {
+      return new Date().toISOString().split("T")[0];
+    }
+    
+    const [year, month] = currentMonth.split("-").map(Number);
+    const today = new Date();
+    const currentMonthDate = new Date(year, month - 1, 1);
+    
+    // If viewing current month, default to today
+    // If viewing future month, default to first day of that month
+    // If viewing past month, default to first day of that month
+    if (
+      currentMonthDate.getFullYear() === today.getFullYear() &&
+      currentMonthDate.getMonth() === today.getMonth()
+    ) {
+      return today.toISOString().split("T")[0];
+    } else {
+      return currentMonthDate.toISOString().split("T")[0];
+    }
+  }, [currentMonth]);
+
   const [isOpen, setIsOpen] = useState(false);
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("food");
-  const [date, setDate] = useState(
-    () => new Date().toISOString().split("T")[0]
-  );
+  
+  // Initialize date - use a function that calculates it
+  const getInitialDate = () => {
+    if (!currentMonth) {
+      return new Date().toISOString().split("T")[0];
+    }
+    const [year, month] = currentMonth.split("-").map(Number);
+    const today = new Date();
+    const currentMonthDate = new Date(year, month - 1, 1);
+    if (
+      currentMonthDate.getFullYear() === today.getFullYear() &&
+      currentMonthDate.getMonth() === today.getMonth()
+    ) {
+      return today.toISOString().split("T")[0];
+    } else {
+      return currentMonthDate.toISOString().split("T")[0];
+    }
+  };
+  
+  const [date, setDate] = useState(() => getInitialDate());
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [speechPreview, setSpeechPreview] = useState<{
@@ -134,8 +175,15 @@ const QuickAddExpense = ({ onExpenseAdded, userId }: QuickAddExpenseProps) => {
     setAmount("");
     setDescription("");
     setCategory("food");
-    setDate(new Date().toISOString().split("T")[0]);
+    setDate(getDefaultDate());
   };
+
+  // Update date when modal opens or currentMonth changes
+  useEffect(() => {
+    if (isOpen) {
+      setDate(getDefaultDate());
+    }
+  }, [isOpen, getDefaultDate]);
 
   // Directly add expense from speech preview
   const handleAddFromSpeech = async () => {
