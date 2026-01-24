@@ -209,7 +209,7 @@ const ExpenseList = ({
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 bg-white rounded-xl p-3 shadow-sm border border-gray-100"
         >
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
             {/* All Categories Button */}
             <button
               onClick={() => onCategorySelect(null)}

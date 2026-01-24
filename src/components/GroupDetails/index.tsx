@@ -716,7 +716,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
       <div className="sticky top-0 sm:top-4 z-10 -mx-2 sm:mx-0 mb-4 lg:mb-6">
         <div className="bg-white/95 backdrop-blur-md shadow-sm sm:shadow-none border-b sm:border-b-0 border-gray-200 sm:bg-transparent sm:backdrop-blur-none">
           <div className="px-4 py-3 sm:p-0 lg:py-1">
-            <div className="flex gap-2 lg:gap-3 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+            <div className="flex gap-2 lg:gap-3 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
               <button
                 onClick={() => setActiveTab("expenses")}
                 className={`flex items-center px-4 py-2 lg:px-6 lg:py-3 rounded-lg font-medium transition-all duration-200 whitespace-nowrap text-sm lg:text-base ${
