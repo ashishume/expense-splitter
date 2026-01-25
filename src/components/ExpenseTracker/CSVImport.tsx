@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Upload, X, CheckCircle, AlertCircle, FileText, Loader } from "lucide-react";
 import toast from "react-hot-toast";
 import type { PersonalExpense } from "../../types/personalExpense";
-import { api } from "../../services/apiService";
+import { useBatchCreateExpenses } from "../../hooks/useExpenseMutations";
 import { parseCSV, csvExpensesToPersonalExpenses, type CSVParseResult } from "../../utils/csvParser";
 
 interface CSVImportProps {
@@ -12,6 +12,7 @@ interface CSVImportProps {
 }
 
 const CSVImport = ({ userId, onExpensesImported }: CSVImportProps) => {
+  const batchCreateMutation = useBatchCreateExpenses();
   const [isOpen, setIsOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [parseResult, setParseResult] = useState<CSVParseResult | null>(null);
@@ -77,8 +78,11 @@ const CSVImport = ({ userId, onExpensesImported }: CSVImportProps) => {
       // Convert CSV expenses to PersonalExpense format
       const expensesToImport = csvExpensesToPersonalExpenses(parseResult.expenses);
 
-      // Batch create expenses
-      const createdExpenses = await api.expenses.batchCreate(expensesToImport, userId);
+      // Batch create expenses using mutation hook
+      const createdExpenses = await batchCreateMutation.mutateAsync({
+        expenses: expensesToImport,
+        userId,
+      }) as PersonalExpense[];
 
       toast.success(
         `Successfully imported ${createdExpenses.length} expense(s)!`,

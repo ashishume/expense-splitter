@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, TrendingUp } from "lucide-react";
 import toast from "react-hot-toast";
 import type { Investment, InvestmentInstance } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
+import { dataCache } from "../../utils/dataCache";
 import OneTimeInvestmentsManager from "./OneTimeInvestmentsManager";
 
 interface InvestmentsManagerProps {
@@ -27,6 +28,7 @@ const InvestmentsManager = ({
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, month]);
 
   const loadData = async () => {
@@ -40,8 +42,8 @@ const InvestmentsManager = ({
         api.investments.getInstances(month, userId),
       ]);
 
-      setTemplates(templatesData);
-      setInstances(instancesData);
+      setTemplates(templatesData as Investment[]);
+      setInstances(instancesData as InvestmentInstance[]);
     } catch (error) {
       console.error("Error loading investments:", error);
       toast.error("Failed to load investments");
@@ -71,6 +73,8 @@ const InvestmentsManager = ({
       setNewName("");
       setNewAmount("");
       setIsAdding(false);
+      // Invalidate cache for current month
+      dataCache.invalidateInvestments(month);
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -84,6 +88,8 @@ const InvestmentsManager = ({
       await api.investments.updateTemplate(id, { name, defaultAmount: amount }, userId);
       toast.success("Investment updated!");
       setEditingId(null);
+      // Invalidate cache for current month
+      dataCache.invalidateInvestments(month);
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -100,6 +106,8 @@ const InvestmentsManager = ({
     try {
       await api.investments.deleteTemplate(id, userId);
       toast.success("Investment deleted!");
+      // Invalidate cache for current month
+      dataCache.invalidateInvestments(month);
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -114,6 +122,7 @@ const InvestmentsManager = ({
   ) => {
     try {
       await api.investments.updateInstance(instance.id, amount, userId);
+      // Cache invalidation handled by API wrapper
       await loadData();
       onUpdate?.();
     } catch (error) {

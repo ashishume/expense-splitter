@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, ToggleLeft, ToggleRight } from "lucide-react";
 import toast from "react-hot-toast";
 import type { FixedCost, FixedCostInstance } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
+import { dataCache } from "../../utils/dataCache";
 
 interface FixedCostsManagerProps {
   userId: string;
@@ -26,6 +27,7 @@ const FixedCostsManager = ({
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, month]);
 
   const loadData = async () => {
@@ -39,8 +41,8 @@ const FixedCostsManager = ({
         api.fixedCosts.getInstances(month, userId),
       ]);
 
-      setTemplates(templatesData);
-      setInstances(instancesData);
+      setTemplates(templatesData as FixedCost[]);
+      setInstances(instancesData as FixedCostInstance[]);
     } catch (error) {
       console.error("Error loading fixed costs:", error);
       toast.error("Failed to load fixed costs");
@@ -70,6 +72,8 @@ const FixedCostsManager = ({
       setNewName("");
       setNewAmount("");
       setIsAdding(false);
+      // Invalidate cache for current month
+      dataCache.invalidateFixedCosts(month);
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -83,6 +87,8 @@ const FixedCostsManager = ({
       await api.fixedCosts.updateTemplate(id, { name, defaultAmount: amount }, userId);
       toast.success("Fixed cost updated!");
       setEditingId(null);
+      // Invalidate cache for current month
+      dataCache.invalidateFixedCosts(month);
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -99,6 +105,8 @@ const FixedCostsManager = ({
     try {
       await api.fixedCosts.deleteTemplate(id, userId);
       toast.success("Fixed cost deleted!");
+      // Invalidate cache for current month
+      dataCache.invalidateFixedCosts(month);
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -114,6 +122,7 @@ const FixedCostsManager = ({
         { isEnabled: !instance.isEnabled },
         userId
       );
+      // Cache invalidation handled by API wrapper
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -128,6 +137,7 @@ const FixedCostsManager = ({
   ) => {
     try {
       await api.fixedCosts.updateInstance(instance.id, { amount }, userId);
+      // Cache invalidation handled by API wrapper
       await loadData();
       onUpdate?.();
     } catch (error) {

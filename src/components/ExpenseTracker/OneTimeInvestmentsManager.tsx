@@ -4,6 +4,7 @@ import { Plus, Edit2, Trash2, TrendingUp, Calendar } from "lucide-react";
 import toast from "react-hot-toast";
 import type { OneTimeInvestment } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
+import { dataCache } from "../../utils/dataCache";
 
 interface OneTimeInvestmentsManagerProps {
   userId: string;
@@ -26,13 +27,14 @@ const OneTimeInvestmentsManager = ({
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, month]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const data = await api.oneTimeInvestments.getAll(month, userId);
-      setInvestments(data);
+      setInvestments(data as OneTimeInvestment[]);
     } catch (error) {
       console.error("Error loading one-time investments:", error);
       toast.error("Failed to load investments");
@@ -64,6 +66,7 @@ const OneTimeInvestmentsManager = ({
       setAmount("");
       setDate(new Date().toISOString().split("T")[0]);
       setIsAdding(false);
+      // Cache invalidation handled by API wrapper (extracts month from result)
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -85,6 +88,7 @@ const OneTimeInvestmentsManager = ({
       );
       toast.success("Investment updated!");
       setEditingId(null);
+      // Cache invalidation handled by API wrapper (extracts month from result)
       await loadData();
       onUpdate?.();
     } catch (error) {
@@ -101,6 +105,8 @@ const OneTimeInvestmentsManager = ({
     try {
       await api.oneTimeInvestments.delete(id, userId);
       toast.success("Investment deleted!");
+      // Invalidate cache for current month
+      dataCache.invalidateOneTimeInvestments(month);
       await loadData();
       onUpdate?.();
     } catch (error) {

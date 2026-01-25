@@ -1,14 +1,13 @@
 import { useState, useEffect, lazy, Suspense } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { collection, onSnapshot } from "firebase/firestore";
-import { db } from "./firebase";
 import { useAuth } from "./components/useAuth";
 import Groups from "./components/Groups";
 import logo from "./assets/logo.jpg";
 import { LogOut, Wallet } from "lucide-react";
-import { cleanupOldLogs } from "./utils/logger";
+import { cleanupOldLogs } from "./services/groupService";
 import { LoadingSpinner } from "./components/icons";
+import { subscribeToUsers, subscribeToGroups } from "./services/groupService";
 
 import type { User, Group } from "./types";
 
@@ -27,25 +26,14 @@ const ExpenseSplittingApp = () => {
   // Set up real-time listeners for users and groups
   useEffect(() => {
     // Listen for users collection changes
-    const usersUnsubscribe = onSnapshot(collection(db, "users"), (snapshot) => {
-      const usersData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as User[];
+    const usersUnsubscribe = subscribeToUsers((usersData) => {
       setUsers(usersData);
     });
 
     // Listen for groups collection changes
-    const groupsUnsubscribe = onSnapshot(
-      collection(db, "groups"),
-      (snapshot) => {
-        const groupsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Group[];
-        setGroups(groupsData);
-      }
-    );
+    const groupsUnsubscribe = subscribeToGroups((groupsData) => {
+      setGroups(groupsData);
+    });
 
     // Cleanup listeners on component unmount
     return () => {

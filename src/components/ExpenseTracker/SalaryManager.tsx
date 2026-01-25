@@ -4,6 +4,7 @@ import { Edit2, DollarSign } from "lucide-react";
 import toast from "react-hot-toast";
 import type { SalaryIncome, SalaryInstance } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
+import { dataCache } from "../../utils/dataCache";
 
 interface SalaryManagerProps {
   userId: string;
@@ -20,6 +21,7 @@ const SalaryManager = ({ userId, month, onUpdate }: SalaryManagerProps) => {
 
   useEffect(() => {
     loadData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId, month]);
 
   const loadData = async () => {
@@ -33,12 +35,12 @@ const SalaryManager = ({ userId, month, onUpdate }: SalaryManagerProps) => {
         api.salary.getInstance(month, userId),
       ]);
 
-      setTemplate(templateData);
-      setInstance(instanceData);
+      setTemplate(templateData as SalaryIncome | null);
+      setInstance(instanceData as SalaryInstance | null);
       if (instanceData) {
-        setAmount(instanceData.amount.toString());
+        setAmount((instanceData as SalaryInstance).amount.toString());
       } else if (templateData) {
-        setAmount(templateData.defaultAmount.toString());
+        setAmount((templateData as SalaryIncome).defaultAmount.toString());
       }
     } catch (error) {
       console.error("Error loading salary:", error);
@@ -71,6 +73,8 @@ const SalaryManager = ({ userId, month, onUpdate }: SalaryManagerProps) => {
 
       toast.success("Salary updated!");
       setIsEditing(false);
+      // Invalidate cache for current month
+      dataCache.invalidateSalary(month);
       await loadData();
       onUpdate?.();
     } catch (error) {

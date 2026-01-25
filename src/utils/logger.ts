@@ -1,3 +1,5 @@
+import { getDatabaseProvider } from "../config/database";
+import { createLog as createLogSupabase, cleanupOldLogs as cleanupOldLogsSupabase } from "../services/supabase/groupStorage";
 import { db } from "../firebase";
 import {
   addDoc,
@@ -44,10 +46,15 @@ export interface LogEntry {
 
 export const logAction = async (entry: LogEntry) => {
   try {
-    await addDoc(collection(db, "logs"), {
-      ...entry,
-      timestamp: new Date().toISOString(),
-    });
+    const provider = getDatabaseProvider();
+    if (provider === "supabase") {
+      await createLogSupabase(entry);
+    } else {
+      await addDoc(collection(db, "logs"), {
+        ...entry,
+        timestamp: new Date().toISOString(),
+      });
+    }
   } catch (error) {
     console.error("Error logging action:", error);
   }
@@ -148,48 +155,47 @@ export const logMemberAction = async (
  */
 export const cleanupOldLogs = async (): Promise<number> => {
   try {
-    // Calculate the cutoff date (2 months ago)
-    const twoMonthsAgo = new Date();
-    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const provider = getDatabaseProvider();
+    if (provider === "supabase") {
+      return await cleanupOldLogsSupabase();
+    } else {
+      // Firebase implementation
+      const twoMonthsAgo = new Date();
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+      const cutoffDateString = twoMonthsAgo.toISOString();
+      const logsQuery = query(
+        collection(db, "logs"),
+        where("timestamp", "<", cutoffDateString)
+      );
 
-    // Query logs older than 2 months
-    // Note: We query by timestamp as ISO string, which is lexicographically sortable
-    const cutoffDateString = twoMonthsAgo.toISOString();
-    const logsQuery = query(
-      collection(db, "logs"),
-      where("timestamp", "<", cutoffDateString)
-    );
+      const snapshot = await getDocs(logsQuery);
+      const logsToDelete = snapshot.docs;
 
-    const snapshot = await getDocs(logsQuery);
-    const logsToDelete = snapshot.docs;
+      if (logsToDelete.length === 0) {
+        return 0;
+      }
 
-    if (logsToDelete.length === 0) {
-      return 0;
+      const BATCH_LIMIT = 500;
+      let totalDeleted = 0;
+
+      for (let i = 0; i < logsToDelete.length; i += BATCH_LIMIT) {
+        const batch = writeBatch(db);
+        const batchLogs = logsToDelete.slice(i, i + BATCH_LIMIT);
+
+        batchLogs.forEach((logDoc) => {
+          const logRef = doc(db, "logs", logDoc.id);
+          batch.delete(logRef);
+        });
+
+        await batch.commit();
+        totalDeleted += batchLogs.length;
+      }
+
+      console.log(`Cleaned up ${totalDeleted} log entries older than 2 months`);
+      return totalDeleted;
     }
-
-    // Firestore batch limit is 500 operations
-    const BATCH_LIMIT = 500;
-    let totalDeleted = 0;
-
-    // Process deletions in batches
-    for (let i = 0; i < logsToDelete.length; i += BATCH_LIMIT) {
-      const batch = writeBatch(db);
-      const batchLogs = logsToDelete.slice(i, i + BATCH_LIMIT);
-
-      batchLogs.forEach((logDoc) => {
-        const logRef = doc(db, "logs", logDoc.id);
-        batch.delete(logRef);
-      });
-
-      await batch.commit();
-      totalDeleted += batchLogs.length;
-    }
-
-    console.log(`Cleaned up ${totalDeleted} log entries older than 2 months`);
-    return totalDeleted;
   } catch (error) {
     console.error("Error cleaning up old logs:", error);
-    // Don't throw - cleanup failures shouldn't break the app
     return 0;
   }
 };

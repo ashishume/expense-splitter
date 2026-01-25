@@ -5,18 +5,19 @@ import toast from "react-hot-toast";
 import {
   EXPENSE_CATEGORIES,
   type ExpenseCategory,
-  type PersonalExpense,
 } from "../../types/personalExpense";
-import { api } from "../../services/apiService";
+import { useCreateExpense } from "../../hooks/useExpenseMutations";
 import { parseExpenseSpeech, type ParsedExpense } from "../../utils/speechParser";
 
 interface QuickAddExpenseProps {
-  onExpenseAdded: (expense: PersonalExpense) => void;
+  onExpenseAdded: () => void;
   userId: string;
   currentMonth?: string; // Format: "YYYY-MM" - the month being viewed
 }
 
 const QuickAddExpense = ({ onExpenseAdded, userId, currentMonth }: QuickAddExpenseProps) => {
+  const createExpenseMutation = useCreateExpense();
+  
   // Helper to get default date based on current month being viewed
   const getDefaultDate = useCallback(() => {
     if (!currentMonth) {
@@ -205,17 +206,17 @@ const QuickAddExpense = ({ onExpenseAdded, userId, currentMonth }: QuickAddExpen
 
     setIsSubmitting(true);
     try {
-      const expense = await api.expenses.create(
-        {
+      await createExpenseMutation.mutateAsync({
+        expense: {
           amount: parsed.amount,
           description: finalDescription,
           category: finalCategory,
           date: new Date(finalDate).toISOString(),
         },
-        userId
-      );
+        userId,
+      });
 
-      onExpenseAdded(expense);
+      onExpenseAdded();
       toast.success("Expense added!");
       setSpeechPreview(null);
     } catch {
@@ -236,17 +237,17 @@ const QuickAddExpense = ({ onExpenseAdded, userId, currentMonth }: QuickAddExpen
 
     setIsSubmitting(true);
     try {
-      const expense = await api.expenses.create(
-        {
+      await createExpenseMutation.mutateAsync({
+        expense: {
           amount: numAmount,
           description: description.trim(),
           category,
           date: new Date(date).toISOString(),
         },
-        userId
-      );
+        userId,
+      });
 
-      onExpenseAdded(expense);
+      onExpenseAdded();
       toast.success("Expense added!");
       resetForm();
       setIsOpen(false);

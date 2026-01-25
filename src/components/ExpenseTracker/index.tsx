@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -16,7 +16,7 @@ import {
 
 import type {
   PersonalExpense,
-  MonthlyStats as MonthlyStatsType,
+  MonthlyStats,
   CategoryConfig,
 } from "../../types/personalExpense";
 import { api } from "../../services/apiService";
@@ -28,6 +28,8 @@ import type { Unsubscribe } from "firebase/firestore";
 import SigninButton from "./SigninButton";
 import { LoadingSpinner } from "../icons";
 import CSVImport from "./CSVImport";
+import { useExpenses, useMonthlyStats, usePreviousMonthStats } from "../../hooks/useExpenseQueries";
+import { queryClient } from "../../providers/QueryProvider";
 
 // Lazy load heavy components for better iPhone performance
 const MonthlyStats = lazy(() => import("./MonthlyStats"));
@@ -47,30 +49,27 @@ const formatMonthString = (date: Date): string => {
 const ExpenseTracker = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [expenses, setExpenses] = useState<PersonalExpense[]>([]);
   const [currentMonth, setCurrentMonth] = useState(() =>
     formatMonthString(new Date())
   );
-  const [stats, setStats] = useState<MonthlyStatsType | null>(null);
-  const [previousStats, setPreviousStats] = useState<MonthlyStatsType | null>(
-    null
-  );
   const [viewMode, setViewMode] = useState<ViewMode>("stats");
-  const [isLoading, setIsLoading] = useState(true);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<CategoryConfig | null>(null);
   const userId = user?.uid || null;
 
-  // Cache for expenses and stats to avoid redundant API calls
-  const dataCache = useRef<Map<string, {
-    expenses?: PersonalExpense[];
-    stats?: MonthlyStatsType;
-    timestamp: number;
-  }>>(new Map());
-
-  const CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
-  const loadingRef = useRef<Set<string>>(new Set()); // Track ongoing requests to prevent duplicates
+  // Use React Query hooks for data fetching
+  const expensesQuery = useExpenses(currentMonth, userId);
+  const statsQuery = useMonthlyStats(currentMonth, userId);
+  const previousStatsQuery = usePreviousMonthStats(currentMonth, userId);
+  
+  const expenses: PersonalExpense[] = (expensesQuery.data as PersonalExpense[] | undefined) || [];
+  const stats: MonthlyStats | null = (statsQuery.data as MonthlyStats | undefined) || null;
+  const previousStats: MonthlyStats | null = (previousStatsQuery.data as MonthlyStats | undefined) || null;
+  const expensesLoading = expensesQuery.isLoading;
+  const statsLoading = statsQuery.isLoading;
+  
+  const isLoading = expensesLoading || (viewMode === "stats" && statsLoading);
 
   // Format month for display
   const monthDisplay = useMemo(() => {
@@ -111,183 +110,6 @@ const ExpenseTracker = () => {
     }
   };
 
-  // Get previous month string for comparison
-  const getPreviousMonthStr = (monthStr: string) => {
-    const [year, month] = monthStr.split("-").map(Number);
-    const prevDate = new Date(year, month - 2, 1);
-    return formatMonthString(prevDate);
-  };
-
-  // Load data based on view mode (lazy loading)
-  const loadData = useCallback(async () => {
-    if (!userId) {
-      setIsLoading(false);
-      return;
-    }
-
-    const cacheKey = `${currentMonth}-${viewMode}`;
-    const now = Date.now();
-
-    // Check if we already have all required data in cache
-    let needsExpenses = false;
-    let needsStats = false;
-    let needsPrevStats = false;
-
-    // Check what we need to load
-    if (viewMode === "list" || viewMode === "stats") {
-      const expensesKey = `${currentMonth}-expenses`;
-      const cachedExpenses = dataCache.current.get(expensesKey);
-      if (!cachedExpenses?.expenses || (now - cachedExpenses.timestamp) >= CACHE_TTL) {
-        needsExpenses = true;
-      } else {
-        // Use cached data immediately
-        setExpenses(cachedExpenses.expenses);
-      }
-    }
-
-    if (viewMode === "stats") {
-      const statsKey = `${currentMonth}-stats`;
-      const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
-
-      const cachedStats = dataCache.current.get(statsKey);
-      if (!cachedStats?.stats || (now - cachedStats.timestamp) >= CACHE_TTL) {
-        needsStats = true;
-      } else {
-        setStats(cachedStats.stats);
-      }
-
-      const cachedPrevStats = dataCache.current.get(prevStatsKey);
-      if (!cachedPrevStats?.stats || (now - cachedPrevStats.timestamp) >= CACHE_TTL) {
-        needsPrevStats = true;
-      } else {
-        setPreviousStats(cachedPrevStats.stats);
-      }
-    }
-
-    // If everything is cached, no need to show loading or make API calls
-    if (!needsExpenses && !needsStats && !needsPrevStats) {
-      setIsLoading(false);
-      return;
-    }
-
-    // Prevent duplicate requests
-    if (loadingRef.current.has(cacheKey)) {
-      return;
-    }
-    loadingRef.current.add(cacheKey);
-    setIsLoading(true);
-
-    try {
-      const promises: Promise<any>[] = [];
-
-      // Only load expenses if needed
-      if (needsExpenses) {
-        const expensesKey = `${currentMonth}-expenses`;
-        promises.push(
-          api.expenses.getAll({ month: currentMonth }, userId).then((exp) => {
-            setExpenses(exp);
-            // Cache expenses
-            dataCache.current.set(expensesKey, {
-              expenses: exp,
-              timestamp: now,
-            });
-          })
-        );
-      }
-
-      // Only load stats if needed
-      if (needsStats) {
-        const statsKey = `${currentMonth}-stats`;
-        promises.push(
-          api.expenses.getMonthlyStats(currentMonth, userId).then((s: MonthlyStatsType) => {
-            setStats(s);
-            dataCache.current.set(statsKey, {
-              stats: s,
-              timestamp: now,
-            });
-          })
-        );
-      }
-
-      // Only load previous stats if needed
-      if (needsPrevStats) {
-        const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
-        promises.push(
-          api.expenses.getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s: MonthlyStatsType) => {
-            setPreviousStats(s);
-            dataCache.current.set(prevStatsKey, {
-              stats: s,
-              timestamp: now,
-            });
-          })
-        );
-      }
-
-      await Promise.all(promises);
-    } catch (error) {
-      console.error("Error loading expenses:", error);
-    } finally {
-      setIsLoading(false);
-      loadingRef.current.delete(cacheKey);
-    }
-  }, [currentMonth, userId, viewMode]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  // Debounce stats updates to reduce Firebase calls (iPhone optimization)
-  const statsUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-
-  const debouncedStatsUpdate = useCallback(() => {
-    // Only update stats if in stats view
-    if (viewMode !== "stats") return;
-
-    if (statsUpdateTimeoutRef.current) {
-      clearTimeout(statsUpdateTimeoutRef.current);
-    }
-    statsUpdateTimeoutRef.current = setTimeout(() => {
-      if (userId) {
-        const now = Date.now();
-        const statsKey = `${currentMonth}-stats`;
-        const prevStatsKey = `${getPreviousMonthStr(currentMonth)}-stats`;
-
-        // Check if stats are already fresh (less than 30 seconds old)
-        // Only reload if cache is stale to avoid unnecessary calls
-        const cachedStats = dataCache.current.get(statsKey);
-        const cachedPrevStats = dataCache.current.get(prevStatsKey);
-        const FRESH_THRESHOLD = 30 * 1000; // 30 seconds
-
-        const needsCurrentStats = !cachedStats?.stats || (now - cachedStats.timestamp) >= FRESH_THRESHOLD;
-        const needsPrevStats = !cachedPrevStats?.stats || (now - cachedPrevStats.timestamp) >= FRESH_THRESHOLD;
-
-        // Only make API calls if stats are stale
-        if (needsCurrentStats || needsPrevStats) {
-          const promises: Promise<any>[] = [];
-
-          if (needsCurrentStats) {
-            promises.push(
-              api.expenses.getMonthlyStats(currentMonth, userId).then((s) => {
-                setStats(s);
-                dataCache.current.set(statsKey, { stats: s, timestamp: now });
-              })
-            );
-          }
-
-          if (needsPrevStats) {
-            promises.push(
-              api.expenses.getMonthlyStats(getPreviousMonthStr(currentMonth), userId).then((s) => {
-                setPreviousStats(s);
-                dataCache.current.set(prevStatsKey, { stats: s, timestamp: now });
-              })
-            );
-          }
-
-          Promise.all(promises);
-        }
-      }
-    }, 500); // 500ms debounce (increased for better performance)
-  }, [currentMonth, userId, viewMode]);
 
   // Realtime subscription (optimized - only for list/stats views)
   useEffect(() => {
@@ -297,7 +119,7 @@ const ExpenseTracker = () => {
 
     const setupSubscription = () => {
       unsubscribe = api.expenses.subscribe(userId, (payload) => {
-        const { eventType, expense, oldExpense } = payload;
+        const { expense, oldExpense } = payload;
 
         // Check if the change affects current month
         const affectsCurrentMonth =
@@ -305,48 +127,16 @@ const ExpenseTracker = () => {
           oldExpense?.date?.startsWith(currentMonth);
 
         if (affectsCurrentMonth) {
-          // Invalidate cache for this month
-          const expensesKey = `${currentMonth}-expenses`;
-          dataCache.current.delete(expensesKey);
-
-          switch (eventType) {
-            case "INSERT":
-              if (expense && expense.date.startsWith(currentMonth)) {
-                setExpenses((prev) => {
-                  // Prevent duplicates
-                  if (prev.some((e) => e.id === expense.id)) return prev;
-                  // Insert in sorted order (newest first)
-                  const updated = [...prev, expense];
-                  updated.sort(
-                    (a, b) =>
-                      new Date(b.date).getTime() - new Date(a.date).getTime()
-                  );
-                  return updated;
-                });
-              }
-              break;
-
-            case "UPDATE":
-              if (expense) {
-                setExpenses((prev) =>
-                  prev.map((e) => (e.id === expense.id ? expense : e))
-                );
-              }
-              break;
-
-            case "DELETE":
-              if (oldExpense) {
-                setExpenses((prev) =>
-                  prev.filter((e) => e.id !== oldExpense.id)
-                );
-              }
-              break;
-          }
-
-          // Only update stats if in stats view
-          if (viewMode === "stats") {
-            debouncedStatsUpdate();
-          }
+          // Invalidate React Query cache instead of manual state updates
+          const month = expense?.date.substring(0, 7) || oldExpense?.date.substring(0, 7) || currentMonth;
+          queryClient.invalidateQueries({ queryKey: ["expenses", month] });
+          queryClient.invalidateQueries({ queryKey: ["stats", month] });
+          
+          // Also invalidate previous month stats (for savings calculation)
+          const [year, monthNum] = month.split("-").map(Number);
+          const prevDate = new Date(year, monthNum - 2, 1);
+          const prevMonth = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+          queryClient.invalidateQueries({ queryKey: ["stats", prevMonth] });
         }
       });
     };
@@ -357,108 +147,37 @@ const ExpenseTracker = () => {
       if (unsubscribe) {
         api.expenses.unsubscribe(unsubscribe);
       }
-      if (statsUpdateTimeoutRef.current) {
-        clearTimeout(statsUpdateTimeoutRef.current);
-      }
     };
-  }, [userId, currentMonth, debouncedStatsUpdate, viewMode]);
+  }, [userId, currentMonth, viewMode]);
 
-  // Handle expense added (optimistic update already done by QuickAddExpense)
-  const handleExpenseAdded = useCallback((expense: PersonalExpense) => {
-    // Invalidate cache
-    const expensesKey = `${currentMonth}-expenses`;
-    dataCache.current.delete(expensesKey);
+  // Handlers for child components (mutation hooks will handle cache invalidation)
+  // These are kept for compatibility with child components but don't need to do anything
+  // since React Query mutations handle cache invalidation automatically
+  const handleExpenseAdded = useCallback(() => {
+    // React Query mutations will handle cache invalidation
+  }, []);
 
-    // If expense is in current month, add to list (if not already there from realtime)
-    if (expense.date.startsWith(currentMonth) && (viewMode === "list" || viewMode === "stats")) {
-      setExpenses((prev) => {
-        if (prev.some((e) => e.id === expense.id)) return prev;
-        const updated = [expense, ...prev];
-        updated.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        );
-        return updated;
-      });
-    }
-    // Only update stats if in stats view
-    if (viewMode === "stats") {
-      debouncedStatsUpdate();
-    }
-  }, [currentMonth, debouncedStatsUpdate, viewMode]);
+  const handleExpenseDeleted = useCallback(() => {
+    // React Query mutations will handle cache invalidation
+  }, []);
 
-  // Handle expense deleted (optimistic update)
-  const handleExpenseDeleted = useCallback((id: string) => {
-    // Invalidate cache
-    const expensesKey = `${currentMonth}-expenses`;
-    dataCache.current.delete(expensesKey);
-
-    if (viewMode === "list" || viewMode === "stats") {
-      setExpenses((prev) => prev.filter((e) => e.id !== id));
-    }
-    // Only update stats if in stats view
-    if (viewMode === "stats") {
-      debouncedStatsUpdate();
-    }
-  }, [currentMonth, debouncedStatsUpdate, viewMode]);
-
-  // Handle expense updated
-  const handleExpenseUpdated = useCallback((expense: PersonalExpense) => {
-    // Invalidate cache
-    const expensesKey = `${currentMonth}-expenses`;
-    dataCache.current.delete(expensesKey);
-
-    // Optimistically update the UI first
-    if (viewMode === "list" || viewMode === "stats") {
-      if (!expense.date.startsWith(currentMonth)) {
-        // If date changed to a different month, remove from current view
-        setExpenses((prev) => prev.filter((e) => e.id !== expense.id));
-      } else {
-        // Update the expense in place
-        setExpenses((prev) =>
-          prev.map((e) => (e.id === expense.id ? expense : e))
-        );
-      }
-    }
-
-    // Only update stats if in stats view
-    if (viewMode === "stats") {
-      debouncedStatsUpdate();
-    }
-  }, [currentMonth, debouncedStatsUpdate, viewMode]);
+  const handleExpenseUpdated = useCallback(() => {
+    // React Query mutations will handle cache invalidation
+  }, []);
 
   const handleMonthSelect = (month: string) => {
     setCurrentMonth(month);
     setIsMonthPickerOpen(false);
   };
 
-  // Cleanup cache periodically and on unmount
-  useEffect(() => {
-    const cleanupCache = () => {
-      const now = Date.now();
-      for (const [key, value] of dataCache.current.entries()) {
-        if (now - value.timestamp > CACHE_TTL) {
-          dataCache.current.delete(key);
-        }
-      }
-    };
 
-    const interval = setInterval(cleanupCache, CACHE_TTL);
-    return () => {
-      clearInterval(interval);
-      // Clear cache on unmount
-      dataCache.current.clear();
-      loadingRef.current.clear();
-    };
-  }, []);
-
-  // Handle view mode change - only reload if needed
+  // Handle view mode change
   const handleViewModeChange = useCallback((mode: ViewMode) => {
     setViewMode(mode);
     // Clear category filter when switching views
     if (mode !== "list") {
       setSelectedCategory(null);
     }
-    // Don't reload immediately - let loadData handle it based on view mode
   }, []);
 
   // Handle category click - switch to list view and filter by category
@@ -472,11 +191,10 @@ const ExpenseTracker = () => {
     if (!userId) return;
 
     try {
-      setIsLoading(true);
       const csvContent = await api.expenses.exportAsCSV(userId, currentMonth);
 
       // Create blob and download
-      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const blob = new Blob([csvContent as string], { type: "text/csv;charset=utf-8;" });
       const link = document.createElement("a");
       const url = URL.createObjectURL(blob);
 
@@ -499,8 +217,6 @@ const ExpenseTracker = () => {
     } catch (error) {
       console.error("Error exporting CSV:", error);
       toast.error("Failed to export expenses");
-    } finally {
-      setIsLoading(false);
     }
   }, [userId, currentMonth, expenses.length]);
 
@@ -547,15 +263,9 @@ const ExpenseTracker = () => {
               </button>
               <CSVImport
                 userId={userId}
-                onExpensesImported={(expenses) => {
-                  // Handle imported expenses - add to current view if in current month
-                  expenses.forEach((expense) => {
-                    if (expense.date.startsWith(currentMonth)) {
-                      handleExpenseAdded(expense);
-                    }
-                  });
-                  // Refresh data to ensure everything is in sync
-                  loadData();
+                onExpensesImported={() => {
+                  // React Query will automatically refetch when mutations invalidate the cache
+                  handleExpenseAdded();
                 }}
               />
               <button
@@ -707,8 +417,8 @@ const ExpenseTracker = () => {
             userId={userId}
             month={currentMonth}
             onUpdate={() => {
-              // Reload data when settings are updated
-              loadData();
+              // Invalidate React Query cache for current month when fixed costs, investments, or salary are updated
+              queryClient.invalidateQueries({ queryKey: ["stats", currentMonth] });
             }}
           />
         </Suspense>

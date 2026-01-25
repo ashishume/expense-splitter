@@ -2,19 +2,20 @@ import { useState, useMemo, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Pencil, X } from "lucide-react";
 import toast from "react-hot-toast";
+import { extractMonth } from "../../utils/dataCache";
 import {
   EXPENSE_CATEGORIES,
   type PersonalExpense,
   type CategoryConfig,
 } from "../../types/personalExpense";
-import { api } from "../../services/apiService";
+import { useDeleteExpense } from "../../hooks/useExpenseMutations";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import EditExpenseModal from "./EditExpenseModal";
 
 interface ExpenseListProps {
   expenses: PersonalExpense[];
-  onExpenseDeleted: (id: string) => void;
-  onExpenseUpdated: (expense: PersonalExpense) => void;
+  onExpenseDeleted: () => void;
+  onExpenseUpdated: () => void;
   userId: string;
   selectedCategory?: CategoryConfig | null;
   onClearCategory?: () => void;
@@ -57,6 +58,7 @@ const ExpenseList = ({
   onClearCategory,
   onCategorySelect,
 }: ExpenseListProps) => {
+  const deleteExpenseMutation = useDeleteExpense();
   const [deleteConfirm, setDeleteConfirm] = useState<{
     isOpen: boolean;
     expenseId: string | null;
@@ -74,8 +76,17 @@ const ExpenseList = ({
   const handleDelete = useCallback(async (id: string) => {
     setIsDeleting(true);
     try {
-      await api.expenses.delete(id, userId);
-      onExpenseDeleted(id);
+      // Get expense first to know which month to invalidate
+      const expense = expenses.find((e) => e.id === id);
+      const expenseMonth = expense ? extractMonth(expense.date) : undefined;
+      
+      await deleteExpenseMutation.mutateAsync({
+        id,
+        userId,
+        expenseMonth,
+      });
+      
+      onExpenseDeleted();
       toast.success("Expense deleted");
       setDeleteConfirm({
         isOpen: false,
@@ -88,7 +99,7 @@ const ExpenseList = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [userId, onExpenseDeleted]);
+  }, [userId, expenses, onExpenseDeleted, deleteExpenseMutation]);
 
   const openDeleteConfirm = useCallback((expense: PersonalExpense) => {
     setDeleteConfirm({

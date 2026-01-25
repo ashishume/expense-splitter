@@ -1,21 +1,16 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  updateDoc,
-  onSnapshot,
-  query,
-  where,
-  orderBy,
-  limit,
-} from "firebase/firestore";
-import { db } from "../../firebase";
 import type { User as FirebaseUser } from "firebase/auth";
+import { addDoc, collection, doc, updateDoc } from "firebase/firestore";
+import { db } from "../../firebase";
 import { logExpenseAction } from "../../utils/logger";
+import {
+  subscribeToGroupExpenses,
+  createGroupExpense,
+  deleteGroupExpense,
+  subscribeToGroupLogs,
+} from "../../services/groupService";
 import {
   calculateGroupBalances,
   generateSettlements,
@@ -124,49 +119,16 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   useEffect(() => {
     if (!groupId || isLoading || !group) return;
 
-    const expensesQuery = query(
-      collection(db, "expenses"),
-      where("groupId", "==", groupId),
-      orderBy("date", "desc"),
-      ...(isMobile ? [limit(100)] : [])
-    );
-
-    const unsubscribe = onSnapshot(
-      expensesQuery,
-      (snapshot) => {
-        const expensesData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as Expense[];
-
+    const unsubscribe = subscribeToGroupExpenses(
+      groupId,
+      (expensesData) => {
         setExpenses(expensesData);
       },
-      (error) => {
-        console.error("Error listening to expenses:", error);
-        // Fallback: try without orderBy if index is missing
-        if (error.code === "failed-precondition") {
-          const simpleQuery = query(
-            collection(db, "expenses"),
-            where("groupId", "==", groupId)
-          );
-          return onSnapshot(simpleQuery, (snapshot) => {
-            const expensesData = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            })) as Expense[];
-            // Sort manually by date
-            expensesData.sort(
-              (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-            );
-
-            setExpenses(expensesData);
-          });
-        }
-      }
+      isMobile ? 100 : undefined
     );
 
     return () => unsubscribe();
-  }, [groupId, isLoading, group]);
+  }, [groupId, isLoading, group, isMobile]);
 
   /**
    * Set up real-time listener for logs in this group
@@ -176,49 +138,16 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
   useEffect(() => {
     if (!groupId || isLoading || !group) return;
 
-    const logsQuery = query(
-      collection(db, "logs"),
-      where("groupId", "==", groupId),
-      orderBy("timestamp", "desc"),
-      ...(isMobile ? [limit(50)] : [])
-    );
-
-    const unsubscribe = onSnapshot(
-      logsQuery,
-      (snapshot) => {
-        const logsData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        })) as ExtendedLogEntry[];
+    const unsubscribe = subscribeToGroupLogs(
+      groupId,
+      (logsData) => {
         setLogs(logsData);
       },
-      (error) => {
-        console.error("Error listening to logs:", error);
-        // Fallback: try without orderBy if index is missing
-        if (error.code === "failed-precondition") {
-          const simpleQuery = query(
-            collection(db, "logs"),
-            where("groupId", "==", groupId)
-          );
-          return onSnapshot(simpleQuery, (snapshot) => {
-            const logsData = snapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            })) as ExtendedLogEntry[];
-            // Sort manually by timestamp
-            logsData.sort(
-              (a, b) =>
-                new Date(b.timestamp).getTime() -
-                new Date(a.timestamp).getTime()
-            );
-            setLogs(logsData);
-          });
-        }
-      }
+      isMobile ? 50 : undefined
     );
 
     return () => unsubscribe();
-  }, [groupId, isLoading, group]);
+  }, [groupId, isLoading, group, isMobile]);
 
   // Get group members (memoized to prevent infinite loops)
   const groupMembers = useMemo(() => {
@@ -349,14 +278,14 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         splitWith: newExpense.splitWith,
         date: new Date().toISOString(),
         groupId: groupId,
-        addedBy: currentUser?.uid || null,
+        addedBy: currentUser?.uid || undefined,
       };
 
-      const expenseRef = await addDoc(collection(db, "expenses"), expenseData);
+      const createdExpense = await createGroupExpense(expenseData);
 
       await logExpenseAction(
         "create",
-        expenseRef.id,
+        createdExpense.id,
         `Created expense: ${newExpense.description} - ₹${amount}`,
         currentUser?.uid,
         currentUser?.displayName || undefined,
@@ -401,7 +330,7 @@ const GroupDetails = ({ users, groups, currentUser }: GroupDetailsProps) => {
         return;
       }
 
-      await deleteDoc(doc(db, "expenses", expenseId));
+      await deleteGroupExpense(expenseId);
       await logExpenseAction(
         "delete",
         expenseId,

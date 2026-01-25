@@ -5,6 +5,7 @@ import { SignIn } from "./components/SignIn";
 import ExpenseSplittingApp from "./Index";
 import Toast from "./components/ui/Toast";
 import { trackPageView } from "./config/googleAnalytics";
+import { QueryProvider } from "./providers/QueryProvider";
 
 function AppContent() {
   const { user } = useAuth();
@@ -22,12 +23,15 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <AppContent />
-        <Toast />
-      </AuthProvider>
-    </Router>
+    <QueryProvider>
+      <Router>
+        <AuthProvider>
+          <AppContent />
+          <Toast />
+          {/* <DatabaseSwitcher /> */}
+        </AuthProvider>
+      </Router>
+    </QueryProvider>
   );
 }
 

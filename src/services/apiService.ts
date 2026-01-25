@@ -23,34 +23,62 @@ import type {
   OneTimeInvestment,
 } from "../types/personalExpense";
 
-// Import all storage services
-import * as expenseStorage from "./personalExpenseStorage";
-import * as fixedCostStorage from "./fixedCostStorage";
-import * as investmentStorage from "./investmentStorage";
-import * as salaryStorage from "./salaryStorage";
-import * as oneTimeInvestmentStorage from "./oneTimeInvestmentStorage";
+// Import database adapter
+import { getDatabaseProvider } from "../config/database";
+import { dataCache, extractMonth } from "../utils/dataCache";
+
+// Import both Firebase and Supabase services
+import * as firebaseExpenseStorage from "./personalExpenseStorage";
+import * as firebaseFixedCostStorage from "./fixedCostStorage";
+import * as firebaseInvestmentStorage from "./investmentStorage";
+import * as firebaseSalaryStorage from "./salaryStorage";
+import * as firebaseOneTimeInvestmentStorage from "./oneTimeInvestmentStorage";
+
+import * as supabaseExpenseStorage from "./supabase/personalExpenseStorage";
+import * as supabaseFixedCostStorage from "./supabase/fixedCostStorage";
+import * as supabaseInvestmentStorage from "./supabase/investmentStorage";
+import * as supabaseSalaryStorage from "./supabase/salaryStorage";
+import * as supabaseOneTimeInvestmentStorage from "./supabase/oneTimeInvestmentStorage";
+
+// Select services based on provider
+const provider = getDatabaseProvider();
+const expenseStorage = provider === "supabase" ? supabaseExpenseStorage : firebaseExpenseStorage;
+const fixedCostStorage = provider === "supabase" ? supabaseFixedCostStorage : firebaseFixedCostStorage;
+const investmentStorage = provider === "supabase" ? supabaseInvestmentStorage : firebaseInvestmentStorage;
+const salaryStorage = provider === "supabase" ? supabaseSalaryStorage : firebaseSalaryStorage;
+const oneTimeInvestmentStorage = provider === "supabase" ? supabaseOneTimeInvestmentStorage : firebaseOneTimeInvestmentStorage;
 
 // Debug mode - set to true to enable detailed logging
 const DEBUG_MODE = process.env.NODE_ENV === "development" || false;
+
+interface LogEntry {
+  timestamp: string;
+  service: string;
+  operation: string;
+  params?: string;
+  success: boolean;
+  error?: string;
+  resultType?: string;
+}
 
 // Log all API calls for debugging
 const logApiCall = (
   service: string,
   operation: string,
-  params?: any,
-  result?: any,
-  error?: any
+  params?: unknown,
+  result?: unknown,
+  error?: Error | unknown
 ) => {
   if (!DEBUG_MODE) return;
 
   const timestamp = new Date().toISOString();
-  const logEntry = {
+  const logEntry: LogEntry = {
     timestamp,
     service,
     operation,
     params: params ? JSON.stringify(params, null, 2) : undefined,
     success: !error,
-    error: error ? error.message : undefined,
+    error: error && error instanceof Error ? error.message : String(error),
     resultType: result ? typeof result : undefined,
   };
 
@@ -71,22 +99,26 @@ const logApiCall = (
 
   // Store in window for debugging (only in dev)
   if (typeof window !== "undefined" && DEBUG_MODE) {
-    (window as any).__apiCalls = (window as any).__apiCalls || [];
-    (window as any).__apiCalls.push(logEntry);
+    interface WindowWithApiCalls extends Window {
+      __apiCalls?: LogEntry[];
+    }
+    const win = window as WindowWithApiCalls;
+    win.__apiCalls = win.__apiCalls || [];
+    win.__apiCalls.push(logEntry);
     // Keep only last 100 calls
-    if ((window as any).__apiCalls.length > 100) {
-      (window as any).__apiCalls.shift();
+    if (win.__apiCalls.length > 100) {
+      win.__apiCalls.shift();
     }
   }
 };
 
 // Wrapper function to add logging to any async function
-const withLogging = <T extends (...args: any[]) => Promise<any>>(
+const withLogging = <TArgs extends unknown[], TReturn>(
   service: string,
   operation: string,
-  fn: T
-): T => {
-  return (async (...args: Parameters<T>) => {
+  fn: (...args: TArgs) => Promise<TReturn>
+): ((...args: TArgs) => Promise<TReturn>) => {
+  return async (...args: TArgs): Promise<TReturn> => {
     const startTime = Date.now();
     try {
       logApiCall(service, operation, args[0], undefined, undefined);
@@ -97,7 +129,7 @@ const withLogging = <T extends (...args: any[]) => Promise<any>>(
         console.log(`⏱️  Duration: ${duration}ms`);
       }
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       const duration = Date.now() - startTime;
       logApiCall(service, operation, args[0], undefined, error);
       if (DEBUG_MODE) {
@@ -105,7 +137,90 @@ const withLogging = <T extends (...args: any[]) => Promise<any>>(
       }
       throw error;
     }
-  }) as T;
+  };
+};
+
+// Wrapper function to add cache invalidation for mutations
+const withCacheInvalidation = <TArgs extends unknown[], TReturn>(
+  service: string,
+  operation: string,
+  fn: (...args: TArgs) => Promise<TReturn>,
+  getMonth?: (result: TReturn, args: TArgs) => string | null
+): ((...args: TArgs) => Promise<TReturn>) => {
+  return async (...args: TArgs): Promise<TReturn> => {
+    const result = await fn(...args);
+    
+    // Invalidate cache based on service and operation
+    if (service === "expenses") {
+      if (operation === "create" && result) {
+        const month = extractMonth((result as unknown as PersonalExpense).date);
+        dataCache.invalidateExpenses(month);
+      } else if (operation === "update" && result) {
+        const month = extractMonth((result as unknown as PersonalExpense).date);
+        dataCache.invalidateExpenses(month);
+      } else if (operation === "batchCreate" && Array.isArray(result)) {
+        // Invalidate all months that were affected
+        const months = new Set<string>();
+        (result as unknown as PersonalExpense[]).forEach((exp) => {
+          months.add(extractMonth(exp.date));
+        });
+        months.forEach((month) => dataCache.invalidateExpenses(month));
+      }
+    } else if (service === "fixedCosts") {
+      if (operation === "createTemplate" || operation === "updateTemplate" || operation === "deleteTemplate") {
+        // Template changes affect all months - invalidate all months' stats
+        // Since we don't know which month, we'll let components handle it via onUpdate callback
+        // But we can still invalidate if month is provided
+        if (getMonth) {
+          const month = getMonth(result, args);
+          if (month) {
+            dataCache.invalidateFixedCosts(month);
+          }
+        }
+      } else if (operation === "updateInstance" && getMonth) {
+        const month = getMonth(result, args);
+        if (month) dataCache.invalidateFixedCosts(month);
+      }
+    } else if (service === "investments") {
+      if (operation === "createTemplate" || operation === "updateTemplate" || operation === "deleteTemplate") {
+        if (getMonth) {
+          const month = getMonth(result, args);
+          if (month) {
+            dataCache.invalidateInvestments(month);
+          }
+        }
+      } else if (operation === "updateInstance" && getMonth) {
+        const month = getMonth(result, args);
+        if (month) dataCache.invalidateInvestments(month);
+      }
+    } else if (service === "salary") {
+      if (operation === "createOrUpdateTemplate") {
+        // Template changes affect all months
+        if (getMonth) {
+          const month = getMonth(result, args);
+          if (month) {
+            dataCache.invalidateSalary(month);
+          }
+        }
+      } else if (operation === "updateInstance" && getMonth) {
+        const month = getMonth(result, args);
+        if (month) dataCache.invalidateSalary(month);
+      }
+    } else if (service === "oneTimeInvestments") {
+      if (operation === "create" && result) {
+        const month = extractMonth((result as unknown as OneTimeInvestment).date);
+        dataCache.invalidateOneTimeInvestments(month);
+      } else if (operation === "update" && result) {
+        const month = extractMonth((result as unknown as OneTimeInvestment).date);
+        dataCache.invalidateOneTimeInvestments(month);
+      } else if (args.length > 0 && typeof args[0] === "string") {
+        // For getAll, first arg is month
+        dataCache.invalidateOneTimeInvestments(args[0]);
+      }
+    }
+    
+    return result;
+  };
 };
 
 /**
@@ -117,10 +232,11 @@ export const api = {
   // Expenses
   // ============================================
   expenses: {
-    create: withLogging(
+    create: withCacheInvalidation(
       "expenses",
       "create",
-      expenseStorage.createExpense
+      withLogging("expenses", "create", expenseStorage.createExpense),
+      (result) => result ? extractMonth((result as PersonalExpense).date) : null
     ),
     getAll: withLogging("expenses", "getAll", expenseStorage.getExpenses),
     getById: withLogging(
@@ -128,8 +244,22 @@ export const api = {
       "getById",
       expenseStorage.getExpenseById
     ),
-    update: withLogging("expenses", "update", expenseStorage.updateExpense),
-    delete: withLogging("expenses", "delete", expenseStorage.deleteExpense),
+    update: withCacheInvalidation(
+      "expenses",
+      "update",
+      withLogging("expenses", "update", expenseStorage.updateExpense),
+      (result) => result ? extractMonth((result as PersonalExpense).date) : null
+    ),
+    delete: withCacheInvalidation(
+      "expenses",
+      "delete",
+      withLogging("expenses", "delete", expenseStorage.deleteExpense),
+      () => {
+        // For delete, components handle cache invalidation
+        // since they have access to the expense before deletion
+        return null;
+      }
+    ),
     subscribe: expenseStorage.subscribeToExpenses,
     unsubscribe: expenseStorage.unsubscribeFromExpenses,
     getMonthlyStats: withLogging(
@@ -137,10 +267,17 @@ export const api = {
       "getMonthlyStats",
       expenseStorage.getMonthlyStats
     ),
-    batchCreate: withLogging(
+    batchCreate: withCacheInvalidation(
       "expenses",
       "batchCreate",
-      expenseStorage.batchCreateExpenses
+      withLogging("expenses", "batchCreate", expenseStorage.batchCreateExpenses),
+      (result) => {
+        if (Array.isArray(result) && result.length > 0) {
+          // Return first month - all months will be invalidated in the wrapper
+          return extractMonth((result[0] as PersonalExpense).date);
+        }
+        return null;
+      }
     ),
     exportAsCSV: withLogging(
       "expenses",
@@ -154,25 +291,25 @@ export const api = {
   // ============================================
   fixedCosts: {
     // Templates
-    createTemplate: withLogging(
+    createTemplate: withCacheInvalidation(
       "fixedCosts",
       "createTemplate",
-      fixedCostStorage.createFixedCost
+      withLogging("fixedCosts", "createTemplate", fixedCostStorage.createFixedCost)
     ),
     getTemplates: withLogging(
       "fixedCosts",
       "getTemplates",
       fixedCostStorage.getFixedCosts
     ),
-    updateTemplate: withLogging(
+    updateTemplate: withCacheInvalidation(
       "fixedCosts",
       "updateTemplate",
-      fixedCostStorage.updateFixedCost
+      withLogging("fixedCosts", "updateTemplate", fixedCostStorage.updateFixedCost)
     ),
-    deleteTemplate: withLogging(
+    deleteTemplate: withCacheInvalidation(
       "fixedCosts",
       "deleteTemplate",
-      fixedCostStorage.deleteFixedCost
+      withLogging("fixedCosts", "deleteTemplate", fixedCostStorage.deleteFixedCost)
     ),
 
     // Instances
@@ -186,10 +323,14 @@ export const api = {
       "getOrCreateInstance",
       fixedCostStorage.getOrCreateFixedCostInstance
     ),
-    updateInstance: withLogging(
+    updateInstance: withCacheInvalidation(
       "fixedCosts",
       "updateInstance",
-      fixedCostStorage.updateFixedCostInstance
+      withLogging("fixedCosts", "updateInstance", fixedCostStorage.updateFixedCostInstance),
+      (result) => {
+        // Result is FixedCostInstance which has month property
+        return result ? (result as FixedCostInstance).month : null;
+      }
     ),
     ensureInstancesForMonth: withLogging(
       "fixedCosts",
@@ -203,25 +344,25 @@ export const api = {
   // ============================================
   investments: {
     // Templates
-    createTemplate: withLogging(
+    createTemplate: withCacheInvalidation(
       "investments",
       "createTemplate",
-      investmentStorage.createInvestment
+      withLogging("investments", "createTemplate", investmentStorage.createInvestment)
     ),
     getTemplates: withLogging(
       "investments",
       "getTemplates",
       investmentStorage.getInvestments
     ),
-    updateTemplate: withLogging(
+    updateTemplate: withCacheInvalidation(
       "investments",
       "updateTemplate",
-      investmentStorage.updateInvestment
+      withLogging("investments", "updateTemplate", investmentStorage.updateInvestment)
     ),
-    deleteTemplate: withLogging(
+    deleteTemplate: withCacheInvalidation(
       "investments",
       "deleteTemplate",
-      investmentStorage.deleteInvestment
+      withLogging("investments", "deleteTemplate", investmentStorage.deleteInvestment)
     ),
 
     // Instances
@@ -235,10 +376,14 @@ export const api = {
       "getOrCreateInstance",
       investmentStorage.getOrCreateInvestmentInstance
     ),
-    updateInstance: withLogging(
+    updateInstance: withCacheInvalidation(
       "investments",
       "updateInstance",
-      investmentStorage.updateInvestmentInstance
+      withLogging("investments", "updateInstance", investmentStorage.updateInvestmentInstance),
+      (result) => {
+        // Result is InvestmentInstance which has month property
+        return result ? (result as InvestmentInstance).month : null;
+      }
     ),
     ensureInstancesForMonth: withLogging(
       "investments",
@@ -252,10 +397,10 @@ export const api = {
   // ============================================
   salary: {
     // Note: Salary uses createOrUpdate instead of separate create/update
-    createOrUpdateTemplate: withLogging(
+    createOrUpdateTemplate: withCacheInvalidation(
       "salary",
       "createOrUpdateTemplate",
-      salaryStorage.createOrUpdateSalaryIncome
+      withLogging("salary", "createOrUpdateTemplate", salaryStorage.createOrUpdateSalaryIncome)
     ),
     getTemplate: withLogging(
       "salary",
@@ -273,10 +418,14 @@ export const api = {
       "getOrCreateInstance",
       salaryStorage.getOrCreateSalaryInstance
     ),
-    updateInstance: withLogging(
+    updateInstance: withCacheInvalidation(
       "salary",
       "updateInstance",
-      salaryStorage.updateSalaryInstance
+      withLogging("salary", "updateInstance", salaryStorage.updateSalaryInstance),
+      (result) => {
+        // Result is SalaryInstance which has month property
+        return result ? (result as SalaryInstance).month : null;
+      }
     ),
     ensureInstanceForMonth: withLogging(
       "salary",
@@ -289,10 +438,11 @@ export const api = {
   // One-Time Investments
   // ============================================
   oneTimeInvestments: {
-    create: withLogging(
+    create: withCacheInvalidation(
       "oneTimeInvestments",
       "create",
-      oneTimeInvestmentStorage.createOneTimeInvestment
+      withLogging("oneTimeInvestments", "create", oneTimeInvestmentStorage.createOneTimeInvestment),
+      (result) => result ? extractMonth((result as OneTimeInvestment).date) : null
     ),
     getAll: withLogging(
       "oneTimeInvestments",
@@ -304,15 +454,16 @@ export const api = {
       "getById",
       oneTimeInvestmentStorage.getOneTimeInvestmentById
     ),
-    update: withLogging(
+    update: withCacheInvalidation(
       "oneTimeInvestments",
       "update",
-      oneTimeInvestmentStorage.updateOneTimeInvestment
+      withLogging("oneTimeInvestments", "update", oneTimeInvestmentStorage.updateOneTimeInvestment),
+      (result) => result ? extractMonth((result as OneTimeInvestment).date) : null
     ),
-    delete: withLogging(
+    delete: withCacheInvalidation(
       "oneTimeInvestments",
       "delete",
-      oneTimeInvestmentStorage.deleteOneTimeInvestment
+      withLogging("oneTimeInvestments", "delete", oneTimeInvestmentStorage.deleteOneTimeInvestment)
     ),
   },
 };
@@ -322,20 +473,31 @@ export const api = {
  * Access these in browser console: window.__apiDebug
  */
 if (typeof window !== "undefined") {
-  (window as any).__apiDebug = {
-    getCalls: () => (window as any).__apiCalls || [],
+  interface WindowWithApiDebug extends Window {
+    __apiCalls?: LogEntry[];
+    __apiDebug?: {
+      getCalls: () => LogEntry[];
+      clearCalls: () => void;
+      getCallCount: () => number;
+      getCallsByService: (service: string) => LogEntry[];
+      getFailedCalls: () => LogEntry[];
+    };
+  }
+  const win = window as WindowWithApiDebug;
+  win.__apiDebug = {
+    getCalls: () => win.__apiCalls || [],
     clearCalls: () => {
-      (window as any).__apiCalls = [];
+      win.__apiCalls = [];
     },
-    getCallCount: () => ((window as any).__apiCalls || []).length,
+    getCallCount: () => (win.__apiCalls || []).length,
     getCallsByService: (service: string) => {
-      return ((window as any).__apiCalls || []).filter(
-        (call: any) => call.service === service
+      return (win.__apiCalls || []).filter(
+        (call) => call.service === service
       );
     },
     getFailedCalls: () => {
-      return ((window as any).__apiCalls || []).filter(
-        (call: any) => !call.success
+      return (win.__apiCalls || []).filter(
+        (call) => !call.success
       );
     },
   };

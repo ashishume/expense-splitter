@@ -7,13 +7,13 @@ import {
   type ExpenseCategory,
   type PersonalExpense,
 } from "../../types/personalExpense";
-import { api } from "../../services/apiService";
+import { useUpdateExpense } from "../../hooks/useExpenseMutations";
 
 interface EditExpenseModalProps {
   expense: PersonalExpense | null;
   isOpen: boolean;
   onClose: () => void;
-  onExpenseUpdated: (expense: PersonalExpense) => void;
+  onExpenseUpdated: () => void;
   userId: string;
 }
 
@@ -24,6 +24,7 @@ const EditExpenseModal = ({
   onExpenseUpdated,
   userId,
 }: EditExpenseModalProps) => {
+  const updateExpenseMutation = useUpdateExpense();
   const [amount, setAmount] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState<ExpenseCategory>("food");
@@ -54,19 +55,19 @@ const EditExpenseModal = ({
 
     setIsSubmitting(true);
     try {
-      const updatedExpense = await api.expenses.update(
-        expense.id,
-        {
+      const updatedExpense = await updateExpenseMutation.mutateAsync({
+        id: expense.id,
+        updates: {
           amount: numAmount,
           description: description.trim(),
           category,
           date: new Date(date).toISOString(),
         },
-        userId
-      );
+        userId,
+      });
 
       if (updatedExpense) {
-        onExpenseUpdated(updatedExpense);
+        onExpenseUpdated();
         toast.success("Expense updated!");
         onClose();
       } else {
@@ -149,11 +150,10 @@ const EditExpenseModal = ({
                       key={cat.id}
                       type="button"
                       onClick={() => setCategory(cat.id)}
-                      className={`flex items-center gap-3 px-1 py-1 rounded-xl text-sm font-medium transition-all ${
-                        category === cat.id
+                      className={`flex items-center gap-3 px-1 py-1 rounded-xl text-sm font-medium transition-all ${category === cat.id
                           ? "ring-2 ring-offset-2 shadow-md scale-[1.02]"
                           : "opacity-70 hover:opacity-100 hover:shadow-sm"
-                      }`}
+                        }`}
                       style={{
                         backgroundColor: cat.bgColor,
                         color: cat.color,
