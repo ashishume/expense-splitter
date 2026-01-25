@@ -445,6 +445,39 @@ export const exportExpenses = async (userId: string): Promise<string> => {
 };
 
 /**
+ * Export expenses as CSV
+ * @param month Optional month filter (YYYY-MM format). If not provided, exports all expenses.
+ */
+export const exportExpensesAsCSV = async (
+  userId: string,
+  month?: string
+): Promise<string> => {
+  const expenses = await getExpenses(month ? { month } : undefined, userId);
+
+  if (expenses.length === 0) {
+    return "amount,description,category,date\n";
+  }
+
+  // Create CSV header
+  const header = "amount,description,category,date\n";
+
+  // Convert expenses to CSV rows
+  const rows = expenses.map((exp) => {
+    // Escape description if it contains commas or quotes
+    const escapedDescription = exp.description.includes(",") || exp.description.includes('"')
+      ? `"${exp.description.replace(/"/g, '""')}"`
+      : exp.description;
+
+    // Format date as YYYY-MM-DD
+    const dateStr = exp.date.split("T")[0];
+
+    return `${exp.amount},${escapedDescription},${exp.category},${dateStr}`;
+  });
+
+  return header + rows.join("\n");
+};
+
+/**
  * Import expenses (for restore)
  */
 export const importExpenses = async (
@@ -499,6 +532,67 @@ export const importExpenses = async (
   }
 
   return count;
+};
+
+/**
+ * Batch create expenses from CSV import
+ * @returns Array of created expenses
+ */
+export const batchCreateExpenses = async (
+  expenses: Omit<PersonalExpense, "id" | "createdAt" | "updatedAt">[],
+  userId: string
+): Promise<PersonalExpense[]> => {
+  if (expenses.length === 0) {
+    return [];
+  }
+
+  const now = Timestamp.now();
+  const createdExpenses: PersonalExpense[] = [];
+
+  // Process in batches of 500 (Firestore limit)
+  const batchSize = 500;
+  for (let i = 0; i < expenses.length; i += batchSize) {
+    const batch = writeBatch(db);
+    const chunk = expenses.slice(i, i + batchSize);
+
+    chunk.forEach((exp) => {
+      const docRef = doc(collection(db, COLLECTION_NAME));
+      const docData: ExpenseDoc = {
+        userId,
+        amount: exp.amount,
+        description: exp.description,
+        category: exp.category,
+        date: exp.date,
+        createdAt: now,
+        updatedAt: now,
+      };
+      batch.set(docRef, docData);
+
+      // Create expense object for return (we'll update with actual ID after commit)
+      const expense: PersonalExpense = {
+        id: docRef.id,
+        amount: exp.amount,
+        description: exp.description,
+        category: exp.category,
+        date: exp.date,
+        createdAt: now.toDate().toISOString(),
+        updatedAt: now.toDate().toISOString(),
+        userId,
+      };
+      createdExpenses.push(expense);
+    });
+
+    await batch.commit();
+  }
+
+  // Log activities for all created expenses
+  createdExpenses.forEach((expense) => {
+    logCreateActivity(expense, userId).catch((err) =>
+      console.error("Failed to log create activity:", err)
+    );
+  });
+
+  return createdExpenses;
 };
 
 // ============================================

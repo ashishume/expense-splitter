@@ -137,6 +137,16 @@ export const api = {
       "getMonthlyStats",
       expenseStorage.getMonthlyStats
     ),
+    batchCreate: withLogging(
+      "expenses",
+      "batchCreate",
+      expenseStorage.batchCreateExpenses
+    ),
+    exportAsCSV: withLogging(
+      "expenses",
+      "exportAsCSV",
+      expenseStorage.exportExpensesAsCSV
+    ),
   },
 
   // ============================================

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -10,6 +11,7 @@ import {
   Clock,
   Cloud,
   Settings,
+  Download,
 } from "lucide-react";
 
 import type {
@@ -25,6 +27,7 @@ import ExpenseList from "./ExpenseList";
 import type { Unsubscribe } from "firebase/firestore";
 import SigninButton from "./SigninButton";
 import { LoadingSpinner } from "../icons";
+import CSVImport from "./CSVImport";
 
 // Lazy load heavy components for better iPhone performance
 const MonthlyStats = lazy(() => import("./MonthlyStats"));
@@ -464,6 +467,43 @@ const ExpenseTracker = () => {
     setViewMode("list");
   }, []);
 
+  // Handle CSV export/download
+  const handleExportCSV = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      setIsLoading(true);
+      const csvContent = await api.expenses.exportAsCSV(userId, currentMonth);
+
+      // Create blob and download
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+
+      // Generate filename with month
+      const [year, month] = currentMonth.split("-");
+      const monthName = new Date(parseInt(year), parseInt(month) - 1).toLocaleDateString(
+        "en-US",
+        { month: "long", year: "numeric" }
+      );
+      const filename = `expenses-${monthName.replace(/\s+/g, "-")}.csv`;
+
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      toast.success(`Exported ${expenses.length} expense(s) to CSV`);
+    } catch (error) {
+      console.error("Error exporting CSV:", error);
+      toast.error("Failed to export expenses");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId, currentMonth, expenses.length]);
+
   // Show sign in prompt if not logged in
   if (!userId) {
     return <SigninButton />
@@ -497,6 +537,27 @@ const ExpenseTracker = () => {
 
             {/* View Toggle and Settings */}
             <div className="flex items-center gap-2">
+              <button
+                onClick={handleExportCSV}
+                disabled={isLoading || expenses.length === 0}
+                className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download expenses as CSV"
+              >
+                <Download className="w-5 h-5" />
+              </button>
+              <CSVImport
+                userId={userId}
+                onExpensesImported={(expenses) => {
+                  // Handle imported expenses - add to current view if in current month
+                  expenses.forEach((expense) => {
+                    if (expense.date.startsWith(currentMonth)) {
+                      handleExpenseAdded(expense);
+                    }
+                  });
+                  // Refresh data to ensure everything is in sync
+                  loadData();
+                }}
+              />
               <button
                 onClick={() => setIsSettingsOpen(true)}
                 className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
