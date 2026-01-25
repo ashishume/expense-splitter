@@ -1,6 +1,6 @@
 import { useState, useMemo, memo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Pencil, X } from "lucide-react";
+import { Trash2, Pencil, X, ChevronDown, ChevronUp } from "lucide-react";
 import toast from "react-hot-toast";
 import { extractMonth } from "../../utils/dataCache";
 import {
@@ -72,6 +72,7 @@ const ExpenseList = ({
   const [editingExpense, setEditingExpense] = useState<PersonalExpense | null>(
     null
   );
+  const [isFiltersExpanded, setIsFiltersExpanded] = useState(false);
 
   const handleDelete = useCallback(async (id: string) => {
     setIsDeleting(true);
@@ -79,13 +80,13 @@ const ExpenseList = ({
       // Get expense first to know which month to invalidate
       const expense = expenses.find((e) => e.id === id);
       const expenseMonth = expense ? extractMonth(expense.date) : undefined;
-      
+
       await deleteExpenseMutation.mutateAsync({
         id,
         userId,
         expenseMonth,
       });
-      
+
       onExpenseDeleted();
       toast.success("Expense deleted");
       setDeleteConfirm({
@@ -122,7 +123,7 @@ const ExpenseList = ({
   // Get categories that have expenses in the current list
   const availableCategories = useMemo(() => {
     const categoryMap = new Map<string, { category: CategoryConfig; count: number }>();
-    
+
     expenses.forEach((expense) => {
       const category = EXPENSE_CATEGORIES.find((c) => c.id === expense.category);
       if (category) {
@@ -138,6 +139,16 @@ const ExpenseList = ({
     return Array.from(categoryMap.values())
       .sort((a, b) => b.count - a.count); // Sort by count (most expenses first)
   }, [expenses]);
+
+  // Show top 2 most spent categories when collapsed, all when expanded
+  const visibleCategories = useMemo(() => {
+    if (isFiltersExpanded) {
+      return availableCategories;
+    }
+    return availableCategories.slice(0, 2);
+  }, [availableCategories, isFiltersExpanded]);
+
+  const hasMoreCategories = availableCategories.length > 2;
 
   // Memoize grouped expenses calculation (expensive operation)
   const { groupedExpenses, dateKeys } = useMemo(() => {
@@ -220,53 +231,70 @@ const ExpenseList = ({
           animate={{ opacity: 1, y: 0 }}
           className="mb-4 bg-white rounded-xl p-3 shadow-sm border border-gray-100"
         >
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', touchAction: 'pan-x pan-y' }}>
+          <div className="flex flex-wrap items-center gap-2">
             {/* All Categories Button */}
             <button
               onClick={() => onCategorySelect(null)}
-              className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${
-                !selectedCategory
-                  ? "bg-indigo-500 text-white shadow-md"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap ${!selectedCategory
+                ? "bg-indigo-500 text-white shadow-md"
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               All
             </button>
 
             {/* Category Buttons */}
-            {availableCategories.map(({ category, count }) => {
-              const isSelected = selectedCategory?.id === category.id;
-              return (
-                <button
-                  key={category.id}
-                  onClick={() => onCategorySelect(category)}
-                  className={`flex-shrink-0 px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${
-                    isSelected
+            <AnimatePresence mode="popLayout">
+              {visibleCategories.map(({ category, count }) => {
+                const isSelected = selectedCategory?.id === category.id;
+                return (
+                  <motion.button
+                    key={category.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    onClick={() => onCategorySelect(category)}
+                    className={`px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex items-center gap-2 ${isSelected
                       ? "bg-indigo-500 text-white shadow-md"
                       : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                  style={
-                    isSelected
-                      ? {}
-                      : {
+                      }`}
+                    style={
+                      isSelected
+                        ? {}
+                        : {
                           borderLeft: `3px solid ${category.color}`,
                         }
-                  }
-                >
-                  <span className="text-base">{category.emoji}</span>
-                  <span>{category.label}</span>
-                  <span
-                    className={`text-xs px-1.5 py-0.5 rounded ${
-                      isSelected
+                    }
+                  >
+                    <span className="text-base">{category.emoji}</span>
+                    <span>{category.label}</span>
+                    <span
+                      className={`text-xs px-1.5 py-0.5 rounded ${isSelected
                         ? "bg-white/20 text-white"
                         : "bg-gray-200 text-gray-600"
-                    }`}
-                  >
-                    {count}
-                  </span>
-                </button>
-              );
-            })}
+                        }`}
+                    >
+                      {count}
+                    </span>
+                  </motion.button>
+                );
+              })}
+            </AnimatePresence>
+
+            {/* Expand/Collapse Button */}
+            {hasMoreCategories && (
+              <button
+                onClick={() => setIsFiltersExpanded(!isFiltersExpanded)}
+                className="px-3 py-2 rounded-lg font-medium text-sm transition-all whitespace-nowrap flex items-center gap-1.5 bg-gray-100 text-gray-700 hover:bg-gray-200"
+              >
+                <span>{isFiltersExpanded ? "Show Less" : `+${availableCategories.length - 2} More`}</span>
+                {isFiltersExpanded ? (
+                  <ChevronUp className="w-4 h-4" />
+                ) : (
+                  <ChevronDown className="w-4 h-4" />
+                )}
+              </button>
+            )}
           </div>
 
           {/* Selected Category Info */}
